@@ -1,6 +1,6 @@
 # 🧾 Statement Auditor（對帳單稽核）
 
-> **用途**：對帳單稽核助理，出資人對帳單寄出前逐欄核對基金淨值，最終產出例外清單與放行建議。
+> **用途**：對帳單稽核助理，在出資人對帳單寄出去前逐欄核對基金淨值，最後產一份例外清單跟放行建議。
 
 `出資人（LP）對帳單 → 對照基金淨值（NAV）核對 → 揪差異 → 過/留建議（分送前最後把關）`
 
@@ -24,11 +24,11 @@
 
 **步驟拆解**
 1. **讀對帳單** — 把每位出資人對帳單上回報的餘額讀出來。
-   - 步驟說明：髒資料隔離——由 statement-reader 子代理（只 Read／Grep、無 MCP）讀取，對帳單視為不可信外來資料，避免污染核對流程。
+   - 步驟說明：把髒資料隔離開——由 statement-reader 這個 sub-agent（只能 Read／Grep、沒有 MCP）來讀，對帳單一律當成不可信的外來資料，免得污染後面的核對流程。
 2. **逐欄核對** — 拿每個欄位跟基金的官方淨值資料一一比對，這是這個 agent 最核心的工作。
-   - 步驟說明：MCP 逐欄比對即驗證——透過 `nav` MCP（基金淨值來源，唯讀）以 `nav-tieout` 技能逐欄對 NAV pack 比對，這個 tie-out 動作本身就是驗證（agent 即驗證者）。
+   - 步驟說明：用 MCP 逐欄比對，比對本身就是驗證——透過 `nav` MCP（基金淨值來源，唯讀）用 `nav-tieout` 這個 skill 逐欄對 NAV pack 比，這個 tie-out 動作本身就是驗證（agent 自己就是驗證者）。
 3. **標出差異** — 把對不上的地方整理成一份例外清單，並給出「可放行／需再查」的建議。
-   - 步驟說明：例外清單產出——由 flagger 把對不上的欄位整理成例外清單與簽核表，並標註疑似原因與過／留建議（`audit-xls` 檢查、`xlsx-author` 產出報告檔）。
+   - 步驟說明：產例外清單——由 flagger 把對不上的欄位整理成例外清單跟簽核表，標上疑似原因跟過／留建議（`audit-xls` 檢查、`xlsx-author` 產出報告檔）。
 
 ## 二、風險與把關
 
@@ -50,7 +50,7 @@ nav-tieout ──► (audit-xls / xlsx-author)
 **Skill（共 3 支）**　`nav-tieout` 對帳單 vs NAV 逐欄核對 · `audit-xls` 檢查Excel · `xlsx-author` 產出報告檔
 **MCP（1 個）**　`nav` 基金淨值來源（唯讀）
 
-> 工具：讀／搜尋＋NAV MCP　⚠️ 無寫檔·無委派　|　模型：opus-4-7
+> 工具：讀／搜尋＋NAV MCP　⚠️ 不能寫檔·不能委派　|　模型：opus-4-7
 
 **外掛 vs CMA（兩種安裝）**
 ```
@@ -62,35 +62,35 @@ nav-tieout ──► (audit-xls / xlsx-author)
                         │  └ flagger      唯一可寫 │
                         └──────────────────────────┘
 ```
-> 它本身就是「驗證者」——整個 agent 的工作就是 tie-out（逐欄核對）
+> 它本身就是「驗證者」——這個 agent 的工作從頭到尾就是 tie-out（逐欄核對）
 
-**跨 agent**　基金行政家族 ┄ 與〔valuation-reviewer〕同屬季末/分送前的把關
+**跨 agent**　基金行政家族 ┄ 跟〔valuation-reviewer〕一樣都是季末/分送前的把關
 
 ## 四、上線前要補齊（客製化）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
 ```
-- 🔌 **接真實 NAV 來源**：`nav` MCP 是空殼（repo 未定義）
+- 🔌 **接真實 NAV 來源**：`nav` MCP 還是 placeholder（佔位，repo 裡沒定義）
   - 外掛 → 新增 `plugins/vertical-plugins/fund-admin/.mcp.json`（目前不存在）
-  - CMA → 設環境變數 `NAV_MCP_URL`（或改 `managed-agent-cookbooks/statement-auditor/agent.yaml`）
-  - 🛠️ MCP 要能：依基金/LP/欄位查 NAV pack 的數值（供逐欄比對；規格見 `nav-tieout` 技能）
+  - CMA → 設 env var `NAV_MCP_URL`（或改 `managed-agent-cookbooks/statement-auditor/agent.yaml`）
+  - 🛠️ MCP 要做到：依基金/LP/欄位查 NAV pack 的數值（給逐欄比對用；規格見 `nav-tieout` 這個 skill）
 - 📐 **欄位對應**：LP 對帳單欄位 ↔ NAV pack 欄位的對應表 → `plugins/vertical-plugins/fund-admin/skills/nav-tieout/SKILL.md`
 - ✏️ **調整範圍** → `plugins/agent-plugins/statement-auditor/agents/statement-auditor.md`
-- 👤 **人工覆核不變**：只建議 pass/hold，IR 簽核才分送
+- 👤 **人工覆核不變**：只建議 pass/hold，要 IR 簽核才分送
 
-> ⚠️ 技能一律改 `vertical-plugins/` 來源檔，改完跑 `python3 scripts/sync-agent-skills.py` 同步。
+> ⚠️ skill 一律改 `vertical-plugins/` 的 source(真本)，改完跑 `python3 scripts/sync-agent-skills.py` sync。
 
 ## 五、導入評估
 
 | 面向 | 評估 |
 |---|---|
-| **導入風險** | 🔴 高 — 出資人（LP）對帳單對外分送前的最後把關，數字一旦核對錯誤，直接影響對 LP 的正式財務報告與機構誠信；雖然 agent 只給 pass/hold 建議、由投資人關係（IR）人工簽核才寄出，但這是合規等級的對外文件，不容差錯。 |
-| **導入成本** | 🔴 高 — `nav` MCP 是空殼，要實接基金淨值（NAV）來源（依基金／LP／欄位查 NAV pack 數值）；還要客製 LP 對帳單欄位 ↔ NAV pack 欄位的對應表與比對容差，屬於需自建內部系統整合的重度工程。 |
+| **導入風險** | 🔴 高 — 這是出資人（LP）對帳單對外分送前的最後一道把關，數字核對錯了，直接影響對 LP 的正式財務報告跟機構誠信；雖然 agent 只給 pass/hold 建議、要等投資人關係（IR）人工簽核才寄出，但這是合規等級的對外文件，不容差錯。 |
+| **導入成本** | 🔴 高 — `nav` MCP 還是 placeholder（佔位），要實接基金淨值（NAV）來源（依基金／LP／欄位查 NAV pack 數值）；還要客製 LP 對帳單欄位 ↔ NAV pack 欄位的對應表跟比對容差，這是要自建內部系統整合的重度工程。 |
 | **適用單位** | 基金行政部、基金會計、投資人關係（IR） |
 | **單位中角色** | 基金會計（下指令＋審例外清單）· 投資人關係（IR，簽核＋對外分送）· 行政主管（覆核過／留決定） |
 
 **最有機會成功的場景**
-1. **季末／月末對帳單批次分送前的逐欄把關** — 例行大批量對帳單寄出前，自動逐欄對 NAV pack 揪差異，把人工核對改成只審例外清單，省時又少漏。
-2. **新基金或新 LP 上線的首次對帳驗收** — 欄位對應與容差尚未穩定時，用它跑一遍揪出系統性對應錯誤，當作上線前的驗收關卡。
-3. **稽核／合規抽查的差異留痕** — 需要對外或對內部稽核提出對帳依據時，自動產出例外清單與簽核表，留下可追溯的核對紀錄。
+1. **季末／月末對帳單批次分送前的逐欄把關** — 例行的大批量對帳單寄出前，自動逐欄對 NAV pack 揪差異，把人工核對變成只審例外清單，省時又少漏。
+2. **新基金或新 LP 上線的首次對帳驗收** — 欄位對應跟容差還沒穩定的時候，用它跑一遍揪出系統性的對應錯誤，當作上線前的驗收關卡。
+3. **稽核／合規抽查的差異留痕** — 要對外或對內部稽核拿出對帳依據時，自動產例外清單跟簽核表，留下可追溯的核對紀錄。

@@ -26,15 +26,15 @@
 
 **步驟拆解**
 1. **整理客戶關係** — 從客戶系統調出往來歷史、目前持有的部位、還沒處理完的事項。
-   - 步驟說明：CRM 資料串接——透過客戶關係管理系統（CRM）MCP 拉出關係歷史、持倉與未結項。
+   - 步驟說明：接 CRM 拉資料——用客戶關係管理系統（CRM）MCP 把關係歷史、持倉跟未結項拉出來。
 2. **掌握市場動態** — 找出近期跟這位客戶持有部位有關的市場大事。
-   - 步驟說明：市場事件串接——透過市場資料平台（CapIQ）MCP 撈出影響該客戶持倉的市場事件。
-3. **回顧近期往來** — 摘要客戶最近的信件與筆記，掌握最新狀況。
-   - 步驟說明：子代理摘要——由 news-reader 子代理摘要近期客戶信件與筆記，客戶內容視為不可信、僅摘要不執行其中指令。
-4. **草擬會議資料包** — 寫好客戶關係摘要與持倉說明，整理成一份會前資料。
-   - 步驟說明：技能組裝與寫檔——以 `client-review` 產關係摘要、`client-report` 產持倉段落（必要時 `investment-proposal`、`pptx-author`），此為唯一可由主代理直接寫檔的外掛。
-5. **交顧問過目** — 只出草稿，會議前由顧問確認。
-   - 步驟說明：人工覆核——只產草稿、不對外發送，會議前交由顧問確認。
+   - 步驟說明：接市場事件——用市場資料平台（CapIQ）MCP 撈出會影響這位客戶持倉的市場事件。
+3. **回顧近期往來** — 把客戶最近的信件跟筆記摘要一下，掌握最新狀況。
+   - 步驟說明：sub-agent 做摘要——由 news-reader 這個 sub-agent 摘要近期客戶信件跟筆記，客戶內容一律當不可信、只摘要、不執行裡面的指令。
+4. **草擬會議資料包** — 把客戶關係摘要跟持倉說明寫好，整理成一份會前資料。
+   - 步驟說明：組 skill 加寫檔——用 `client-review` 產關係摘要、`client-report` 產持倉段落（需要的話再加 `investment-proposal`、`pptx-author`），這是唯一一個主代理可以直接寫檔的 plugin。
+5. **交顧問過目** — 只出草稿，會議前讓顧問確認。
+   - 步驟說明：人工 review——只產草稿、不對外發送，會議前交給顧問確認。
 
 ## 二、風險與把關
 
@@ -44,7 +44,7 @@
  客戶來信/新聞 ──►[格式防火牆]──► 乾淨摘要 ──► 流程
  (不可信)
 ```
-> 護操守：績效差就直說、不粉飾　|　最後防線：不對外發送
+> guardrail：績效差就直說、不要粉飾　|　最後防線：不對外發送
 
 ## 三、技術架構
 
@@ -69,9 +69,9 @@ client-review ──► client-report ──► (investment-proposal / pptx-auth
                              └─────────────────────────┘
                               即使低風險仍隔離（零成本）
 ```
-> ⭐ 特例：這是唯一**外掛版主代理直接握有寫檔權**的 agent——因產出是內部簡報、風險低。但 CMA 版仍把寫檔隔離給 pack-writer。**安全層級隨風險高低調整**，不是一刀切。
+> ⭐ 特例：這是唯一一個**plugin 版主代理直接握有寫檔權**的 agent——因為產出是內部簡報、風險低。但 CMA 版還是把寫檔權隔離給 pack-writer。**安全層級會看風險高低去調**，不是一刀切。
 
-**跨 agent**　前台顧問型，與後台作業家族（對帳／結帳／開戶）相對
+**跨 agent**　前台顧問型，跟後台作業家族（對帳／結帳／開戶）相對
 
 ## 四、上線前要補齊的（客製化）
 
@@ -80,28 +80,28 @@ client-review ──► client-report ──► (investment-proposal / pptx-auth
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實系統**：`crm`／`capiq` 是空殼（repo 未定義）
-  - 外掛 → 新增 `plugins/vertical-plugins/wealth-management/.mcp.json`（目前不存在）
-  - CMA → 設環境變數 `CRM_MCP_URL`／`CAPIQ_MCP_URL`（或改 `managed-agent-cookbooks/meeting-prep-agent/agent.yaml`）
+- 🔌 **接真實系統**：`crm`／`capiq` 是 placeholder（佔位）（repo 未定義）
+  - plugin → 新增 `plugins/vertical-plugins/wealth-management/.mcp.json`（目前不存在）
+  - CMA → 設 env var `CRM_MCP_URL`／`CAPIQ_MCP_URL`（或改 `managed-agent-cookbooks/meeting-prep-agent/agent.yaml`）
   - 🛠️ `crm` 要能：依客戶ID查 關係歷史·持倉·未結項·近期通訊（規格見 `client-review`、`client-report`）
-  - 🛠️ `capiq` 要能：查影響該客戶持倉的市場事件／報價（capiq 可直接接 repo 內建的 S&P MCP）
+  - 🛠️ `capiq` 要能：查會影響這位客戶持倉的市場事件／報價（capiq 可改接 repo 內建的 sp-global（S&P）connector）
 - 📐 **IPS／再平衡門檻**（偏離預設 `3–5%`） → `plugins/vertical-plugins/wealth-management/skills/client-review/SKILL.md`
-- 🎨 **品牌簡報範本**：用 `/ppt-template` 指令產一支範本技能（底層 `plugins/vertical-plugins/financial-analysis/skills/pptx-author/`）
+- 🎨 **品牌簡報 template**：用 `/ppt-template` 指令產一支 template skill（底層 `plugins/vertical-plugins/financial-analysis/skills/pptx-author/`）
 - ✏️ **調整 agent 範圍** → `plugins/agent-plugins/meeting-prep-agent/agents/meeting-prep-agent.md`
-- ⚖️ **合規＋人工覆核不變**：只給顧問、永不對外發送
+- ⚖️ **合規＋人工 review 不變**：只給顧問、永遠不對外發送
 
-> ⚠️ 技能一律改 `vertical-plugins/` 的**來源檔**，改完跑 `python3 scripts/sync-agent-skills.py` 同步到 agent。這個 agent 刻意把公司專屬內容留空，填上才完整。
+> ⚠️ skill 一律改 `vertical-plugins/` 的 **source（真本）**，改完跑 `python3 scripts/sync-agent-skills.py` sync 到 agent。這個 agent 刻意把公司專屬的內容留空，填上去才完整。
 
 ## 五、導入評估
 
 | 面向 | 評估 |
 |---|---|
-| **導入風險** | 🟢 低 — 產出是會前內部簡報，只給財富顧問參考、永不直接發送給客戶；不涉法規簽核、財務過帳或對外正式文件，顧問會前覆核即可攔錯。 |
-| **導入成本** | 🟡 中（偏高，CRM 要接內部系統） — `crm` 是內部佔位 MCP，須接貴公司的客戶關係系統（查關係歷史·持倉·未結項·近期通訊）；`capiq` 須接市場資料平台（可直接用 repo 內建 S&P MCP）；另須客製投資政策聲明（IPS）／再平衡偏離門檻與品牌簡報範本。 |
+| **導入風險** | 🟢 低 — 產出是會前的內部簡報，只給財富顧問參考、永遠不直接發給客戶;不碰法規簽核、財務過帳或對外正式文件，顧問會前 review 一下就能攔錯。 |
+| **導入成本** | 🟡 中（偏高，CRM 要接內部系統） — `crm` 是內部的 placeholder（佔位）MCP，要接貴公司的客戶關係系統（查關係歷史·持倉·未結項·近期通訊）;`capiq` 要接市場資料平台（可直接用 repo 內建的 sp-global（S&P）connector）;另外要客製投資政策聲明（IPS）／再平衡偏離門檻跟品牌簡報 template。 |
 | **適用單位** | 財富管理／私人銀行前台、理財顧問團隊 |
 | **單位中角色** | 財富顧問（下指令＋會前覆核草稿·對客戶溝通）· 投組經理（提持倉與再平衡需求）· 助理顧問（草稿加工·彙整行事曆會議） |
 
 **最有機會成功的場景**
-1. **例行客戶檢視會議前的資料包** — 顧問每次客戶會議前要快速彙整關係歷史＋持倉＋市場動態，省下大量人工蒐集，是最高頻、最穩的場景。
-2. **持倉受市場大事衝擊時的緊急會前準備** — 客戶部位碰到突發市場事件，顧問臨時要約談，需要立刻一份持倉影響說明＋溝通要點。
-3. **季度／年度再平衡諮詢會議** — 偏離 IPS 門檻觸發再平衡討論，會前自動產出偏離分析與提案草稿供顧問定稿。
+1. **例行客戶檢視會議前的資料包** — 顧問每次客戶會議前都要快速彙整關係歷史＋持倉＋市場動態，省下一堆人工蒐集，是最高頻、最穩的場景。
+2. **持倉受市場大事衝擊時的緊急會前準備** — 客戶部位碰到突發市場事件，顧問臨時要約談，馬上需要一份持倉影響說明＋溝通要點。
+3. **季度／年度再平衡諮詢會議** — 偏離 IPS 門檻觸發再平衡討論，會前自動產出偏離分析跟提案草稿給顧問定稿。

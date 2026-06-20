@@ -1,6 +1,6 @@
 # ⚖️ GL Reconciler（總帳對帳）
 
-> **用途**：總帳對帳助理，比對總帳與子帳找出差異並追根因，最終產出給控制員的例外報告。
+> **用途**：總帳對帳助理，幫你比對總帳跟子帳、把對不上的差異挑出來追根因，最後產一份例外報告給控制員簽。
 
 `總帳 vs 子帳 → 找出對不上的差異 → 追根因 → 例外報告給控制員簽核`
 
@@ -26,15 +26,15 @@
 
 **步驟拆解**
 1. **拉出兩邊的帳** — 把總帳和明細帳（子帳）在指定日期、指定資產上的餘額都拉出來。
-   - 步驟說明：MCP 資料串接（皆唯讀）——透過總帳 MCP（`internal-gl`）與子帳 MCP（`subledger`）依交易日與資產類別拉出兩邊餘額，作為比對基準。
+   - 步驟說明：接 MCP 拉資料（兩邊都唯讀）——透過總帳 MCP（`internal-gl`）跟子帳 MCP（`subledger`），照交易日和資產類別把兩邊餘額拉出來當比對基準。
 2. **比對找差異** — 逐類比對兩邊，把對不起來、超過容許範圍的差異挑出來。
-   - 步驟說明：扇出並行比對——每個資產類別派一個 reader 並行，套用 `gl-recon` 技能比對兩邊餘額，挑出超過容差門檻的差異（break）。
+   - 步驟說明：fan-out 並行比對——每個資產類別派一個 reader 同時跑，用 `gl-recon` 這個 skill 比對兩邊餘額，把超過容差門檻的差異（break）挑出來。
 3. **追查原因** — 一筆筆往下追，搞清楚每個差異是時間差、系統落差、還是分類錯誤。
-   - 步驟說明：逐筆根因追蹤——對每個 break 拉出底層分錄與交易，用 `break-trace` 技能追到來源並分類（時間差／系統落差／重分類／不明）。
+   - 步驟說明：一筆筆追根因——對每個 break 把底層分錄跟交易拉出來，用 `break-trace` 這個 skill 追到來源，再分類（時間差／系統落差／重分類／不明）。
 4. **獨立複查** — 由另一個角色拿可信來源重查一遍，把其實沒問題的假差異濾掉。
-   - 步驟說明：對抗式獨立複核——critic 子代理（唯讀）拿可信來源逐一重查每個回報的差異、對抗式複核過濾誤報，只把真的往上送。
+   - 步驟說明：對抗式 review——critic 這個 sub-agent（唯讀）拿可信來源把每筆回報的差異再 review 一遍，用對抗式 review 把誤報（false positive）濾掉，只留真的往上送。
 5. **產出例外報告** — 把確認過的差異整理成一份可簽核的例外清單。
-   - 步驟說明：報告生成——把確認後的差異集交給唯一可寫的 resolver，用 `audit-xls`／`xlsx-author` 技能格式化成可供控制員簽核的例外報告。
+   - 步驟說明：產報告——把確認後的差異集交給唯一可寫的 resolver，用 `audit-xls`／`xlsx-author` 這兩個 skill 格式化成一份可供控制員簽核的例外報告。
 
 ## 二、風險與把關
 
@@ -44,7 +44,7 @@
  對帳單(外來) ──► reader(無MCP·無寫) ──► 結構化資料 ──► 流程
  (不可信)
 ```
-> 護操守：對不上就攤開、不硬湊（plug）　|　最後防線：不過帳
+> 守則：對不上就攤開講、不硬湊（plug）　|　最後防線：不 post（不過帳）
 
 ## 三、技術架構
 
@@ -54,9 +54,9 @@ gl-recon ──► break-trace ──► (audit-xls / xlsx-author)
 比對找差異   逐筆追根因      檢查／產出報告
 ```
 **Skill（共 4 支）**　`gl-recon` 比對找差異 · `break-trace` 追根因 · `audit-xls` 檢查 Excel · `xlsx-author` 產出報告檔
-**MCP（2 個）**　`internal-gl` 內部總帳 · `subledger` 子帳明細（皆唯讀）
+**MCP（2 個）**　`internal-gl` 內部總帳 · `subledger` 子帳明細（兩個都唯讀）
 
-> 工具：讀／搜尋＋總帳MCP＋子帳MCP（皆唯讀）　⚠️ 無寫檔·無委派　|　模型：opus-4-7
+> 工具：讀／搜尋＋總帳MCP＋子帳MCP（都唯讀）　⚠️ 不能寫檔·不能委派　|　模型：opus-4-7
 
 **外掛 vs CMA（兩種安裝）**
 ```
@@ -69,9 +69,9 @@ gl-recon ──► break-trace ──► (audit-xls / xlsx-author)
                             └──────────────────────────┘
                              安全靠：拆分＋分權
 ```
-> 🆕 驗證特色：**critic 對抗式驗證**——專門回頭質疑每個差異真假，過濾掉誤報，只把真的往上送（對帳容易誤報，所以需要）
+> 🆕 驗證特色：**critic 對抗式 review**——專門回頭質疑每個差異是真是假，把誤報濾掉，只把真的往上送（對帳很容易誤報，所以才需要這層）
 
-**跨 agent**　fund-admin 三兄弟 ┄ 本 agent（日常對帳）╳ 月底結帳 ╳ 報表稽核，互相劃界
+**跨 agent**　fund-admin 三兄弟 ┄ 本 agent（日常對帳）╳ 月底結帳 ╳ 報表稽核，各自劃好邊界
 
 ## 四、上線前要補齊的（客製化）
 
@@ -80,29 +80,29 @@ gl-recon ──► break-trace ──► (audit-xls / xlsx-author)
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實帳務系統**：`internal-gl`／`subledger` 是空殼（repo 未定義）
+- 🔌 **接真實帳務系統**：`internal-gl`／`subledger` 都還是 placeholder（佔位，repo 裡沒定義）
   - 外掛 → 新增 `plugins/vertical-plugins/fund-admin/.mcp.json`（目前不存在）
-  - CMA → 設環境變數 `GL_MCP_URL`／`SUBLEDGER_MCP_URL`（或改 `managed-agent-cookbooks/gl-reconciler/agent.yaml`）
-  - 🛠️ `internal-gl` 要能：①查餘額（資產類別·交易日）②依 GL 明細查分錄 → 分錄號·過帳日·來源系統·批次號·製單人
-  - 🛠️ `subledger` 要能：①查持倉/餘額（資產類別·交易日）②依 key 查交易 → 交易號·交易日·交割日·對手·feed·FX率（規格見 `gl-recon`、`break-trace`）
+  - CMA → 設 env var `GL_MCP_URL`／`SUBLEDGER_MCP_URL`（或改 `managed-agent-cookbooks/gl-reconciler/agent.yaml`）
+  - 🛠️ `internal-gl` 要做到：①查餘額（資產類別·交易日）②依 GL 明細查分錄 → 分錄號·過帳日·來源系統·批次號·製單人
+  - 🛠️ `subledger` 要做到：①查持倉/餘額（資產類別·交易日）②依 key 查交易 → 交易號·交易日·交割日·對手·feed·FX率（規格見 `gl-recon`、`break-trace`）
 - 🎚️ **容差門檻**（預設金額 `0.01`／數量 `0`）＋🗺️ **科目對應表** → `plugins/vertical-plugins/fund-admin/skills/gl-recon/SKILL.md`
 - 🔎 **追根因規則** → `plugins/vertical-plugins/fund-admin/skills/break-trace/SKILL.md`
-- 📦 **資產類別清單**（決定扇出幾個 reader）＋✏️ **調整範圍** → `plugins/agent-plugins/gl-reconciler/agents/gl-reconciler.md`
-- 📄 **Excel 範本** → `plugins/vertical-plugins/financial-analysis/skills/xlsx-author/`
-- 👤 **人工覆核不變**：只產例外報告，永不過帳
+- 📦 **資產類別清單**（決定要 fan-out 幾個 reader）＋✏️ **調整範圍** → `plugins/agent-plugins/gl-reconciler/agents/gl-reconciler.md`
+- 📄 **Excel template** → `plugins/vertical-plugins/financial-analysis/skills/xlsx-author/`
+- 👤 **人工覆核不變**：只產例外報告，永遠不 post（不過帳）
 
-> ⚠️ 技能一律改 `vertical-plugins/` 的**來源檔**，改完跑 `python3 scripts/sync-agent-skills.py` 同步到 agent。這個 agent 刻意把公司專屬內容留空，填上才完整。
+> ⚠️ skill 一律改 `vertical-plugins/` 的**source(真本)**，改完跑 `python3 scripts/sync-agent-skills.py` sync 到 agent。這個 agent 是刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 
 | 面向 | 評估 |
 |---|---|
-| **導入風險** | 🔴 高 — 對帳結果直接牽涉帳務正確性與財務誠信，對不上若沒抓到會污染後續結帳與報表。雖然 agent 只產例外報告、永不過帳，最終由控制員簽核覆核，但一旦把真差異漏掉或硬湊（plug），影響的是財務真實性，屬合規等級風險。 |
-| **導入成本** | 🔴 高 — 需自建內部系統整合：`internal-gl` 與 `subledger` 皆為空殼，要接內部總帳／子帳系統（查餘額、查分錄／交易明細），並設定容差門檻、科目對應表、追根因規則，還要決定資產類別清單（決定扇出幾個 reader）。資料格式與規則皆內部專屬，整合重。 |
+| **導入風險** | 🔴 高 — 對帳結果直接牽涉帳務正不正確跟財務誠信，差異沒抓到就會污染後面的結帳跟報表。雖然 agent 只產例外報告、永遠不過帳，最後一定由控制員簽核覆核，但只要把真差異漏掉、或是硬湊（plug），影響的就是財務真實性，這是合規等級的風險。 |
+| **導入成本** | 🔴 高 — 要自建內部系統整合：`internal-gl` 跟 `subledger` 都還是 placeholder（佔位），得接內部總帳／子帳系統（查餘額、查分錄／交易明細），還要設容差門檻、科目對應表、追根因規則，再決定資產類別清單（決定要 fan-out 幾個 reader）。資料格式跟規則都是內部專屬的，整合工程不小。 |
 | **適用單位** | 基金行政後台作業、財務／帳務控制、託管行對帳團隊 |
 | **單位中角色** | 對帳控制員（下指令＋簽核例外報告）· 帳務主管（核定容差與科目對應）· 後台作業員（提供帳務／對帳單來源） |
 
 **最有機會成功的場景**
-1. **每日例行 GL vs 子帳對帳** — 固定資產類別、固定容差規則的日常比對，量大且重複，agent 扇出並行比對最省人工，CP 值最高。
-2. **月底結帳前的差異清理** — 結帳前要把累積的 break 逐筆追根因、濾掉誤報，agent 的 critic 對抗式複核能擋住假差異，讓控制員只看真的。
-3. **新增資產類別／系統 feed 上線後的對帳驗證** — 換子帳系統或新增 feed 後，臨時要密集核對兩邊是否一致，agent 可快速逐筆追到來源系統落差。
+1. **每日例行 GL vs 子帳對帳** — 資產類別固定、容差規則固定的日常比對，量大又重複，agent 用 fan-out 並行比對最省人工，CP 值最高。
+2. **月底結帳前的差異清理** — 結帳前要把累積的 break 一筆筆追根因、濾掉誤報，agent 的 critic 對抗式 review 能擋掉假差異，讓控制員只看真的。
+3. **新增資產類別／系統 feed 上線後的對帳驗證** — 換子帳系統或新加 feed 之後，臨時要密集核對兩邊一不一致，agent 可以很快一筆筆追到來源系統的落差。

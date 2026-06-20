@@ -1,7 +1,7 @@
 # 🏗️ 技術總覽 — 一套方案怎麼運作
 
-> 這份文件回答四個工程問題：**①** 為什麼同一個 agent 可以變成兩種產品？**②** 「外掛」和「CMA」到底差在哪？**③** 十個 agent 各自要接哪些資料來源（MCP）？**④** 怎麼佈署、怎麼維護？
-> 名詞先講白話：**MCP（模型情境協定，Model Context Protocol）** 就是「讓 agent 接到外部系統（總帳、CRM、行情）的標準插座」；**CMA（Claude 託管代理，Claude Managed Agents）** 就是「把 agent 部署到 Anthropic 的雲端，由它代跑、用 API 呼叫」。
+> 這份文件回答四個工程問題：**①** 為什麼同一個 agent 可以變成兩種產品？**②** 「外掛」跟「CMA」到底差在哪？**③** 十個 agent 各自要接哪些資料來源（MCP）？**④** 怎麼 deploy、怎麼維護？
+> 名詞先講白話：**MCP（模型情境協定，Model Context Protocol）** 就是「讓 agent 接到外部系統（總帳、CRM、行情）的標準插座」；**CMA（Claude 託管代理，Claude Managed Agents）** 就是「把 agent deploy 到 Anthropic 的雲端，由它代跑、用 API 呼叫」。
 
 ---
 
@@ -31,7 +31,7 @@
        （人坐在旁邊監督）                           （無人值守、後端程式驅動）
 ```
 
-**技能（Skill）只有一份真本，其餘都是副本：**
+**技能（Skill）只有一份 source（真本），其餘都是 copy（副本）：**
 
 ```
 真本（唯一可編輯）                               副本（自動產生，禁止手改）
@@ -40,13 +40,13 @@ plugins/vertical-plugins/<vertical>/skills/  ──►  plugins/agent-plugins/<s
                           └─ 整個資料夾砍掉重建（rmtree＋copytree 全覆蓋）
 ```
 
-> ⚠️ **鐵則**：技能一律改 `vertical-plugins/` 裡的真本，再跑同步腳本。直接改 agent 包裡的副本，`check.py` 會擋下來（偵測到「漂移 drift」就讓提交失敗）。
+> ⚠️ **鐵則**：skill 一律改 `vertical-plugins/` 裡的 source（真本），再跑 sync 腳本。直接改 agent 包裡的 copy（副本），`check.py` 會擋下來（偵測到「漂移 drift」就讓 commit 失敗）。
 
 ---
 
 ## 二、Agent 是什麼？外掛 vs CMA
 
-**一個 agent ＝ 系統提示（怎麼想）＋ 技能（怎麼做特定事）＋ 工具（能動什麼）＋ MCP（能讀什麼外部資料）。** 同一份 agent，裝在兩種執行環境裡，行為差異主要來自「**有沒有人在旁邊**」。
+**一個 agent ＝ 系統提示（怎麼想）＋ skill（怎麼做特定事）＋ 工具（能動什麼）＋ MCP（能讀什麼外部資料）。** 同一份 agent，裝在兩種執行環境裡，行為差在哪，主要看「**有沒有人在旁邊**」。
 
 ```
             外掛（Plugin）                          CMA（託管代理）
@@ -75,26 +75,26 @@ CMA：無人值守，沒有人可以攔。安全只能靠「結構」：
       靜態宣告、跑前就鎖死 → 安全靠「架構」這道閘。
 ```
 
-> 對照表內的「風險 ↔ 寫檔權」規律，和各 agent 單檔文件裡的「風險與把關」一致：🟢🟡 前台/研究產出是內部草稿，主代理可直接寫；🔴 後台/合規牽涉法規與財務誠信，主代理一律無寫檔。
+> 對照表裡那條「風險 ↔ 寫檔權」的規律，跟各 agent 單檔文件裡的「風險與把關」是一致的：🟢🟡 前台/研究產出是內部草稿，主代理可以直接寫；🔴 後台/合規牽涉法規跟財務誠信，主代理一律無寫檔。
 
 ---
 
 ## 三、十個 Agent 各需要哪些 MCP
 
-每個 agent 在系統提示的 `tools:` 那行就宣告了它要接哪些 MCP。下表把十個整理在一起，並標明這個插座是**公開連接器（網路上現成、repo 已填好網址）**還是**佔位名稱（placeholder，repo 沒定義，要你自己接公司內部系統）**。
+每個 agent 在系統提示的 `tools:` 那行就宣告了它要接哪些 MCP。下表把十個整理在一起，並標明這個插座是**公開連接器（網路上現成、repo 已填好網址）**還是**placeholder（佔位）名稱（repo 沒定義，要你自己接公司內部系統）**。
 
 | Agent | 需要的 MCP | 性質 | 這個 MCP 必須能提供… |
 |---|---|---|---|
 | 📊 earnings-reviewer | `factset`、`daloopa` | 🌐 公開 | 財報實際值、市場共識、10-Q/8-K、電話會議逐字稿 |
-| 🔭 market-researcher | `capiq`、`factset` | ⚠️ capiq 佔位／factset 公開 | 同業倍數、產業數據、公司基本面 |
-| 🧮 model-builder | `capiq`、`daloopa` | ⚠️ capiq 佔位／daloopa 公開 | 歷史財務、共識、申報文件（建模輸入） |
-| 🎯 pitch-agent | `capiq`（CMA 另加 `daloopa`） | ⚠️ 佔位 | 交易倍數、先例交易、標的最新申報文件 |
-| 🤝 meeting-prep-agent | `crm`、`capiq` | ⚠️ 佔位 | 客戶關係史/持倉/未結事項、相關市場事件 |
-| 🔍 kyc-screener | `screening` | ⚠️ 佔位 | 制裁/政治公眾人物（PEP）/負面新聞篩查 |
-| ⚖️ gl-reconciler | `internal-gl`、`subledger` | ⚠️ 佔位 | 總帳與子帳餘額、傳票（含過帳日/來源系統/批號/製單人） |
-| 📅 month-end-closer | `internal-gl` | ⚠️ 佔位 | 指定主體與期間的試算表 |
-| 🧾 statement-auditor | `nav` | ⚠️ 佔位 | 基金淨值（NAV）資料包，供逐欄核對 |
-| 💰 valuation-reviewer | `portfolio` | ⚠️ 佔位 | 投組公司估值、報酬、收益分配（waterfall）輸入 |
+| 🔭 market-researcher | `capiq`、`factset` | ⚠️ capiq placeholder（佔位）／factset 公開 | 同業倍數、產業數據、公司基本面 |
+| 🧮 model-builder | `capiq`、`daloopa` | ⚠️ capiq placeholder（佔位）／daloopa 公開 | 歷史財務、共識、申報文件（建模輸入） |
+| 🎯 pitch-agent | `capiq`（CMA 另加 `daloopa`） | ⚠️ placeholder（佔位） | 交易倍數、先例交易、標的最新申報文件 |
+| 🤝 meeting-prep-agent | `crm`、`capiq` | ⚠️ placeholder（佔位） | 客戶關係史/持倉/未結事項、相關市場事件 |
+| 🔍 kyc-screener | `screening` | ⚠️ placeholder（佔位） | 制裁/政治公眾人物（PEP）/負面新聞篩查 |
+| ⚖️ gl-reconciler | `internal-gl`、`subledger` | ⚠️ placeholder（佔位） | 總帳與子帳餘額、傳票（含過帳日/來源系統/批號/製單人） |
+| 📅 month-end-closer | `internal-gl` | ⚠️ placeholder（佔位） | 指定主體與期間的試算表 |
+| 🧾 statement-auditor | `nav` | ⚠️ placeholder（佔位） | 基金淨值（NAV）資料包，供逐欄核對 |
+| 💰 valuation-reviewer | `portfolio` | ⚠️ placeholder（佔位） | 投組公司估值、報酬、收益分配（waterfall）輸入 |
 
 **只有三個 vertical 帶 `.mcp.json`，其中兩個還是空的：**
 
@@ -109,7 +109,7 @@ plugins/vertical-plugins/private-equity/.mcp.json      ← { "mcpServers": {} } 
 
 ### 最容易誤會的點：「裝全部外掛」只救得到公開連接器
 
-很直覺會以為「把所有外掛都裝上，financial-analysis 的 `.mcp.json` 就會啟動這些 server，別包的 agent 也順帶受惠」。**這對『公開連接器』完全正確，但救不到『佔位』**——因為佔位 server 在整個 repo 裡**沒有任何 `.mcp.json` 定義過**，沒有人提供，裝再多包也變不出來。
+很直覺會以為「把所有外掛都裝上，financial-analysis 的 `.mcp.json` 就會啟動這些 server，別包的 agent 也順帶受惠」。**這對『公開連接器』完全正確，但救不到『placeholder（佔位）』**——因為佔位 server 在整個 repo 裡**沒有任何 `.mcp.json` 定義過**，沒有人提供，裝再多包也變不出來。
 
 agent 在 `tools:` 引用的名字，實際分成三種命運：
 
@@ -125,11 +125,11 @@ agent 在 `tools:` 引用的名字，實際分成三種命運：
                           ★ 兩種情況都不需要去改 agent 的 frontmatter 名稱 ★
 ```
 
-> 結果就是：earnings-reviewer 這種純市場資料的 agent，裝好（＋修下方 JSON bug）就能動；後台那幾支 🔴 agent 因為全靠佔位的內部 server，**裝好也仍然不能動**，要等你接上內部系統。
+> 結果就是：earnings-reviewer 這種純市場資料的 agent，裝好就能動；後台那幾支 🔴 agent 因為全靠 placeholder（佔位）的內部 server，**裝好也照樣不能動**，要等你接上內部系統。
 
 > ⚠️ **兩個要注意的點**：
-> **(1) `capiq` 是佔位名稱**——多個 agent 寫著要 `mcp__capiq__*`，但沒有任何 `.mcp.json` 定義過 `capiq`。要嘛接你公司的 CapIQ 來源、要嘛把它改成 `factset`/`sp-global` 這類已定義的連接器。
-> **(2) repo 現有一個 JSON 語法錯誤**：[financial-analysis/.mcp.json](../plugins/vertical-plugins/financial-analysis/.mcp.json) 裡 `egnyte` 區塊後缺逗號、`box` 區塊缺收尾大括號（commit #187 引入），`json.load` 會直接失敗。實際接公開連接器前要先修好這個檔。
+> **(1) `capiq` 是 placeholder（佔位）名稱**——多個 agent 寫著要 `mcp__capiq__*`，但沒有任何 `.mcp.json` 定義過 `capiq`。要嘛接你公司的 CapIQ 來源、要嘛把它改成 `factset`/`sp-global` 這類已定義的連接器。
+> **(2) `.mcp.json` 的 JSON 語法錯誤（已修復）**：[financial-analysis/.mcp.json](../plugins/vertical-plugins/financial-analysis/.mcp.json) 之前 `egnyte` 區塊後缺逗號、`box` 區塊缺收尾大括號（commit #187 引入，會讓 `json.load` 失敗），**現已修好**。
 
 ### 缺漏的 MCP ↔ 哪支 agent 在用 ↔ 概念上歸哪個 vertical
 
@@ -149,7 +149,7 @@ agent 在 `tools:` 引用的名字，實際分成三種命運：
 
 ### 要把這些補在哪個檔？三個選項（別亂塞 private-equity）
 
-MCP 是按**名字**在 session 範圍解析，放哪個檔在機制上都行，差別只在「語意是否合理」與「安裝範圍」。
+MCP 是按**名字**在 session 範圍解析，放哪個檔在機制上都行，差別只在「語意合不合理」跟「安裝範圍」。
 
 | 選項 | 路徑 | 適合 | 代價 |
 |---|---|---|---|
@@ -164,8 +164,8 @@ CMA 版：agent.yaml 已寫好 url: ${GL_MCP_URL} 之類的環境變數佔位，
         佈署時把上表那些環境變數指到你的內部 MCP 伺服器即可。
 ```
 
-> ⚠️ **不要全丟進 `private-equity/.mcp.json`**——它只是剛好有這個檔，跟上面這些 agent 大多無關；名字雖照樣解析得到，但語意錯亂，日後沒人懂「GL 對帳的 server 為何定義在私募股權底下」。要走選項 B 就放進**概念歸屬**那欄的 vertical。
-> 🔑 **三個選項都不要改 agent 的 frontmatter 名稱**——你是補同名鑰匙，不是改鎖。
+> ⚠️ **不要全丟進 `private-equity/.mcp.json`**——它只是剛好有這個檔，跟上面這些 agent 大多無關；名字雖然照樣解析得到，但語意錯亂，日後沒人懂「GL 對帳的 server 為什麼定義在私募股權底下」。要走選項 B 就放進**概念歸屬**那欄的 vertical。
+> 🔑 **三個選項都不要改 agent 的 frontmatter 名稱**——你是補同名鑰匙，不是換鎖。
 
 ---
 
@@ -209,8 +209,9 @@ CMA 版：agent.yaml 已寫好 url: ${GL_MCP_URL} 之類的環境變數佔位，
                   └ 單次提交要跳過：git commit --no-verify
 ```
 
-> 📌 **最常見的維護動作就是改技能**。永遠記得：**改真本 → 跑 sync → 跑 check**。少了 sync，check 會擋；直接改副本，check 也會擋。這條紀律就是「一個來源」能成立的關鍵。
+> 📌 **最常見的維護動作就是改 skill**。永遠記得：**改真本 → 跑 sync → 跑 check**。少了 sync，check 會擋；直接改副本，check 也會擋。這條紀律就是「一個來源」能成立的關鍵。
 
 ---
 
 > 📎 想看單一 agent 的完整 Workflow／風險把關／技術架構／上線要補齊的東西，見同資料夾各別 `*.md`；想看十個 agent 怎麼串成一個商業故事，見 [AgentSummary.md](AgentSummary.md)。
+> 📎 模型清單與怎麼換模型見 [Models.md](Models.md);要動手改 agent(改哪個檔、注意事項、三道安全閘)見 [Customizing.md](Customizing.md)。
