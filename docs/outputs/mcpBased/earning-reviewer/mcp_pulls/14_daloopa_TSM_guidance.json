@@ -1,0 +1,28 @@
+{
+  "server": "daloopa",
+  "tool": "get_line_items",
+  "args": {
+    "ticker": "TSM",
+    "period": "Q1-2026",
+    "statement": "guidance"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "guidance",
+      "line_item": "Capex FY2026",
+      "value": "52-56",
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "guidance",
+      "line_item": "Advanced process share of capex",
+      "value": "0.70-0.80",
+      "unit": "ratio"
+    }
+  ]
+}

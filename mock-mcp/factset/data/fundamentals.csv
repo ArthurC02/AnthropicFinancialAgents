@@ -1,0 +1,19 @@
+ticker,period,metric,value,unit
+TSM,Q1-2026,revenue,35.90,USD bn
+TSM,Q1-2026,revenue_ntd,1134.10,NTD bn
+TSM,Q1-2026,gross_margin,0.662,ratio
+TSM,Q1-2026,op_margin,0.581,ratio
+TSM,Q1-2026,net_margin,0.505,ratio
+TSM,Q1-2026,net_income_ntd,572.48,NTD bn
+TSM,Q1-2026,eps,22.08,NTD
+TSM,Q1-2026,eps_adr,3.49,USD
+TSM,Q1-2026,usd_twd,31.6,rate
+TSM,Q1-2026,revenue_yoy,0.406,ratio
+TSM,Q1-2026,revenue_qoq,0.064,ratio
+TSM,FY2025,revenue,124.0,USD bn
+VRT,FY2025,revenue,8.0,USD bn
+VRT,FY2025,gross_margin,0.35,ratio
+VRT,FY2025,op_margin,0.188,ratio
+VRT,FY2025,ebitda,1.7,USD bn
+VRT,FY2025,revenue_yoy,0.28,ratio
+VRT,FY2025,net_debt,2.0,USD bn

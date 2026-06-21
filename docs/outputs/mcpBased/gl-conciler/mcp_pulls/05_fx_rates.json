@@ -1,0 +1,16 @@
+{
+  "server": "subledger",
+  "tool": "get_fx_rates",
+  "args": {
+    "as_of": "2026-04-30"
+  },
+  "ok": true,
+  "result": [
+    {
+      "as_of": "2026-04-30",
+      "pair": "EUR/USD",
+      "gl_rate": 1.08,
+      "custody_rate": 1.08004
+    }
+  ]
+}

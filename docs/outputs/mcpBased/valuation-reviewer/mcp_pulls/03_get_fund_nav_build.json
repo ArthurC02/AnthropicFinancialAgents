@@ -1,0 +1,46 @@
+{
+  "server": "portfolio",
+  "tool": "get_fund_nav_build",
+  "args": {
+    "fund": "Aurora Growth Fund III, L.P.",
+    "as_of": "2026-03-31"
+  },
+  "ok": true,
+  "result": {
+    "fund": "Aurora Growth Fund III, L.P.",
+    "as_of": "2026-03-31",
+    "currency": "USD",
+    "lines": [
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "item": "Portfolio at FV (GP reported)",
+        "amount": 330000000
+      },
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "item": "Cash",
+        "amount": 20000000
+      },
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "item": "Other Assets",
+        "amount": 5000000
+      },
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "item": "Accrued Liabilities",
+        "amount": -5000000
+      },
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "item": "NAV (as-reported)",
+        "amount": 350000000
+      }
+    ]
+  }
+}

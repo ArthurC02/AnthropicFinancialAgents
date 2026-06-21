@@ -1,0 +1,22 @@
+{
+  "server": "internal-gl",
+  "tool": "get_journal_entries",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "account": "6000"
+  },
+  "ok": true,
+  "result": [
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-30",
+      "je_id": "JE-4001",
+      "account": 6000,
+      "name": "薪酬 Compensation",
+      "description": "4月固定薪資與福利",
+      "debit": 1500000,
+      "credit": 0,
+      "source": "Payroll"
+    }
+  ]
+}

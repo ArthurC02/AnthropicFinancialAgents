@@ -1,0 +1,58 @@
+{
+  "server": "factset",
+  "tool": "get_consensus_estimates",
+  "args": {
+    "ticker": "TSM"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "revenue",
+      "consensus": 35.5,
+      "actual": 35.9,
+      "prior_guidance": "34.6-35.8"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "gross_margin",
+      "consensus": 0.64,
+      "actual": 0.662,
+      "prior_guidance": "0.63-0.65"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "eps_ntd",
+      "consensus": 20.88,
+      "actual": 22.08,
+      "prior_guidance": "n/a"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "eps_adr",
+      "consensus": 3.26,
+      "actual": 3.49,
+      "prior_guidance": "n/a"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q2-2026",
+      "metric": "revenue",
+      "consensus": 38.1,
+      "actual": "",
+      "prior_guidance": "39.0-40.2"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q2-2026",
+      "metric": "gross_margin",
+      "consensus": "n/a",
+      "actual": "",
+      "prior_guidance": "0.655-0.675"
+    }
+  ]
+}

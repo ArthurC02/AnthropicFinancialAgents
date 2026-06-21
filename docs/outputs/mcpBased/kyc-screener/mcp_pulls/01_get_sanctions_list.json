@@ -1,0 +1,32 @@
+{
+  "server": "screening",
+  "tool": "get_sanctions_list",
+  "args": {},
+  "ok": true,
+  "result": [
+    {
+      "list_id": "S-1",
+      "name": "Ivan Petrov",
+      "dob": "1970-03-15",
+      "country": "Russia",
+      "program": "OFAC SDN (EO 13662)",
+      "note": "能源業受制裁"
+    },
+    {
+      "list_id": "S-2",
+      "name": "Maria Garcia",
+      "dob": "1955-07-22",
+      "country": "Colombia",
+      "program": "OFAC SDN (SDNTK)",
+      "note": "與販毒組織關聯"
+    },
+    {
+      "list_id": "S-3",
+      "name": "Dmitri Volkov",
+      "dob": "1982-09-01",
+      "country": "Russia",
+      "program": "EU sanctions",
+      "note": "-"
+    }
+  ]
+}

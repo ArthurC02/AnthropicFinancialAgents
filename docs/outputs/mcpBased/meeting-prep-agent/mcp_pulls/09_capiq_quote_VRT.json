@@ -1,0 +1,18 @@
+{
+  "server": "capiq",
+  "tool": "get_quote",
+  "args": {
+    "ticker": "VRT"
+  },
+  "ok": true,
+  "result": {
+    "ticker": "VRT",
+    "name": "Vertiv Holdings",
+    "price": 320.0,
+    "currency": "USD",
+    "mktcap_usd_bn": 122,
+    "week52_low": 80.0,
+    "week52_high": 340.0,
+    "as_of": "2026-06-18"
+  }
+}

@@ -70,7 +70,7 @@ Layer 3  改「數字/假設」    → 執行時的 input,不是改 source      
 4. (CMA 才要)掛給工人    在會用到它的 subagent yaml(model-builder 的 builder.yaml)加一行:
                           - { path: ../../../plugins/agent-plugins/model-builder/skills/merger-model }
 
-5. 收尾驗證              python scripts/sync-agent-skills.py → python scripts/check.py
+5. 收尾驗證              python3 scripts/sync-agent-skills.py → python3 scripts/check.py
                           → 本地 /plugin install model-builder@fsi-local 測一次
 ```
 

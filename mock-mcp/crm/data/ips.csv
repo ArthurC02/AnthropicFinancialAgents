@@ -1,0 +1,5 @@
+client_id,asset_class,target_weight,band_low,band_high
+CL-1001,Equity,0.60,0.55,0.65
+CL-1001,Fixed Income,0.30,0.25,0.35
+CL-1001,Structured/Alt,0.05,0.00,0.10
+CL-1001,Cash,0.05,0.00,0.10

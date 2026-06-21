@@ -1,0 +1,84 @@
+{
+  "server": "crm",
+  "tool": "get_holdings",
+  "args": {
+    "client_id": "CL-1001"
+  },
+  "ok": true,
+  "result": {
+    "client_id": "CL-1001",
+    "currency": "USD",
+    "holdings": [
+      {
+        "client_id": "CL-1001",
+        "asset_class": "Equity",
+        "instrument": "Vertiv (VRT)",
+        "mv_usd": 3000000,
+        "weight": 0.25,
+        "cost": 1200000,
+        "unrealized_pl_pct": 1.5
+      },
+      {
+        "client_id": "CL-1001",
+        "asset_class": "Equity",
+        "instrument": "台積電 TSMC",
+        "mv_usd": 3000000,
+        "weight": 0.25,
+        "cost": 2000000,
+        "unrealized_pl_pct": 0.5
+      },
+      {
+        "client_id": "CL-1001",
+        "asset_class": "Equity",
+        "instrument": "Apple (AAPL)",
+        "mv_usd": 2640000,
+        "weight": 0.22,
+        "cost": 2400000,
+        "unrealized_pl_pct": 0.1
+      },
+      {
+        "client_id": "CL-1001",
+        "asset_class": "Fixed Income",
+        "instrument": "政府債券基金 Govt Bond Fund",
+        "mv_usd": 1920000,
+        "weight": 0.16,
+        "cost": 1880000,
+        "unrealized_pl_pct": 0.02
+      },
+      {
+        "client_id": "CL-1001",
+        "asset_class": "Structured/Alt",
+        "instrument": "DCI 雙元貨幣 USD/JPY 2026-07",
+        "mv_usd": 560000,
+        "weight": 0.047,
+        "cost": 600000,
+        "unrealized_pl_pct": -0.067
+      },
+      {
+        "client_id": "CL-1001",
+        "asset_class": "Structured/Alt",
+        "instrument": "保本型連結結構債 Principal-Protected Note",
+        "mv_usd": 400000,
+        "weight": 0.033,
+        "cost": 470000,
+        "unrealized_pl_pct": -0.149
+      },
+      {
+        "client_id": "CL-1001",
+        "asset_class": "Cash",
+        "instrument": "USD 現金",
+        "mv_usd": 480000,
+        "weight": 0.04,
+        "cost": "",
+        "unrealized_pl_pct": ""
+      }
+    ],
+    "total_mv_usd": 12000000,
+    "allocation_by_class": {
+      "Equity": 0.72,
+      "Fixed Income": 0.16,
+      "Structured/Alt": 0.08,
+      "Cash": 0.04
+    }
+  }
+}

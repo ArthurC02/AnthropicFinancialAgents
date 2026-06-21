@@ -1,0 +1,18 @@
+{
+  "server": "mock-mcp/subledger/server.py",
+  "out_dir": "docs/outputs/mcpBased/gl-conciler/mcp_pulls",
+  "calls": [
+    {"tool": "get_subledger_holdings",
+     "args": {"fund": "Aurora Growth Fund III", "as_of": "2026-04-30"},
+     "save_as": "03_subledger_holdings"},
+    {"tool": "get_pending_settlements",
+     "args": {"fund": "Aurora Growth Fund III", "as_of": "2026-04-30"},
+     "save_as": "04_pending_settlements"},
+    {"tool": "get_fx_rates",
+     "args": {"as_of": "2026-04-30"},
+     "save_as": "05_fx_rates"},
+    {"tool": "get_tolerance_policy",
+     "args": {},
+     "save_as": "06_tolerance_policy"}
+  ]
+}

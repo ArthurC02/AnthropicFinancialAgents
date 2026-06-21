@@ -1,0 +1,22 @@
+{
+  "server": "internal-gl",
+  "tool": "get_journal_entries",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "account": "6300"
+  },
+  "ok": true,
+  "result": [
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-15",
+      "je_id": "JE-4022",
+      "account": 6300,
+      "name": "資訊技術 Technology",
+      "description": "雲端基礎設施與資安訂閱",
+      "debit": 100000,
+      "credit": 0,
+      "source": "AP"
+    }
+  ]
+}

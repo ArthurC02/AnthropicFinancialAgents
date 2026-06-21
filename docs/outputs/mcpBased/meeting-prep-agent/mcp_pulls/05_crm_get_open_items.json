@@ -1,0 +1,24 @@
+{
+  "server": "crm",
+  "tool": "get_open_items",
+  "args": {
+    "client_id": "CL-1001"
+  },
+  "ok": true,
+  "result": [
+    {
+      "client_id": "CL-1001",
+      "item_id": "OI-1",
+      "raised_date": "2026-03-20",
+      "description": "客戶詢問子女教育信託設立方案 (尚未提供)",
+      "status": "Pending"
+    },
+    {
+      "client_id": "CL-1001",
+      "item_id": "OI-2",
+      "raised_date": "2026-03-20",
+      "description": "客戶要求年底前做稅務損失收割 (tax-loss harvesting) 複核",
+      "status": "Pending"
+    }
+  ]
+}

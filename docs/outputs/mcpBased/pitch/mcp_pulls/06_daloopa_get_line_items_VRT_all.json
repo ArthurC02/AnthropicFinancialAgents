@@ -1,0 +1,90 @@
+{
+  "server": "daloopa",
+  "tool": "get_line_items",
+  "args": {
+    "ticker": "VRT"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "segment_revenue",
+      "line_item": "Americas",
+      "value": 4.6,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "segment_revenue",
+      "line_item": "APAC",
+      "value": 1.8,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "segment_revenue",
+      "line_item": "EMEA",
+      "value": 1.6,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "product_revenue",
+      "line_item": "AC & DC Power",
+      "value": 3.0,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "product_revenue",
+      "line_item": "Thermal Management",
+      "value": 2.5,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "product_revenue",
+      "line_item": "Integrated Rack & Modular",
+      "value": 1.5,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "product_revenue",
+      "line_item": "Services",
+      "value": 1.0,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "income_statement",
+      "line_item": "Revenue",
+      "value": 8.0,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "income_statement",
+      "line_item": "Operating Profit",
+      "value": 1.5,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "balance_sheet",
+      "line_item": "Backlog",
+      "value": 15.0,
+      "unit": "USD bn"
+    }
+  ]
+}

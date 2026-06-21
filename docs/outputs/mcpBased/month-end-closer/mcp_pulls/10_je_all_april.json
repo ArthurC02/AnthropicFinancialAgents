@@ -1,0 +1,133 @@
+{
+  "server": "internal-gl",
+  "tool": "get_journal_entries",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "start_date": "2026-04-01",
+    "end_date": "2026-04-30"
+  },
+  "ok": true,
+  "result": [
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-30",
+      "je_id": "JE-4001",
+      "account": 6000,
+      "name": "薪酬 Compensation",
+      "description": "4月固定薪資與福利",
+      "debit": 1500000,
+      "credit": 0,
+      "source": "Payroll"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-30",
+      "je_id": "JE-4030",
+      "account": 4000,
+      "name": "管理費收入 Management Fee Income",
+      "description": "4月管理費收入認列",
+      "debit": 0,
+      "credit": 2200000,
+      "source": "Billing"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-01",
+      "je_id": "JE-4005",
+      "account": 6100,
+      "name": "租金 Rent",
+      "description": "Q2 辦公室租金及擴租調整",
+      "debit": 200000,
+      "credit": 0,
+      "source": "AP"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-08",
+      "je_id": "JE-4012",
+      "account": 6200,
+      "name": "專業服務費 Professional Fees",
+      "description": "外部法律顧問費用 (併購盡調)",
+      "debit": 220000,
+      "credit": 0,
+      "source": "AP"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-21",
+      "je_id": "JE-4025",
+      "account": 6200,
+      "name": "專業服務費 Professional Fees",
+      "description": "FY2026 審計進度帳單",
+      "debit": 130000,
+      "credit": 0,
+      "source": "AP"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-12",
+      "je_id": "JE-4018",
+      "account": 6400,
+      "name": "差旅 Travel",
+      "description": "投資人年會及募資差旅",
+      "debit": 200000,
+      "credit": 0,
+      "source": "AP"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-15",
+      "je_id": "JE-4022",
+      "account": 6300,
+      "name": "資訊技術 Technology",
+      "description": "雲端基礎設施與資安訂閱",
+      "debit": 100000,
+      "credit": 0,
+      "source": "AP"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-03",
+      "je_id": "JE-4002",
+      "account": 2100,
+      "name": "應付費用 Accrued Expenses",
+      "description": "沖回3月應計 (發票已到並支付)",
+      "debit": 200000,
+      "credit": 0,
+      "source": "Bank"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-30",
+      "je_id": "JE-4031",
+      "account": 6600,
+      "name": "折舊 Depreciation",
+      "description": "固定資產月折舊",
+      "debit": 50000,
+      "credit": 0,
+      "source": "Manual"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-18",
+      "je_id": "JE-4020",
+      "account": 2000,
+      "name": "應付帳款 Accounts Payable",
+      "description": "供應商發票入帳 (淨增)",
+      "debit": 0,
+      "credit": 200000,
+      "source": "AP"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-10",
+      "je_id": "JE-4015",
+      "account": 6500,
+      "name": "其他營運費用 Other Opex",
+      "description": "辦公與雜項營運支出",
+      "debit": 80000,
+      "credit": 0,
+      "source": "AP"
+    }
+  ]
+}

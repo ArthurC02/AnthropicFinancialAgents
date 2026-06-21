@@ -1,0 +1,8 @@
+client_id,asset_class,instrument,mv_usd,weight,cost,unrealized_pl_pct
+CL-1001,Equity,Vertiv (VRT),3000000,0.250,1200000,1.50
+CL-1001,Equity,台積電 TSMC,3000000,0.250,2000000,0.50
+CL-1001,Equity,Apple (AAPL),2640000,0.220,2400000,0.10
+CL-1001,Fixed Income,政府債券基金 Govt Bond Fund,1920000,0.160,1880000,0.02
+CL-1001,Structured/Alt,DCI 雙元貨幣 USD/JPY 2026-07,560000,0.047,600000,-0.067
+CL-1001,Structured/Alt,保本型連結結構債 Principal-Protected Note,400000,0.033,470000,-0.149
+CL-1001,Cash,USD 現金,480000,0.040,,

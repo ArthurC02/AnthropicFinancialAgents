@@ -1,0 +1,22 @@
+{
+  "server": "screening",
+  "tool": "get_pep_list",
+  "args": {},
+  "ok": true,
+  "result": [
+    {
+      "list_id": "P-1",
+      "name": "Adewale Okonkwo",
+      "position": "Deputy Minister of Energy 能源部副部長",
+      "country": "Nigeria",
+      "type": "current PEP"
+    },
+    {
+      "list_id": "P-2",
+      "name": "Elena Marković",
+      "position": "Central Bank Board Member 央行理事",
+      "country": "Serbia",
+      "type": "current PEP"
+    }
+  ]
+}

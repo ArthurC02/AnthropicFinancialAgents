@@ -1,0 +1,78 @@
+{
+  "server": "portfolio",
+  "tool": "get_positions",
+  "args": {
+    "fund": "Aurora Growth Fund III, L.P.",
+    "as_of": "2026-03-31"
+  },
+  "ok": true,
+  "result": {
+    "fund": "Aurora Growth Fund III, L.P.",
+    "as_of": "2026-03-31",
+    "currency": "USD",
+    "positions": [
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "company": "Helios Software",
+        "cost": 60000000,
+        "prior_fv": 90000000,
+        "reported_fv": 120000000,
+        "qoq_pct": 0.333,
+        "method": "market_multiple",
+        "last_updated": "2026-03",
+        "support": "附倍數表;2025-09 新一輪隱含估值支持"
+      },
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "company": "Orion Logistics",
+        "cost": 50000000,
+        "prior_fv": 55000000,
+        "reported_fv": 55000000,
+        "qoq_pct": 0.0,
+        "method": "recent_round",
+        "last_updated": "2026-03",
+        "support": "沿用最近一輪 (2025-06) 價格"
+      },
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "company": "Nova Biotech",
+        "cost": 40000000,
+        "prior_fv": 40000000,
+        "reported_fv": 65000000,
+        "qoq_pct": 0.625,
+        "method": "other",
+        "last_updated": "2026-03",
+        "support": "管理層估計;無新一輪;無觸發事件;無方法佐證"
+      },
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "company": "Titan Manufacturing",
+        "cost": 70000000,
+        "prior_fv": 60000000,
+        "reported_fv": 60000000,
+        "qoq_pct": 0.0,
+        "method": "dcf",
+        "last_updated": "2026-03",
+        "support": "減損至成本以下;附 DCF"
+      },
+      {
+        "fund": "Aurora Growth Fund III, L.P.",
+        "as_of": "2026-03-31",
+        "company": "Zephyr Retail",
+        "cost": 30000000,
+        "prior_fv": 30000000,
+        "reported_fv": 30000000,
+        "qoq_pct": 0.0,
+        "method": "cost",
+        "last_updated": "2025-03",
+        "support": "自 2025-03 起未再做公允價值複核 (連續 4 季未更新)"
+      }
+    ],
+    "total_cost": 250000000,
+    "total_reported_fv": 330000000
+  }
+}

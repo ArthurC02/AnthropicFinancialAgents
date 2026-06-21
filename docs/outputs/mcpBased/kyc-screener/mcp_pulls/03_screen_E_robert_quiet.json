@@ -1,0 +1,20 @@
+{
+  "server": "screening",
+  "tool": "screen_name",
+  "args": {
+    "name": "Robert Quiet",
+    "dob": "",
+    "country": "USA"
+  },
+  "ok": true,
+  "result": {
+    "query": {
+      "name": "Robert Quiet",
+      "dob": "",
+      "country": "USA"
+    },
+    "overall": "CLEAR",
+    "match_count": 0,
+    "matches": []
+  }
+}

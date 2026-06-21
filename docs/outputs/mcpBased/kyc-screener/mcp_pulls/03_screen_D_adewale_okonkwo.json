@@ -1,0 +1,32 @@
+{
+  "server": "screening",
+  "tool": "screen_name",
+  "args": {
+    "name": "Adewale Okonkwo",
+    "dob": "",
+    "country": "Nigeria"
+  },
+  "ok": true,
+  "result": {
+    "query": {
+      "name": "Adewale Okonkwo",
+      "dob": "",
+      "country": "Nigeria"
+    },
+    "overall": "HIT_PEP",
+    "match_count": 1,
+    "matches": [
+      {
+        "list": "pep",
+        "list_id": "P-1",
+        "name": "Adewale Okonkwo",
+        "position": "Deputy Minister of Energy 能源部副部長",
+        "country": "Nigeria",
+        "type": "current PEP",
+        "classification": "pep_match",
+        "reason": "politically exposed person",
+        "action": "R5: enhanced due diligence (EDD); not an auto-reject"
+      }
+    ]
+  }
+}

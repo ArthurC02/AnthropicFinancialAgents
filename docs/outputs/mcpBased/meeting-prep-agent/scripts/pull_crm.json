@@ -1,0 +1,13 @@
+{
+  "server": "mock-mcp/crm/server.py",
+  "out_dir": "docs/outputs/mcpBased/meeting-prep-agent/mcp_pulls",
+  "calls": [
+    {"tool": "list_clients", "args": {}, "save_as": "01_crm_list_clients"},
+    {"tool": "get_client_profile", "args": {"client_id": "CL-1001"}, "save_as": "02_crm_get_client_profile"},
+    {"tool": "get_ips", "args": {"client_id": "CL-1001"}, "save_as": "03_crm_get_ips"},
+    {"tool": "get_holdings", "args": {"client_id": "CL-1001"}, "save_as": "04_crm_get_holdings"},
+    {"tool": "get_open_items", "args": {"client_id": "CL-1001"}, "save_as": "05_crm_get_open_items"},
+    {"tool": "get_recent_communications", "args": {"client_id": "CL-1001"}, "save_as": "06_crm_get_recent_communications"},
+    {"tool": "get_market_events", "args": {"client_id": "CL-1001"}, "save_as": "07_crm_get_market_events"}
+  ]
+}

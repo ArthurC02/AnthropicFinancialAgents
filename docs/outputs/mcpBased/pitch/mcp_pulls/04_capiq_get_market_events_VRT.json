@@ -1,0 +1,16 @@
+{
+  "server": "capiq",
+  "tool": "get_market_events",
+  "args": {
+    "ticker": "VRT"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "date": "2026-06-17",
+      "headline": "Vertiv 估值升至約 51x EV/EBITDA",
+      "detail": "backlog>$15B;NVIDIA 參考設計;AI 資料中心散熱需求強勁"
+    }
+  ]
+}

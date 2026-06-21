@@ -1,0 +1,10 @@
+fund,as_of,sec_id,name,asset_class,qty_face,mv_usd,source
+Aurora Growth Fund III,2026-04-30,EQ-AAPL,Apple Inc.,Equity,50000,10000000,GL
+Aurora Growth Fund III,2026-04-30,EQ-MSFT,Microsoft Corp.,Equity,20000,8000000,GL
+Aurora Growth Fund III,2026-04-30,EQ-VRT,Vertiv Holdings,Equity,50000,5000000,GL
+Aurora Growth Fund III,2026-04-30,EQ-NVDA,NVIDIA Corp.,Equity,10000,12000000,GL
+Aurora Growth Fund III,2026-04-30,EQ-SPY,SPDR S&P 500 ETF,Equity,5000,2000000,GL
+Aurora Growth Fund III,2026-04-30,FI-XYZ,XYZ Corp 5.5% 2030,Fixed Income,20000000,20000000,GL
+Aurora Growth Fund III,2026-04-30,FI-GB123,Govt Bond 2.0% 2031,Fixed Income,15500000,15500000,GL
+Aurora Growth Fund III,2026-04-30,FI-BUND,Bund EUR 1.5% 2032,Fixed Income,8333333,9000000,GL
+Aurora Growth Fund III,2026-04-30,CA-USD,USD Cash,Cash,,3000000,GL

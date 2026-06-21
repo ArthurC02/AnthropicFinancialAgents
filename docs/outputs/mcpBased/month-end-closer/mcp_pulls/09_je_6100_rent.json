@@ -1,0 +1,22 @@
+{
+  "server": "internal-gl",
+  "tool": "get_journal_entries",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "account": "6100"
+  },
+  "ok": true,
+  "result": [
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-01",
+      "je_id": "JE-4005",
+      "account": 6100,
+      "name": "租金 Rent",
+      "description": "Q2 辦公室租金及擴租調整",
+      "debit": 200000,
+      "credit": 0,
+      "source": "AP"
+    }
+  ]
+}

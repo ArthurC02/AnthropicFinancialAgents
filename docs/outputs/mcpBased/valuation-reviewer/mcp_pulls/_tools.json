@@ -1,0 +1,29 @@
+{
+  "server": "portfolio",
+  "tools": [
+    {
+      "name": "list_funds",
+      "description": "List funds and as-of dates available in this portfolio source."
+    },
+    {
+      "name": "get_positions",
+      "description": "Return the GP-reported valuations (marks) per portfolio company to be reviewed."
+    },
+    {
+      "name": "get_fund_nav_build",
+      "description": "Return the fund-level NAV build (portfolio FV + cash + other − liabilities)."
+    },
+    {
+      "name": "get_capital_flows",
+      "description": "Return contributions / distributions / ending-NAV history (for IRR & MOIC)."
+    },
+    {
+      "name": "get_fund_terms",
+      "description": "Return fund economics & waterfall terms (commitments, hurdle, catch-up, carry)."
+    },
+    {
+      "name": "get_valuation_policy",
+      "description": "Return the valuation policy rules used to review the GP marks (P1–P4)."
+    }
+  ]
+}

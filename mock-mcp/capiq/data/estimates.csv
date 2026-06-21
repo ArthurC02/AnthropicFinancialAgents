@@ -1,0 +1,10 @@
+ticker,period,metric,value,unit
+VRT,FY2026,revenue,10.9,USD bn
+VRT,FY2026,ebitda_margin,0.22,ratio
+VRT,FY2026,eps,3.60,USD
+VRT,FY2027,revenue,13.5,USD bn
+VRT,FY2027,ebitda_margin,0.23,ratio
+TSM,FY2026,revenue,163.6,USD bn
+TSM,FY2026,gross_margin,0.658,ratio
+NVT,FY2026,revenue,3.6,USD bn
+NVT,FY2026,ebitda_margin,0.18,ratio

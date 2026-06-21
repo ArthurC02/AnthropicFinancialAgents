@@ -1,0 +1,12 @@
+{
+  "server": "mock-mcp/portfolio/server.py",
+  "out_dir": "docs/outputs/mcpBased/valuation-reviewer/mcp_pulls",
+  "calls": [
+    {"tool": "list_funds", "args": {}, "save_as": "01_list_funds"},
+    {"tool": "get_positions", "args": {"fund": "Aurora Growth Fund III, L.P.", "as_of": "2026-03-31"}, "save_as": "02_get_positions"},
+    {"tool": "get_fund_nav_build", "args": {"fund": "Aurora Growth Fund III, L.P.", "as_of": "2026-03-31"}, "save_as": "03_get_fund_nav_build"},
+    {"tool": "get_capital_flows", "args": {"fund": "Aurora Growth Fund III, L.P."}, "save_as": "04_get_capital_flows"},
+    {"tool": "get_fund_terms", "args": {"fund": "Aurora Growth Fund III, L.P."}, "save_as": "05_get_fund_terms"},
+    {"tool": "get_valuation_policy", "args": {"fund": "Aurora Growth Fund III, L.P."}, "save_as": "06_get_valuation_policy"}
+  ]
+}

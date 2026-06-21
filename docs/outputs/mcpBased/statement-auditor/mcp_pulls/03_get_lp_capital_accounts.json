@@ -1,0 +1,76 @@
+{
+  "server": "nav",
+  "tool": "get_lp_capital_accounts",
+  "args": {
+    "fund": "Aurora Growth Fund",
+    "as_of": "2026-03-31"
+  },
+  "ok": true,
+  "result": {
+    "fund": "Aurora Growth Fund",
+    "as_of": "2026-03-31",
+    "currency": "USD",
+    "accounts": [
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "lp_id": "LP-001",
+        "lp_name": "University Endowment",
+        "beginning": 40000000,
+        "contributions": 5000000,
+        "distributions": 2000000,
+        "net_gain_loss": 4000000,
+        "mgmt_fee": 250000,
+        "ending": 46750000,
+        "ownership_pct": 41.58
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "lp_id": "LP-002",
+        "lp_name": "State Pension Plan",
+        "beginning": 30000000,
+        "contributions": 0,
+        "distributions": 1500000,
+        "net_gain_loss": 3000000,
+        "mgmt_fee": 187500,
+        "ending": 31312500,
+        "ownership_pct": 27.85
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "lp_id": "LP-003",
+        "lp_name": "Family Office LLC",
+        "beginning": 20000000,
+        "contributions": 2000000,
+        "distributions": 0,
+        "net_gain_loss": 2000000,
+        "mgmt_fee": 125000,
+        "ending": 23875000,
+        "ownership_pct": 21.23
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "lp_id": "LP-004",
+        "lp_name": "GP Commitment",
+        "beginning": 10000000,
+        "contributions": 0,
+        "distributions": 500000,
+        "net_gain_loss": 1000000,
+        "mgmt_fee": 0,
+        "ending": 10500000,
+        "ownership_pct": 9.34
+      }
+    ],
+    "totals": {
+      "beginning": 100000000,
+      "contributions": 7000000,
+      "distributions": 4000000,
+      "net_gain_loss": 10000000,
+      "mgmt_fee": 562500,
+      "ending": 112437500
+    }
+  }
+}

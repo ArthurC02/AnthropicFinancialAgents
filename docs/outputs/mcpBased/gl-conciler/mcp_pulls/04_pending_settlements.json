@@ -1,0 +1,22 @@
+{
+  "server": "subledger",
+  "tool": "get_pending_settlements",
+  "args": {
+    "fund": "Aurora Growth Fund III",
+    "as_of": "2026-04-30"
+  },
+  "ok": true,
+  "result": [
+    {
+      "fund": "Aurora Growth Fund III",
+      "as_of": "2026-04-30",
+      "trade_id": "TRD-9001",
+      "sec_id": "FI-GB123",
+      "side": "Buy",
+      "qty_face": 500000,
+      "trade_date": "2026-04-29",
+      "settle_date": "2026-05-02",
+      "status": "Pending (crosses month-end)"
+    }
+  ]
+}

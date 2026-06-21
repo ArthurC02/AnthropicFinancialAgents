@@ -1,0 +1,34 @@
+{
+  "server": "crm",
+  "tool": "get_market_events",
+  "args": {
+    "client_id": "CL-1001"
+  },
+  "ok": true,
+  "result": [
+    {
+      "client_id": "CL-1001",
+      "holding": "VRT",
+      "event": "股價大漲估值約 51x EV/EBITDA;內部 DCF 顯示已充分反映成長預期",
+      "implication": "單一持股占比 25% 且推升股票整體超配 → 集中度與估值風險"
+    },
+    {
+      "client_id": "CL-1001",
+      "holding": "DCI (USD/JPY)",
+      "event": "日圓走弱已貶破轉換價 (strike);2026-07 到期",
+      "implication": "到期很可能被轉換成日圓以低於美元本金價值交付 → 需提前告知客戶"
+    },
+    {
+      "client_id": "CL-1001",
+      "holding": "TSMC",
+      "event": "剛公布最新一季財報 (優於預期)",
+      "implication": "持倉占 25%;財報後觀點可納入會談"
+    },
+    {
+      "client_id": "CL-1001",
+      "holding": "保本型結構債",
+      "event": "連結標的回落目前市價 -14.9%",
+      "implication": "雖具到期保本條款但目前市值為負 → 須據實說明勿粉飾"
+    }
+  ]
+}

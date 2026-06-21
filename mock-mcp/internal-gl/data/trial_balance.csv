@@ -1,0 +1,19 @@
+entity,period,account,name,type,normal_balance,prior_ytd,current_ytd
+Aurora Capital Management LLC,2026-04,1000,現金 Cash,Asset,Dr,8000000,7550000
+Aurora Capital Management LLC,2026-04,1100,應收管理費 Mgmt Fees Receivable,Asset,Dr,3000000,3200000
+Aurora Capital Management LLC,2026-04,1200,預付費用 Prepaid Expenses,Asset,Dr,600000,600000
+Aurora Capital Management LLC,2026-04,1500,固定資產淨 Fixed Assets net,Asset,Dr,1400000,1350000
+Aurora Capital Management LLC,2026-04,2000,應付帳款 Accounts Payable,Liability,Cr,900000,1100000
+Aurora Capital Management LLC,2026-04,2100,應付費用 Accrued Expenses,Liability,Cr,1200000,1000000
+Aurora Capital Management LLC,2026-04,2200,遞延收入 Deferred Revenue,Liability,Cr,500000,400000
+Aurora Capital Management LLC,2026-04,3000,成員資本 Members Capital,Equity,Cr,8000000,8000000
+Aurora Capital Management LLC,2026-04,3100,期初保留盈餘 Retained Earnings BOY,Equity,Cr,2000000,2000000
+Aurora Capital Management LLC,2026-04,4000,管理費收入 Management Fee Income,Revenue,Cr,6300000,8500000
+Aurora Capital Management LLC,2026-04,4100,其他收入 Other Income,Revenue,Cr,300000,380000
+Aurora Capital Management LLC,2026-04,6000,薪酬 Compensation,Expense,Dr,4500000,6000000
+Aurora Capital Management LLC,2026-04,6100,租金 Rent,Expense,Dr,600000,800000
+Aurora Capital Management LLC,2026-04,6200,專業服務費 Professional Fees,Expense,Dr,400000,750000
+Aurora Capital Management LLC,2026-04,6300,資訊技術 Technology,Expense,Dr,300000,400000
+Aurora Capital Management LLC,2026-04,6400,差旅 Travel,Expense,Dr,150000,350000
+Aurora Capital Management LLC,2026-04,6500,其他營運費用 Other Opex,Expense,Dr,250000,330000
+Aurora Capital Management LLC,2026-04,6600,折舊 Depreciation,Expense,Dr,0,50000

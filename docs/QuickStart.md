@@ -11,7 +11,7 @@
 ```
 ✅ 安裝好 Claude Code（CLI）
 ✅ 這個倉庫已經下載到本機，例如：
-   c:\Users\a8022\Desktop\financial-services
+   <repo>
 ❌ 不需要：FactSet／CapIQ 訂閱、API 金鑰、任何內部系統
 ```
 
@@ -48,7 +48,7 @@
 ### A1　把倉庫加成 marketplace
 
 ```
-/plugin marketplace add c:/Users/a8022/Desktop/financial-services
+/plugin marketplace add <repo>
 ```
 
 > 💡 **用正斜線 `/`**。Windows 的反斜線 `\` 有時候會出問題；官方範例一律用正斜線。

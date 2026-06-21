@@ -1,0 +1,12 @@
+{
+  "server": "subledger",
+  "tool": "get_tolerance_policy",
+  "args": {},
+  "ok": true,
+  "result": {
+    "absolute_mv_usd": 0.01,
+    "quantity": 0,
+    "fx_rounding_relative": 0.0005,
+    "note": "Foreign-currency MV differences within 0.05% attributable to GL vs custody FX decimal precision are treated as rounding, not breaks."
+  }
+}

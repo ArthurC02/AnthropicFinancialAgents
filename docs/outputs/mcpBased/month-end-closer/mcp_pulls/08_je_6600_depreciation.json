@@ -1,0 +1,22 @@
+{
+  "server": "internal-gl",
+  "tool": "get_journal_entries",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "account": "6600"
+  },
+  "ok": true,
+  "result": [
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-30",
+      "je_id": "JE-4031",
+      "account": 6600,
+      "name": "折舊 Depreciation",
+      "description": "固定資產月折舊",
+      "debit": 50000,
+      "credit": 0,
+      "source": "Manual"
+    }
+  ]
+}

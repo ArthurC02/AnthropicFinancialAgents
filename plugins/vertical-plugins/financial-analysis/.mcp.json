@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "capiq": {
+      "type": "http",
+      "url": "http://127.0.0.1:8007/mcp"
+    },
     "daloopa": {
       "type": "http",
       "url": "https://mcp.daloopa.com/server/mcp"

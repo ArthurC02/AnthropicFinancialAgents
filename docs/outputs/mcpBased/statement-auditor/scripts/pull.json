@@ -1,0 +1,9 @@
+{
+  "server": "mock-mcp/nav/server.py",
+  "out_dir": "docs/outputs/mcpBased/statement-auditor/mcp_pulls",
+  "calls": [
+    {"tool": "list_funds", "args": {}, "save_as": "01_list_funds"},
+    {"tool": "get_nav_build", "args": {"fund": "Aurora Growth Fund", "as_of": "2026-03-31"}, "save_as": "02_get_nav_build"},
+    {"tool": "get_lp_capital_accounts", "args": {"fund": "Aurora Growth Fund", "as_of": "2026-03-31"}, "save_as": "03_get_lp_capital_accounts"}
+  ]
+}

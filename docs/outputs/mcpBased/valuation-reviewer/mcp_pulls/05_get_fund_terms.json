@@ -1,0 +1,23 @@
+{
+  "server": "portfolio",
+  "tool": "get_fund_terms",
+  "args": {
+    "fund": "Aurora Growth Fund III, L.P."
+  },
+  "ok": true,
+  "result": {
+    "fund": "Aurora Growth Fund III, L.P.",
+    "terms": {
+      "committed": 500000000,
+      "contributed": 300000000,
+      "invested_cost": 250000000,
+      "fees": 50000000,
+      "distributions_to_date": 40000000,
+      "waterfall_type": "European whole-fund",
+      "preferred_return": 0.08,
+      "catchup": 1.0,
+      "carry": 0.2,
+      "preferred_accrued_to_date": 35000000
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "server": "factset",
+  "tool": "list_coverage",
+  "args": {},
+  "ok": true,
+  "result": {
+    "tickers": [
+      "TSM",
+      "VRT"
+    ],
+    "periods": [
+      "FY2025",
+      "Q1-2026"
+    ]
+  }
+}

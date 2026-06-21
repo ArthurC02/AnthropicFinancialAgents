@@ -1,0 +1,20 @@
+{
+  "server": "daloopa",
+  "tool": "get_line_items",
+  "args": {
+    "ticker": "VRT",
+    "period": "FY2025",
+    "statement": "balance_sheet"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "balance_sheet",
+      "line_item": "Backlog",
+      "value": 15.0,
+      "unit": "USD bn"
+    }
+  ]
+}

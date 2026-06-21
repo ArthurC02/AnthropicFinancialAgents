@@ -1,0 +1,94 @@
+{
+  "server": "factset",
+  "tool": "get_fundamentals",
+  "args": {
+    "ticker": "TSM"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "revenue",
+      "value": 35.9,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "revenue_ntd",
+      "value": 1134.1,
+      "unit": "NTD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "gross_margin",
+      "value": 0.662,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "op_margin",
+      "value": 0.581,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "net_margin",
+      "value": 0.505,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "net_income_ntd",
+      "value": 572.48,
+      "unit": "NTD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "eps",
+      "value": 22.08,
+      "unit": "NTD"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "eps_adr",
+      "value": 3.49,
+      "unit": "USD"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "usd_twd",
+      "value": 31.6,
+      "unit": "rate"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "revenue_yoy",
+      "value": 0.406,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "metric": "revenue_qoq",
+      "value": 0.064,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "FY2025",
+      "metric": "revenue",
+      "value": 124.0,
+      "unit": "USD bn"
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "server": "daloopa",
+  "tool": "get_line_items",
+  "args": {
+    "ticker": "TSM"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "HPC",
+      "value": 0.61,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "Smartphone",
+      "value": 0.26,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "IoT",
+      "value": 0.06,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "Automotive",
+      "value": 0.04,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "DCE",
+      "value": 0.01,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "Other",
+      "value": 0.02,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_node",
+      "line_item": "3nm (N3)",
+      "value": 0.25,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_node",
+      "line_item": "5nm (N5)",
+      "value": 0.36,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_node",
+      "line_item": "7nm",
+      "value": 0.13,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_node",
+      "line_item": "Advanced (<=7nm)",
+      "value": 0.74,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "income_statement",
+      "line_item": "Revenue (NT$bn)",
+      "value": 1134.1,
+      "unit": "NTD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "income_statement",
+      "line_item": "Revenue (US$bn)",
+      "value": 35.9,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "income_statement",
+      "line_item": "Gross Profit (US$bn)",
+      "value": 23.77,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "income_statement",
+      "line_item": "Net Income (NT$bn)",
+      "value": 572.48,
+      "unit": "NTD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "guidance",
+      "line_item": "Capex FY2026",
+      "value": "52-56",
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "guidance",
+      "line_item": "Advanced process share of capex",
+      "value": "0.70-0.80",
+      "unit": "ratio"
+    }
+  ]
+}

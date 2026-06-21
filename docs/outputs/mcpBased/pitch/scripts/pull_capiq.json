@@ -1,0 +1,10 @@
+{
+  "server": "mock-mcp/capiq/server.py",
+  "out_dir": "docs/outputs/mcpBased/pitch/mcp_pulls",
+  "calls": [
+    {"tool": "get_comps", "args": {"sector": "AI Data Center Cooling"}, "save_as": "01_capiq_get_comps"},
+    {"tool": "get_quote", "args": {"ticker": "VRT"}, "save_as": "02_capiq_get_quote_VRT"},
+    {"tool": "get_estimates", "args": {"ticker": "VRT"}, "save_as": "03_capiq_get_estimates_VRT"},
+    {"tool": "get_market_events", "args": {"ticker": "VRT"}, "save_as": "04_capiq_get_market_events_VRT"}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "server": "internal-gl",
+  "tool": "list_entities",
+  "args": {},
+  "ok": true,
+  "result": {
+    "trial_balance_entities": [
+      "Aurora Capital Management LLC"
+    ],
+    "trial_balance_periods": [
+      "2026-04"
+    ],
+    "gl_position_funds": [
+      "Aurora Growth Fund III"
+    ],
+    "gl_position_as_of": [
+      "2026-04-30"
+    ]
+  }
+}

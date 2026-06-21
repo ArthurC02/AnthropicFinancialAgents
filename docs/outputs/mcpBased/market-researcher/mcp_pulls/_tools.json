@@ -1,0 +1,21 @@
+{
+  "server": "factset",
+  "tools": [
+    {
+      "name": "list_coverage",
+      "description": "List tickers and periods available in this mock."
+    },
+    {
+      "name": "get_fundamentals",
+      "description": "Return reported fundamentals (long format: metric/value/unit) for a ticker."
+    },
+    {
+      "name": "get_consensus_estimates",
+      "description": "Return consensus vs actual vs prior guidance per metric (for beat/miss analysis)."
+    },
+    {
+      "name": "get_prices",
+      "description": "Return recent closing prices for a ticker (with context notes)."
+    }
+  ]
+}

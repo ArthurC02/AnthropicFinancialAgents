@@ -1,0 +1,13 @@
+{
+  "server": "mock-mcp/capiq/server.py",
+  "out_dir": "docs/outputs/mcpBased/meeting-prep-agent/mcp_pulls",
+  "calls": [
+    {"tool": "get_market_events", "args": {}, "save_as": "08_capiq_market_events_all"},
+    {"tool": "get_quote", "args": {"ticker": "VRT"}, "save_as": "09_capiq_quote_VRT"},
+    {"tool": "get_quote", "args": {"ticker": "TSM"}, "save_as": "10_capiq_quote_TSM"},
+    {"tool": "get_quote", "args": {"ticker": "AAPL"}, "save_as": "11_capiq_quote_AAPL"},
+    {"tool": "get_market_events", "args": {"ticker": "VRT"}, "save_as": "12_capiq_market_events_VRT"},
+    {"tool": "get_market_events", "args": {"ticker": "TSM"}, "save_as": "13_capiq_market_events_TSM"},
+    {"tool": "get_estimates", "args": {"ticker": "VRT"}, "save_as": "14_capiq_estimates_VRT"}
+  ]
+}

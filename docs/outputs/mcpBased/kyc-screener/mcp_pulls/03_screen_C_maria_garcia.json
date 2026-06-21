@@ -1,0 +1,32 @@
+{
+  "server": "screening",
+  "tool": "screen_name",
+  "args": {
+    "name": "Maria Garcia",
+    "dob": "1988-11-02",
+    "country": "Spain"
+  },
+  "ok": true,
+  "result": {
+    "query": {
+      "name": "Maria Garcia",
+      "dob": "1988-11-02",
+      "country": "Spain"
+    },
+    "overall": "REVIEW",
+    "match_count": 1,
+    "matches": [
+      {
+        "list": "sanctions",
+        "list_id": "S-2",
+        "name": "Maria Garcia",
+        "dob": "1955-07-22",
+        "country": "Colombia",
+        "program": "OFAC SDN (SDNTK)",
+        "classification": "likely_false_positive",
+        "reason": "name matches but identifiers differ: DOB 1988-11-02 vs 1955-07-22; country Spain vs Colombia",
+        "action": "clear after review; do NOT auto-reject"
+      }
+    ]
+  }
+}

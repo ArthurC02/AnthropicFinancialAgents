@@ -1,0 +1,32 @@
+{
+  "server": "screening",
+  "tool": "screen_name",
+  "args": {
+    "name": "Ivan Petrov",
+    "dob": "1970-03-15",
+    "country": "Russia"
+  },
+  "ok": true,
+  "result": {
+    "query": {
+      "name": "Ivan Petrov",
+      "dob": "1970-03-15",
+      "country": "Russia"
+    },
+    "overall": "HIT_SANCTIONS",
+    "match_count": 1,
+    "matches": [
+      {
+        "list": "sanctions",
+        "list_id": "S-1",
+        "name": "Ivan Petrov",
+        "dob": "1970-03-15",
+        "country": "Russia",
+        "program": "OFAC SDN (EO 13662)",
+        "classification": "confirmed_sanctions_match",
+        "reason": "name + DOB + country all match",
+        "action": "R4: reject / escalate to MLRO"
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "server": "crm",
+  "tool": "get_client_profile",
+  "args": {
+    "client_id": "CL-1001"
+  },
+  "ok": true,
+  "result": {
+    "client_id": "CL-1001",
+    "name": "王大明 (Wang Da-ming)",
+    "advisor": "(you)",
+    "upcoming_meeting": "2026-06-22",
+    "risk_profile": "Balanced Growth",
+    "aum_usd": 12000000,
+    "currency": "USD",
+    "relationship_since": 2018,
+    "last_meeting": "2026-03-20",
+    "background": "58歲;計畫 2029 年退休 (3 年內);兩名子女;來信提及約 USD 2.0M 房產出售款即將入帳待配置"
+  }
+}

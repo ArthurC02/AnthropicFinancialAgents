@@ -1,0 +1,18 @@
+{
+  "server": "capiq",
+  "tool": "get_quote",
+  "args": {
+    "ticker": "TSM"
+  },
+  "ok": true,
+  "result": {
+    "ticker": "TSM",
+    "name": "Taiwan Semiconductor (ADR)",
+    "price": 210.0,
+    "currency": "USD",
+    "mktcap_usd_bn": 1090,
+    "week52_low": 140.0,
+    "week52_high": 225.0,
+    "as_of": "2026-06-18"
+  }
+}

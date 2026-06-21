@@ -1,0 +1,17 @@
+{
+  "server": "nav",
+  "tools": [
+    {
+      "name": "list_funds",
+      "description": "List funds and as-of dates available in the NAV pack."
+    },
+    {
+      "name": "get_nav_build",
+      "description": "Return the authoritative fund-level NAV build (assets − liabilities = NAV)."
+    },
+    {
+      "name": "get_lp_capital_accounts",
+      "description": "Return per-LP capital accounts (the correct figures to audit statements against)."
+    }
+  ]
+}

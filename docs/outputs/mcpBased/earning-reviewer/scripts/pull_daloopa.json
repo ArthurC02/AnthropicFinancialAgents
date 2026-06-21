@@ -1,0 +1,12 @@
+{
+  "server": "mock-mcp/daloopa/server.py",
+  "out_dir": "docs/outputs/mcpBased/earning-reviewer/mcp_pulls",
+  "calls": [
+    {"tool": "list_coverage", "args": {}, "save_as": "10_daloopa_list_coverage"},
+    {"tool": "get_line_items", "args": {"ticker": "TSM", "period": "Q1-2026", "statement": "revenue_mix_platform"}, "save_as": "11_daloopa_TSM_mix_platform"},
+    {"tool": "get_line_items", "args": {"ticker": "TSM", "period": "Q1-2026", "statement": "revenue_mix_node"}, "save_as": "12_daloopa_TSM_mix_node"},
+    {"tool": "get_line_items", "args": {"ticker": "TSM", "period": "Q1-2026", "statement": "income_statement"}, "save_as": "13_daloopa_TSM_income_statement"},
+    {"tool": "get_line_items", "args": {"ticker": "TSM", "period": "Q1-2026", "statement": "guidance"}, "save_as": "14_daloopa_TSM_guidance"},
+    {"tool": "get_line_items", "args": {"ticker": "TSM"}, "save_as": "15_daloopa_TSM_all"}
+  ]
+}

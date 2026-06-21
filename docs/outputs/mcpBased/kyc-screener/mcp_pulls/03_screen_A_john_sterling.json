@@ -1,0 +1,20 @@
+{
+  "server": "screening",
+  "tool": "screen_name",
+  "args": {
+    "name": "John Sterling",
+    "dob": "",
+    "country": "Cayman Islands"
+  },
+  "ok": true,
+  "result": {
+    "query": {
+      "name": "John Sterling",
+      "dob": "",
+      "country": "Cayman Islands"
+    },
+    "overall": "CLEAR",
+    "match_count": 0,
+    "matches": []
+  }
+}

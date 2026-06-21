@@ -1,0 +1,26 @@
+{
+  "server": "factset",
+  "tool": "get_consensus_estimates",
+  "args": {
+    "ticker": "VRT"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "period": "FY2026",
+      "metric": "revenue",
+      "consensus": 10.9,
+      "actual": "",
+      "prior_guidance": "n/a"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2026",
+      "metric": "eps",
+      "consensus": 3.6,
+      "actual": "",
+      "prior_guidance": "n/a"
+    }
+  ]
+}

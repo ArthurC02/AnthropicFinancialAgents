@@ -1,0 +1,2 @@
+fund,as_of,trade_id,sec_id,side,qty_face,trade_date,settle_date,status
+Aurora Growth Fund III,2026-04-30,TRD-9001,FI-GB123,Buy,500000,2026-04-29,2026-05-02,Pending (crosses month-end)

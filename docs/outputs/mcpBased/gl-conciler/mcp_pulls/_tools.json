@@ -1,0 +1,21 @@
+{
+  "server": "subledger",
+  "tools": [
+    {
+      "name": "get_subledger_holdings",
+      "description": "Return custody/sub-ledger holdings for a fund (the custody side of a recon)."
+    },
+    {
+      "name": "get_pending_settlements",
+      "description": "Return trades executed but not yet settled as of the date (timing-break evidence)."
+    },
+    {
+      "name": "get_fx_rates",
+      "description": "Return GL vs custody FX rates for a date (FX-rounding-break evidence)."
+    },
+    {
+      "name": "get_tolerance_policy",
+      "description": "Return the reconciliation tolerance policy (what counts as a break)."
+    }
+  ]
+}

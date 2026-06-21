@@ -1,0 +1,70 @@
+{
+  "server": "nav",
+  "tool": "get_nav_build",
+  "args": {
+    "fund": "Aurora Growth Fund",
+    "as_of": "2026-03-31"
+  },
+  "ok": true,
+  "result": {
+    "fund": "Aurora Growth Fund",
+    "as_of": "2026-03-31",
+    "currency": "USD",
+    "lines": [
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "item": "Investments at Fair Value",
+        "amount": 108000000
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "item": "Cash",
+        "amount": 6000000
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "item": "Other Assets (Receivables)",
+        "amount": 1500000
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "item": "Total Assets",
+        "amount": 115500000
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "item": "Accrued Management Fee Payable",
+        "amount": 562500
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "item": "Accrued Expenses",
+        "amount": 500000
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "item": "Other Liabilities",
+        "amount": 2000000
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "item": "Total Liabilities",
+        "amount": 3062500
+      },
+      {
+        "fund": "Aurora Growth Fund",
+        "as_of": "2026-03-31",
+        "item": "Net Assets (NAV)",
+        "amount": 112437500
+      }
+    ]
+  }
+}

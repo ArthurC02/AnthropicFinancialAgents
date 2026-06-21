@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "internal-gl": { "type": "http", "url": "http://127.0.0.1:8001/mcp" },
+    "subledger": { "type": "http", "url": "http://127.0.0.1:8002/mcp" },
+    "nav": { "type": "http", "url": "http://127.0.0.1:8004/mcp" }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "server": "capiq",
+  "tool": "get_estimates",
+  "args": {
+    "ticker": "VRT"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "period": "FY2026",
+      "metric": "revenue",
+      "value": 10.9,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2026",
+      "metric": "ebitda_margin",
+      "value": 0.22,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2026",
+      "metric": "eps",
+      "value": 3.6,
+      "unit": "USD"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2027",
+      "metric": "revenue",
+      "value": 13.5,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2027",
+      "metric": "ebitda_margin",
+      "value": 0.23,
+      "unit": "ratio"
+    }
+  ]
+}

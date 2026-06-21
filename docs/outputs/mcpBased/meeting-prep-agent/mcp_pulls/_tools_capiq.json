@@ -1,0 +1,21 @@
+{
+  "server": "capiq",
+  "tools": [
+    {
+      "name": "get_comps",
+      "description": "Return a comparable-company set with consistent metric definitions."
+    },
+    {
+      "name": "get_quote",
+      "description": "Return a current quote (price, market cap, 52-week range) for a ticker."
+    },
+    {
+      "name": "get_market_events",
+      "description": "Return recent market events; optionally filter to one `ticker`."
+    },
+    {
+      "name": "get_estimates",
+      "description": "Return forward street estimates for a ticker; optionally filter by `period`."
+    }
+  ]
+}

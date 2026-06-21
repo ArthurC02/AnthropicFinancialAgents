@@ -1,0 +1,15 @@
+{
+  "server": "mock-mcp/screening/server.py",
+  "out_dir": "docs/outputs/mcpBased/kyc-screener/mcp_pulls",
+  "calls": [
+    {"tool": "get_sanctions_list", "args": {}, "save_as": "01_get_sanctions_list"},
+    {"tool": "get_pep_list", "args": {}, "save_as": "02_get_pep_list"},
+    {"tool": "screen_name", "args": {"name": "John Sterling", "dob": "", "country": "Cayman Islands"}, "save_as": "03_screen_A_john_sterling"},
+    {"tool": "screen_name", "args": {"name": "Amy Cole", "dob": "", "country": "Cayman Islands"}, "save_as": "03_screen_A_amy_cole"},
+    {"tool": "screen_name", "args": {"name": "Ivan Petrov", "dob": "1970-03-15", "country": "Russia"}, "save_as": "03_screen_B_ivan_petrov"},
+    {"tool": "screen_name", "args": {"name": "Maria Garcia", "dob": "1988-11-02", "country": "Spain"}, "save_as": "03_screen_C_maria_garcia"},
+    {"tool": "screen_name", "args": {"name": "Adewale Okonkwo", "dob": "", "country": "Nigeria"}, "save_as": "03_screen_D_adewale_okonkwo"},
+    {"tool": "screen_name", "args": {"name": "Robert Quiet", "dob": "", "country": "USA"}, "save_as": "03_screen_E_robert_quiet"},
+    {"tool": "screen_name", "args": {"name": "Sarah Brook", "dob": "", "country": "USA"}, "save_as": "03_screen_E_sarah_brook"}
+  ]
+}

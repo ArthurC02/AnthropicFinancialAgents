@@ -1,0 +1,40 @@
+{
+  "server": "portfolio",
+  "tool": "get_capital_flows",
+  "args": {
+    "fund": "Aurora Growth Fund III, L.P."
+  },
+  "ok": true,
+  "result": [
+    {
+      "fund": "Aurora Growth Fund III, L.P.",
+      "date": "2022-06-30",
+      "event": "Contribution",
+      "amount": -100000000
+    },
+    {
+      "fund": "Aurora Growth Fund III, L.P.",
+      "date": "2023-06-30",
+      "event": "Contribution",
+      "amount": -100000000
+    },
+    {
+      "fund": "Aurora Growth Fund III, L.P.",
+      "date": "2024-06-30",
+      "event": "Contribution",
+      "amount": -100000000
+    },
+    {
+      "fund": "Aurora Growth Fund III, L.P.",
+      "date": "2025-06-30",
+      "event": "Distribution",
+      "amount": 40000000
+    },
+    {
+      "fund": "Aurora Growth Fund III, L.P.",
+      "date": "2026-03-31",
+      "event": "Ending NAV (as-reported)",
+      "amount": 350000000
+    }
+  ]
+}

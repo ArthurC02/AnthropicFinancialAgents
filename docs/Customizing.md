@@ -56,8 +56,8 @@
 ## 四、固定收尾(改完一定做)
 
 ```
-改 skill  → python scripts/sync-agent-skills.py   把 copy 同步
-任何改動  → python scripts/check.py               lint + 參照 + drift 檢查
+改 skill  → python3 scripts/sync-agent-skills.py   把 copy 同步
+任何改動  → python3 scripts/check.py               lint + 參照 + drift 檢查
 動到 CMA  → bash scripts/deploy-managed-agent.sh <slug> --dry-run   驗結構(不上雲)
           → bash scripts/test-cookbooks.sh        全 10 支 dry-run 斷言
 測行為    → /plugin install <slug>@fsi-local      本地真跑一次

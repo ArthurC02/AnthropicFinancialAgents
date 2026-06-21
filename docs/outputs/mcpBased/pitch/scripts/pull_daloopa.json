@@ -1,0 +1,12 @@
+{
+  "server": "mock-mcp/daloopa/server.py",
+  "out_dir": "docs/outputs/mcpBased/pitch/mcp_pulls",
+  "calls": [
+    {"tool": "list_coverage", "args": {}, "save_as": "05_daloopa_list_coverage"},
+    {"tool": "get_line_items", "args": {"ticker": "VRT"}, "save_as": "06_daloopa_get_line_items_VRT_all"},
+    {"tool": "get_line_items", "args": {"ticker": "VRT", "period": "FY2025", "statement": "segment_revenue"}, "save_as": "07_daloopa_VRT_segment_revenue"},
+    {"tool": "get_line_items", "args": {"ticker": "VRT", "period": "FY2025", "statement": "product_revenue"}, "save_as": "08_daloopa_VRT_product_revenue"},
+    {"tool": "get_line_items", "args": {"ticker": "VRT", "period": "FY2025", "statement": "income_statement"}, "save_as": "09_daloopa_VRT_income_statement"},
+    {"tool": "get_line_items", "args": {"ticker": "VRT", "period": "FY2025", "statement": "balance_sheet"}, "save_as": "10_daloopa_VRT_balance_sheet"}
+  ]
+}

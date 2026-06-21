@@ -1,0 +1,25 @@
+{
+  "server": "daloopa",
+  "tool": "list_coverage",
+  "args": {},
+  "ok": true,
+  "result": {
+    "tickers": [
+      "TSM",
+      "VRT"
+    ],
+    "periods": [
+      "FY2025",
+      "Q1-2026"
+    ],
+    "statements": [
+      "balance_sheet",
+      "guidance",
+      "income_statement",
+      "product_revenue",
+      "revenue_mix_node",
+      "revenue_mix_platform",
+      "segment_revenue"
+    ]
+  }
+}

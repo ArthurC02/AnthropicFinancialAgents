@@ -1,0 +1,60 @@
+{
+  "server": "daloopa",
+  "tool": "get_line_items",
+  "args": {
+    "ticker": "TSM",
+    "period": "Q1-2026",
+    "statement": "revenue_mix_platform"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "HPC",
+      "value": 0.61,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "Smartphone",
+      "value": 0.26,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "IoT",
+      "value": 0.06,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "Automotive",
+      "value": 0.04,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "DCE",
+      "value": 0.01,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_platform",
+      "line_item": "Other",
+      "value": 0.02,
+      "unit": "ratio"
+    }
+  ]
+}

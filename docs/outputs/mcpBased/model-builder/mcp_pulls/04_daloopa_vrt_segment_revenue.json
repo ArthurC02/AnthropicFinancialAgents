@@ -1,0 +1,36 @@
+{
+  "server": "daloopa",
+  "tool": "get_line_items",
+  "args": {
+    "ticker": "VRT",
+    "period": "FY2025",
+    "statement": "segment_revenue"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "segment_revenue",
+      "line_item": "Americas",
+      "value": 4.6,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "segment_revenue",
+      "line_item": "APAC",
+      "value": 1.8,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "segment_revenue",
+      "line_item": "EMEA",
+      "value": 1.6,
+      "unit": "USD bn"
+    }
+  ]
+}

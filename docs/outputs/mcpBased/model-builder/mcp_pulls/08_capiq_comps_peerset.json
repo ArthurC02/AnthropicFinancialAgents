@@ -1,0 +1,96 @@
+{
+  "server": "capiq",
+  "tool": "get_comps",
+  "args": {
+    "tickers": "VRT,NVT,SU.PA,2308.TW,3324.TWO"
+  },
+  "ok": true,
+  "result": {
+    "sector": "AI Data Center Cooling",
+    "count": 5,
+    "as_of": "2026-06-18",
+    "comps": [
+      {
+        "sector": "AI Data Center Cooling",
+        "company": "Vertiv",
+        "ticker": "VRT",
+        "listing": "US",
+        "mktcap_usd_bn": 122,
+        "rev_yoy": 0.28,
+        "op_margin": 0.188,
+        "fwd_pe": 46,
+        "ev_ebitda": 51,
+        "ev_rev": 11.3,
+        "ret_1y": 1.73,
+        "thermal_purity": "純(高)",
+        "pure_play": "是",
+        "note": "散熱領頭羊;backlog>$15B;NVIDIA 參考設計"
+      },
+      {
+        "sector": "AI Data Center Cooling",
+        "company": "nVent",
+        "ticker": "NVT",
+        "listing": "US",
+        "mktcap_usd_bn": 28,
+        "rev_yoy": 0.11,
+        "op_margin": 0.162,
+        "fwd_pe": 35,
+        "ev_ebitda": 32,
+        "ev_rev": 6.7,
+        "ret_1y": 1.43,
+        "thermal_purity": "多元",
+        "pure_play": "否",
+        "note": "液冷為成長引擎;backlog 約 3x"
+      },
+      {
+        "sector": "AI Data Center Cooling",
+        "company": "Schneider",
+        "ticker": "SU.PA",
+        "listing": "EU",
+        "mktcap_usd_bn": 160,
+        "rev_yoy": 0.05,
+        "op_margin": 0.174,
+        "fwd_pe": 28,
+        "ev_ebitda": 21,
+        "ev_rev": 4.3,
+        "ret_1y": 0.27,
+        "thermal_purity": "多元",
+        "pure_play": "否",
+        "note": "整併中老二(Motivair);grid-to-chip"
+      },
+      {
+        "sector": "AI Data Center Cooling",
+        "company": "Delta 台達電",
+        "ticker": "2308.TW",
+        "listing": "TW",
+        "mktcap_usd_bn": 187,
+        "rev_yoy": 0.33,
+        "op_margin": 0.178,
+        "fwd_pe": 46,
+        "ev_ebitda": "n/a",
+        "ev_rev": "n/a",
+        "ret_1y": 4.54,
+        "thermal_purity": "多元",
+        "pure_play": "否",
+        "note": "電源+散熱一體;液冷約 9% 營收"
+      },
+      {
+        "sector": "AI Data Center Cooling",
+        "company": "Auras 奇鋐",
+        "ticker": "3324.TWO",
+        "listing": "TW",
+        "mktcap_usd_bn": 3.2,
+        "rev_yoy": 0.48,
+        "op_margin": 0.141,
+        "fwd_pe": 21,
+        "ev_ebitda": "n/a",
+        "ev_rev": "n/a",
+        "ret_1y": 1.32,
+        "thermal_purity": "純散熱",
+        "pure_play": "是",
+        "note": "純散熱高 beta;2026 指引 +60-70%"
+      }
+    ],
+    "caveat": "Free-source estimates; n/a where unavailable; EV/Rev not comparable across component vs ODM/OEM models."
+  }
+}

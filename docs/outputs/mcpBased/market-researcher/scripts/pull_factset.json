@@ -1,0 +1,10 @@
+{
+  "server": "mock-mcp/factset/server.py",
+  "out_dir": "docs/outputs/mcpBased/market-researcher/mcp_pulls",
+  "calls": [
+    {"tool": "list_coverage", "args": {}, "save_as": "05_factset_list_coverage"},
+    {"tool": "get_fundamentals", "args": {"ticker": "VRT"}, "save_as": "06_factset_get_fundamentals_VRT"},
+    {"tool": "get_fundamentals", "args": {"ticker": "VRT", "period": "FY2025"}, "save_as": "07_factset_get_fundamentals_VRT_FY2025"},
+    {"tool": "get_prices", "args": {"ticker": "VRT"}, "save_as": "08_factset_get_prices_VRT"}
+  ]
+}

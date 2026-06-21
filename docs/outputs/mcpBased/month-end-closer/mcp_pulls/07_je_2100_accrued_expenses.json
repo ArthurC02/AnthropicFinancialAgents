@@ -1,0 +1,22 @@
+{
+  "server": "internal-gl",
+  "tool": "get_journal_entries",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "account": "2100"
+  },
+  "ok": true,
+  "result": [
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-03",
+      "je_id": "JE-4002",
+      "account": 2100,
+      "name": "應付費用 Accrued Expenses",
+      "description": "沖回3月應計 (發票已到並支付)",
+      "debit": 200000,
+      "credit": 0,
+      "source": "Bank"
+    }
+  ]
+}

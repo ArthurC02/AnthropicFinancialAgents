@@ -1,0 +1,32 @@
+{
+  "server": "capiq",
+  "tool": "get_market_events",
+  "args": {},
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "date": "2026-06-17",
+      "headline": "Vertiv 估值升至約 51x EV/EBITDA",
+      "detail": "backlog>$15B;NVIDIA 參考設計;AI 資料中心散熱需求強勁"
+    },
+    {
+      "ticker": "TSM",
+      "date": "2026-04-16",
+      "headline": "台積電 Q1'26 財報優於市場預期",
+      "detail": "營收 US$35.9bn (+40.6% YoY);毛利率 66.2%;Q2 指引強"
+    },
+    {
+      "ticker": "NVDA",
+      "date": "2026-06-10",
+      "headline": "GPU TDP 持續上升帶動液冷需求",
+      "detail": "資料中心散熱 TAM 擴張;利多 VRT/NVT 等散熱供應鏈"
+    },
+    {
+      "ticker": "2308.TW",
+      "date": "2026-06-05",
+      "headline": "台達電 AI 基礎設施再評價",
+      "detail": "1 年報酬約 +454%;電源+散熱一體;注意追高風險"
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "server": "internal-gl",
+  "tool": "get_trial_balance",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "period": "2026-04"
+  },
+  "ok": true,
+  "result": {
+    "entity": "Aurora Capital Management LLC",
+    "period": "2026-04",
+    "status": "pre-close",
+    "currency": "USD",
+    "lines": [
+      {
+        "account": "1000",
+        "name": "現金 Cash",
+        "type": "Asset",
+        "normal_balance": "Dr",
+        "prior_ytd": 8000000,
+        "current_ytd": 7550000,
+        "movement": -450000,
+        "movement_pct": -0.0563
+      },
+      {
+        "account": "1100",
+        "name": "應收管理費 Mgmt Fees Receivable",
+        "type": "Asset",
+        "normal_balance": "Dr",
+        "prior_ytd": 3000000,
+        "current_ytd": 3200000,
+        "movement": 200000,
+        "movement_pct": 0.0667
+      },
+      {
+        "account": "1200",
+        "name": "預付費用 Prepaid Expenses",
+        "type": "Asset",
+        "normal_balance": "Dr",
+        "prior_ytd": 600000,
+        "current_ytd": 600000,
+        "movement": 0,
+        "movement_pct": 0.0
+      },
+      {
+        "account": "1500",
+        "name": "固定資產淨 Fixed Assets net",
+        "type": "Asset",
+        "normal_balance": "Dr",
+        "prior_ytd": 1400000,
+        "current_ytd": 1350000,
+        "movement": -50000,
+        "movement_pct": -0.0357
+      },
+      {
+        "account": "2000",
+        "name": "應付帳款 Accounts Payable",
+        "type": "Liability",
+        "normal_balance": "Cr",
+        "prior_ytd": 900000,
+        "current_ytd": 1100000,
+        "movement": 200000,
+        "movement_pct": 0.2222
+      },
+      {
+        "account": "2100",
+        "name": "應付費用 Accrued Expenses",
+        "type": "Liability",
+        "normal_balance": "Cr",
+        "prior_ytd": 1200000,
+        "current_ytd": 1000000,
+        "movement": -200000,
+        "movement_pct": -0.1667
+      },
+      {
+        "account": "2200",
+        "name": "遞延收入 Deferred Revenue",
+        "type": "Liability",
+        "normal_balance": "Cr",
+        "prior_ytd": 500000,
+        "current_ytd": 400000,
+        "movement": -100000,
+        "movement_pct": -0.2
+      },
+      {
+        "account": "3000",
+        "name": "成員資本 Members Capital",
+        "type": "Equity",
+        "normal_balance": "Cr",
+        "prior_ytd": 8000000,
+        "current_ytd": 8000000,
+        "movement": 0,
+        "movement_pct": 0.0
+      },
+      {
+        "account": "3100",
+        "name": "期初保留盈餘 Retained Earnings BOY",
+        "type": "Equity",
+        "normal_balance": "Cr",
+        "prior_ytd": 2000000,
+        "current_ytd": 2000000,
+        "movement": 0,
+        "movement_pct": 0.0
+      },
+      {
+        "account": "4000",
+        "name": "管理費收入 Management Fee Income",
+        "type": "Revenue",
+        "normal_balance": "Cr",
+        "prior_ytd": 6300000,
+        "current_ytd": 8500000,
+        "movement": 2200000,
+        "movement_pct": 0.3492
+      },
+      {
+        "account": "4100",
+        "name": "其他收入 Other Income",
+        "type": "Revenue",
+        "normal_balance": "Cr",
+        "prior_ytd": 300000,
+        "current_ytd": 380000,
+        "movement": 80000,
+        "movement_pct": 0.2667
+      },
+      {
+        "account": "6000",
+        "name": "薪酬 Compensation",
+        "type": "Expense",
+        "normal_balance": "Dr",
+        "prior_ytd": 4500000,
+        "current_ytd": 6000000,
+        "movement": 1500000,
+        "movement_pct": 0.3333
+      },
+      {
+        "account": "6100",
+        "name": "租金 Rent",
+        "type": "Expense",
+        "normal_balance": "Dr",
+        "prior_ytd": 600000,
+        "current_ytd": 800000,
+        "movement": 200000,
+        "movement_pct": 0.3333
+      },
+      {
+        "account": "6200",
+        "name": "專業服務費 Professional Fees",
+        "type": "Expense",
+        "normal_balance": "Dr",
+        "prior_ytd": 400000,
+        "current_ytd": 750000,
+        "movement": 350000,
+        "movement_pct": 0.875
+      },
+      {
+        "account": "6300",
+        "name": "資訊技術 Technology",
+        "type": "Expense",
+        "normal_balance": "Dr",
+        "prior_ytd": 300000,
+        "current_ytd": 400000,
+        "movement": 100000,
+        "movement_pct": 0.3333
+      },
+      {
+        "account": "6400",
+        "name": "差旅 Travel",
+        "type": "Expense",
+        "normal_balance": "Dr",
+        "prior_ytd": 150000,
+        "current_ytd": 350000,
+        "movement": 200000,
+        "movement_pct": 1.3333
+      },
+      {
+        "account": "6500",
+        "name": "其他營運費用 Other Opex",
+        "type": "Expense",
+        "normal_balance": "Dr",
+        "prior_ytd": 250000,
+        "current_ytd": 330000,
+        "movement": 80000,
+        "movement_pct": 0.32
+      },
+      {
+        "account": "6600",
+        "name": "折舊 Depreciation",
+        "type": "Expense",
+        "normal_balance": "Dr",
+        "prior_ytd": 0,
+        "current_ytd": 50000,
+        "movement": 50000,
+        "movement_pct": null
+      }
+    ],
+    "total_debits": 21380000.0,
+    "total_credits": 21380000.0,
+    "difference": 0.0,
+    "balanced": true
+  }
+}

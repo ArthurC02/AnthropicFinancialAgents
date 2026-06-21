@@ -1,0 +1,18 @@
+{
+  "server": "capiq",
+  "tool": "get_quote",
+  "args": {
+    "ticker": "AAPL"
+  },
+  "ok": true,
+  "result": {
+    "ticker": "AAPL",
+    "name": "Apple Inc.",
+    "price": 230.0,
+    "currency": "USD",
+    "mktcap_usd_bn": 3500,
+    "week52_low": 170.0,
+    "week52_high": 260.0,
+    "as_of": "2026-06-18"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "server": "internal-gl",
+  "tool": "get_account_balance",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "account": "6200",
+    "period": "2026-04"
+  },
+  "ok": true,
+  "result": {
+    "entity": "Aurora Capital Management LLC",
+    "period": "2026-04",
+    "account": "6200",
+    "name": "專業服務費 Professional Fees",
+    "normal_balance": "Dr",
+    "prior_ytd": 400000,
+    "current_ytd": 750000,
+    "movement": 350000
+  }
+}

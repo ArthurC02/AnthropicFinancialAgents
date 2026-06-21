@@ -1,0 +1,33 @@
+{
+  "server": "internal-gl",
+  "tool": "get_journal_entries",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "account": "6200"
+  },
+  "ok": true,
+  "result": [
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-08",
+      "je_id": "JE-4012",
+      "account": 6200,
+      "name": "專業服務費 Professional Fees",
+      "description": "外部法律顧問費用 (併購盡調)",
+      "debit": 220000,
+      "credit": 0,
+      "source": "AP"
+    },
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-21",
+      "je_id": "JE-4025",
+      "account": 6200,
+      "name": "專業服務費 Professional Fees",
+      "description": "FY2026 審計進度帳單",
+      "debit": 130000,
+      "credit": 0,
+      "source": "AP"
+    }
+  ]
+}

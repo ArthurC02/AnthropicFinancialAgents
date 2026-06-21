@@ -1,0 +1,28 @@
+{
+  "server": "daloopa",
+  "tool": "get_line_items",
+  "args": {
+    "ticker": "VRT",
+    "period": "FY2025",
+    "statement": "income_statement"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "income_statement",
+      "line_item": "Revenue",
+      "value": 8.0,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "statement": "income_statement",
+      "line_item": "Operating Profit",
+      "value": 1.5,
+      "unit": "USD bn"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "server": "daloopa",
+  "tool": "get_line_items",
+  "args": {
+    "ticker": "TSM",
+    "period": "Q1-2026",
+    "statement": "income_statement"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "income_statement",
+      "line_item": "Revenue (NT$bn)",
+      "value": 1134.1,
+      "unit": "NTD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "income_statement",
+      "line_item": "Revenue (US$bn)",
+      "value": 35.9,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "income_statement",
+      "line_item": "Gross Profit (US$bn)",
+      "value": 23.77,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "income_statement",
+      "line_item": "Net Income (NT$bn)",
+      "value": 572.48,
+      "unit": "NTD bn"
+    }
+  ]
+}

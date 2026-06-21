@@ -1,0 +1,53 @@
+{
+  "server": "factset",
+  "tool": "get_fundamentals",
+  "args": {
+    "ticker": "VRT",
+    "period": "FY2025"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "metric": "revenue",
+      "value": 8.0,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "metric": "gross_margin",
+      "value": 0.35,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "metric": "op_margin",
+      "value": 0.188,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "metric": "ebitda",
+      "value": 1.7,
+      "unit": "USD bn"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "metric": "revenue_yoy",
+      "value": 0.28,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "VRT",
+      "period": "FY2025",
+      "metric": "net_debt",
+      "value": 2.0,
+      "unit": "USD bn"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "server": "daloopa",
+  "tool": "get_line_items",
+  "args": {
+    "ticker": "TSM",
+    "period": "Q1-2026",
+    "statement": "revenue_mix_node"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_node",
+      "line_item": "3nm (N3)",
+      "value": 0.25,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_node",
+      "line_item": "5nm (N5)",
+      "value": 0.36,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_node",
+      "line_item": "7nm",
+      "value": 0.13,
+      "unit": "ratio"
+    },
+    {
+      "ticker": "TSM",
+      "period": "Q1-2026",
+      "statement": "revenue_mix_node",
+      "line_item": "Advanced (<=7nm)",
+      "value": 0.74,
+      "unit": "ratio"
+    }
+  ]
+}

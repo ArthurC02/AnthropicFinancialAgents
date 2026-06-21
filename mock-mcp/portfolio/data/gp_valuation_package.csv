@@ -1,0 +1,6 @@
+fund,as_of,company,cost,prior_fv,reported_fv,qoq_pct,method,last_updated,support
+"Aurora Growth Fund III, L.P.",2026-03-31,Helios Software,60000000,90000000,120000000,0.333,market_multiple,2026-03,附倍數表;2025-09 新一輪隱含估值支持
+"Aurora Growth Fund III, L.P.",2026-03-31,Orion Logistics,50000000,55000000,55000000,0.0,recent_round,2026-03,沿用最近一輪 (2025-06) 價格
+"Aurora Growth Fund III, L.P.",2026-03-31,Nova Biotech,40000000,40000000,65000000,0.625,other,2026-03,管理層估計;無新一輪;無觸發事件;無方法佐證
+"Aurora Growth Fund III, L.P.",2026-03-31,Titan Manufacturing,70000000,60000000,60000000,0.0,dcf,2026-03,減損至成本以下;附 DCF
+"Aurora Growth Fund III, L.P.",2026-03-31,Zephyr Retail,30000000,30000000,30000000,0.0,cost,2025-03,自 2025-03 起未再做公允價值複核 (連續 4 季未更新)

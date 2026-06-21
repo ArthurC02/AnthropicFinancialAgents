@@ -1,0 +1,6 @@
+ticker,name,price,currency,mktcap_usd_bn,week52_low,week52_high,as_of
+VRT,Vertiv Holdings,320.00,USD,122,80.00,340.00,2026-06-18
+TSM,Taiwan Semiconductor (ADR),210.00,USD,1090,140.00,225.00,2026-06-18
+NVDA,NVIDIA Corp.,160.00,USD,3900,90.00,175.00,2026-06-18
+AAPL,Apple Inc.,230.00,USD,3500,170.00,260.00,2026-06-18
+MSFT,Microsoft Corp.,470.00,USD,3500,380.00,500.00,2026-06-18

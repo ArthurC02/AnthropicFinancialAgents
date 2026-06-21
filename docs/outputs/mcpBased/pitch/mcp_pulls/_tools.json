@@ -1,0 +1,13 @@
+{
+  "server": "daloopa",
+  "tools": [
+    {
+      "name": "list_coverage",
+      "description": "List tickers, periods and statement groups available in this mock."
+    },
+    {
+      "name": "get_line_items",
+      "description": "Return granular as-reported line items for a ticker."
+    }
+  ]
+}

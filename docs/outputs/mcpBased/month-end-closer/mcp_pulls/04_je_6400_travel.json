@@ -1,0 +1,22 @@
+{
+  "server": "internal-gl",
+  "tool": "get_journal_entries",
+  "args": {
+    "entity": "Aurora Capital Management LLC",
+    "account": "6400"
+  },
+  "ok": true,
+  "result": [
+    {
+      "entity": "Aurora Capital Management LLC",
+      "date": "2026-04-12",
+      "je_id": "JE-4018",
+      "account": 6400,
+      "name": "差旅 Travel",
+      "description": "投資人年會及募資差旅",
+      "debit": 200000,
+      "credit": 0,
+      "source": "AP"
+    }
+  ]
+}

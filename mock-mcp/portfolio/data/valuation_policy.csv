@@ -1,0 +1,5 @@
+fund,policy_id,rule
+"Aurora Growth Fund III, L.P.",P1,每一部位每季都要做公允價值複核;同一估值連續超過 2 季未更新 (stale) 須重新複核;不得續抱舊值
+"Aurora Growth Fund III, L.P.",P2,任何上調 (mark-up) 須有可佐證方法 (可比公司/DCF/近期交易) 或觸發事件 (新一輪/重大事件);單憑管理層估計不足
+"Aurora Growth Fund III, L.P.",P3,估值高於最近一輪募資價格者須經估值委員會/董事會核准
+"Aurora Growth Fund III, L.P.",P4,複核後若 GP 報告值不符政策以政策調整後值計算 NAV 與分配;差異列入給 IR/CCO 的複核意見

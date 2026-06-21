@@ -1,0 +1,25 @@
+{
+  "server": "internal-gl",
+  "tools": [
+    {
+      "name": "list_entities",
+      "description": "List the entities/funds available in this ledger and the periods on file."
+    },
+    {
+      "name": "get_trial_balance",
+      "description": "Return the trial balance for an entity and period (YYYY-MM)."
+    },
+    {
+      "name": "get_journal_entries",
+      "description": "Return journal-entry lines, optionally filtered."
+    },
+    {
+      "name": "get_account_balance",
+      "description": "Return the prior and current YTD balance for a single GL account."
+    },
+    {
+      "name": "get_gl_positions",
+      "description": "Return position-level GL balances for a fund (the GL side of a reconciliation)."
+    }
+  ]
+}

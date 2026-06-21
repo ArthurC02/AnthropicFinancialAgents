@@ -1,0 +1,12 @@
+entity,date,je_id,account,name,description,debit,credit,source
+Aurora Capital Management LLC,2026-04-30,JE-4001,6000,薪酬 Compensation,4月固定薪資與福利,1500000,0,Payroll
+Aurora Capital Management LLC,2026-04-30,JE-4030,4000,管理費收入 Management Fee Income,4月管理費收入認列,0,2200000,Billing
+Aurora Capital Management LLC,2026-04-01,JE-4005,6100,租金 Rent,Q2 辦公室租金及擴租調整,200000,0,AP
+Aurora Capital Management LLC,2026-04-08,JE-4012,6200,專業服務費 Professional Fees,外部法律顧問費用 (併購盡調),220000,0,AP
+Aurora Capital Management LLC,2026-04-21,JE-4025,6200,專業服務費 Professional Fees,FY2026 審計進度帳單,130000,0,AP
+Aurora Capital Management LLC,2026-04-12,JE-4018,6400,差旅 Travel,投資人年會及募資差旅,200000,0,AP
+Aurora Capital Management LLC,2026-04-15,JE-4022,6300,資訊技術 Technology,雲端基礎設施與資安訂閱,100000,0,AP
+Aurora Capital Management LLC,2026-04-03,JE-4002,2100,應付費用 Accrued Expenses,沖回3月應計 (發票已到並支付),200000,0,Bank
+Aurora Capital Management LLC,2026-04-30,JE-4031,6600,折舊 Depreciation,固定資產月折舊,50000,0,Manual
+Aurora Capital Management LLC,2026-04-18,JE-4020,2000,應付帳款 Accounts Payable,供應商發票入帳 (淨增),0,200000,AP
+Aurora Capital Management LLC,2026-04-10,JE-4015,6500,其他營運費用 Other Opex,辦公與雜項營運支出,80000,0,AP

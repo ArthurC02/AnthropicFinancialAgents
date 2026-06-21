@@ -1,0 +1,14 @@
+{
+  "server": "crm",
+  "tool": "list_clients",
+  "args": {},
+  "ok": true,
+  "result": [
+    {
+      "client_id": "CL-1001",
+      "name": "王大明 (Wang Da-ming)",
+      "advisor": "(you)",
+      "upcoming_meeting": "2026-06-22"
+    }
+  ]
+}

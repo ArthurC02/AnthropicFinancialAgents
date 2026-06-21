@@ -1,0 +1,24 @@
+{
+  "server": "factset",
+  "tool": "get_prices",
+  "args": {
+    "ticker": "TSM"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "TSM",
+      "date": "2026-04-15",
+      "close": 213.0,
+      "currency": "USD",
+      "note": "pre-earnings (ADR)"
+    },
+    {
+      "ticker": "TSM",
+      "date": "2026-04-16",
+      "close": 206.4,
+      "currency": "USD",
+      "note": "post-earnings reaction ~-3.1%"
+    }
+  ]
+}

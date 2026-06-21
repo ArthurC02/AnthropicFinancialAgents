@@ -1,0 +1,109 @@
+{
+  "server": "internal-gl",
+  "tool": "get_gl_positions",
+  "args": {
+    "fund": "Aurora Growth Fund III",
+    "as_of": "2026-04-30"
+  },
+  "ok": true,
+  "result": {
+    "fund": "Aurora Growth Fund III",
+    "as_of": "2026-04-30",
+    "basis": "trade-date",
+    "currency": "USD",
+    "source": "GL",
+    "positions": [
+      {
+        "fund": "Aurora Growth Fund III",
+        "as_of": "2026-04-30",
+        "sec_id": "EQ-AAPL",
+        "name": "Apple Inc.",
+        "asset_class": "Equity",
+        "qty_face": 50000,
+        "mv_usd": 10000000,
+        "source": "GL"
+      },
+      {
+        "fund": "Aurora Growth Fund III",
+        "as_of": "2026-04-30",
+        "sec_id": "EQ-MSFT",
+        "name": "Microsoft Corp.",
+        "asset_class": "Equity",
+        "qty_face": 20000,
+        "mv_usd": 8000000,
+        "source": "GL"
+      },
+      {
+        "fund": "Aurora Growth Fund III",
+        "as_of": "2026-04-30",
+        "sec_id": "EQ-VRT",
+        "name": "Vertiv Holdings",
+        "asset_class": "Equity",
+        "qty_face": 50000,
+        "mv_usd": 5000000,
+        "source": "GL"
+      },
+      {
+        "fund": "Aurora Growth Fund III",
+        "as_of": "2026-04-30",
+        "sec_id": "EQ-NVDA",
+        "name": "NVIDIA Corp.",
+        "asset_class": "Equity",
+        "qty_face": 10000,
+        "mv_usd": 12000000,
+        "source": "GL"
+      },
+      {
+        "fund": "Aurora Growth Fund III",
+        "as_of": "2026-04-30",
+        "sec_id": "EQ-SPY",
+        "name": "SPDR S&P 500 ETF",
+        "asset_class": "Equity",
+        "qty_face": 5000,
+        "mv_usd": 2000000,
+        "source": "GL"
+      },
+      {
+        "fund": "Aurora Growth Fund III",
+        "as_of": "2026-04-30",
+        "sec_id": "FI-XYZ",
+        "name": "XYZ Corp 5.5% 2030",
+        "asset_class": "Fixed Income",
+        "qty_face": 20000000,
+        "mv_usd": 20000000,
+        "source": "GL"
+      },
+      {
+        "fund": "Aurora Growth Fund III",
+        "as_of": "2026-04-30",
+        "sec_id": "FI-GB123",
+        "name": "Govt Bond 2.0% 2031",
+        "asset_class": "Fixed Income",
+        "qty_face": 15500000,
+        "mv_usd": 15500000,
+        "source": "GL"
+      },
+      {
+        "fund": "Aurora Growth Fund III",
+        "as_of": "2026-04-30",
+        "sec_id": "FI-BUND",
+        "name": "Bund EUR 1.5% 2032",
+        "asset_class": "Fixed Income",
+        "qty_face": 8333333,
+        "mv_usd": 9000000,
+        "source": "GL"
+      },
+      {
+        "fund": "Aurora Growth Fund III",
+        "as_of": "2026-04-30",
+        "sec_id": "CA-USD",
+        "name": "USD Cash",
+        "asset_class": "Cash",
+        "qty_face": "",
+        "mv_usd": 3000000,
+        "source": "GL"
+      }
+    ],
+    "total_mv_usd": 84500000
+  }
+}

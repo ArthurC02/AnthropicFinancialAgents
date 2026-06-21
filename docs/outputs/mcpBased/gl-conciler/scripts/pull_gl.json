@@ -1,0 +1,10 @@
+{
+  "server": "mock-mcp/internal-gl/server.py",
+  "out_dir": "docs/outputs/mcpBased/gl-conciler/mcp_pulls",
+  "calls": [
+    {"tool": "list_entities", "args": {}, "save_as": "01_gl_list_entities"},
+    {"tool": "get_gl_positions",
+     "args": {"fund": "Aurora Growth Fund III", "as_of": "2026-04-30"},
+     "save_as": "02_gl_positions"}
+  ]
+}

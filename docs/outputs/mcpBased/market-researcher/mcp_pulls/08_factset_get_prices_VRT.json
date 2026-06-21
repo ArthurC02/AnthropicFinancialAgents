@@ -1,0 +1,24 @@
+{
+  "server": "factset",
+  "tool": "get_prices",
+  "args": {
+    "ticker": "VRT"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "VRT",
+      "date": "2025-06-18",
+      "close": 117.0,
+      "currency": "USD",
+      "note": "1y ago"
+    },
+    {
+      "ticker": "VRT",
+      "date": "2026-06-18",
+      "close": 320.0,
+      "currency": "USD",
+      "note": "current (~+173% 1y)"
+    }
+  ]
+}

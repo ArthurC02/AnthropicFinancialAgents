@@ -1,0 +1,17 @@
+{
+  "server": "screening",
+  "tools": [
+    {
+      "name": "screen_name",
+      "description": "Screen a name against the sanctions & PEP lists with identifier-aware matching."
+    },
+    {
+      "name": "get_sanctions_list",
+      "description": "Return the full sanctions watchlist (OFAC/UN/EU style)."
+    },
+    {
+      "name": "get_pep_list",
+      "description": "Return the full politically-exposed-persons (PEP) watchlist."
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "server": "capiq",
+  "tool": "get_market_events",
+  "args": {
+    "ticker": "TSM"
+  },
+  "ok": true,
+  "result": [
+    {
+      "ticker": "TSM",
+      "date": "2026-04-16",
+      "headline": "台積電 Q1'26 財報優於市場預期",
+      "detail": "營收 US$35.9bn (+40.6% YoY);毛利率 66.2%;Q2 指引強"
+    }
+  ]
+}

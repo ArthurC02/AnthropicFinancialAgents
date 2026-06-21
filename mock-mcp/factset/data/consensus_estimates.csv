@@ -1,0 +1,9 @@
+ticker,period,metric,consensus,actual,prior_guidance
+TSM,Q1-2026,revenue,35.5,35.90,34.6-35.8
+TSM,Q1-2026,gross_margin,0.64,0.662,0.63-0.65
+TSM,Q1-2026,eps_ntd,20.88,22.08,n/a
+TSM,Q1-2026,eps_adr,3.26,3.49,n/a
+TSM,Q2-2026,revenue,38.1,,39.0-40.2
+TSM,Q2-2026,gross_margin,n/a,,0.655-0.675
+VRT,FY2026,revenue,10.9,,n/a
+VRT,FY2026,eps,3.60,,n/a

@@ -1,0 +1,11 @@
+fund,key,value
+"Aurora Growth Fund III, L.P.",committed,500000000
+"Aurora Growth Fund III, L.P.",contributed,300000000
+"Aurora Growth Fund III, L.P.",invested_cost,250000000
+"Aurora Growth Fund III, L.P.",fees,50000000
+"Aurora Growth Fund III, L.P.",distributions_to_date,40000000
+"Aurora Growth Fund III, L.P.",waterfall_type,European whole-fund
+"Aurora Growth Fund III, L.P.",preferred_return,0.08
+"Aurora Growth Fund III, L.P.",catchup,1.00
+"Aurora Growth Fund III, L.P.",carry,0.20
+"Aurora Growth Fund III, L.P.",preferred_accrued_to_date,35000000

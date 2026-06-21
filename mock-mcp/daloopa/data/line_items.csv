@@ -1,0 +1,27 @@
+ticker,period,statement,line_item,value,unit
+TSM,Q1-2026,revenue_mix_platform,HPC,0.61,ratio
+TSM,Q1-2026,revenue_mix_platform,Smartphone,0.26,ratio
+TSM,Q1-2026,revenue_mix_platform,IoT,0.06,ratio
+TSM,Q1-2026,revenue_mix_platform,Automotive,0.04,ratio
+TSM,Q1-2026,revenue_mix_platform,DCE,0.01,ratio
+TSM,Q1-2026,revenue_mix_platform,Other,0.02,ratio
+TSM,Q1-2026,revenue_mix_node,3nm (N3),0.25,ratio
+TSM,Q1-2026,revenue_mix_node,5nm (N5),0.36,ratio
+TSM,Q1-2026,revenue_mix_node,7nm,0.13,ratio
+TSM,Q1-2026,revenue_mix_node,Advanced (<=7nm),0.74,ratio
+TSM,Q1-2026,income_statement,Revenue (NT$bn),1134.10,NTD bn
+TSM,Q1-2026,income_statement,Revenue (US$bn),35.90,USD bn
+TSM,Q1-2026,income_statement,Gross Profit (US$bn),23.77,USD bn
+TSM,Q1-2026,income_statement,Net Income (NT$bn),572.48,NTD bn
+TSM,Q1-2026,guidance,Capex FY2026,52-56,USD bn
+TSM,Q1-2026,guidance,Advanced process share of capex,0.70-0.80,ratio
+VRT,FY2025,segment_revenue,Americas,4.6,USD bn
+VRT,FY2025,segment_revenue,APAC,1.8,USD bn
+VRT,FY2025,segment_revenue,EMEA,1.6,USD bn
+VRT,FY2025,product_revenue,AC & DC Power,3.0,USD bn
+VRT,FY2025,product_revenue,Thermal Management,2.5,USD bn
+VRT,FY2025,product_revenue,Integrated Rack & Modular,1.5,USD bn
+VRT,FY2025,product_revenue,Services,1.0,USD bn
+VRT,FY2025,income_statement,Revenue,8.0,USD bn
+VRT,FY2025,income_statement,Operating Profit,1.5,USD bn
+VRT,FY2025,balance_sheet,Backlog,15.0,USD bn
