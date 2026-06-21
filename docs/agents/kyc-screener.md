@@ -67,6 +67,20 @@ kyc-doc-parse ──► kyc-rules ──► (screening MCP)
                                  └─────────────────────────┘
                                   安全靠：拆分＋分權
 ```
+> 🎯 招牌設計：KYC 的輸入是全 10 支裡最髒的領域（護照、設立文件、UBO 股權圖），所以 doc-reader 的 output_schema 切得最細——country 限兩碼大寫（`^[A-Z]{2}$`）、每個 UBO 的 pct 限數字，硬把不可信文件壓成嚴格結構。配上「不下決定」守則：agent 只建議風險評等，真正放行是合規官
+
+**改哪裡（快速 map）**
+
+| 想改 | 動這個檔 |
+|---|---|
+| 流程／stop 點／守則 | `agents/kyc-screener.md` 的 Workflow／Guardrails |
+| 用哪些 skill | 同檔的 Skills 行 |
+| KYC 規則／風險評等門檻 | `kyc-rules/SKILL.md` 真本 → sync |
+| 幾個 sub-agent | `cookbooks/kyc-screener/agent.yaml` 的 callable_agents |
+| doc-reader 輸出限制 | `subagents/doc-reader.yaml` 的 output_schema |
+
+> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
+
 > Claude 託管代理（CMA, Claude Managed Agents），deploy 到 Anthropic 雲端、無頭自動跑
 
 **跨 agent**　後台作業家族 ┄ 跟〔對帳〕〔結帳〕並列，各管一塊

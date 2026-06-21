@@ -62,7 +62,19 @@ nav-tieout ──► (audit-xls / xlsx-author)
                         │  └ flagger      唯一可寫 │
                         └──────────────────────────┘
 ```
-> 它本身就是「驗證者」——這個 agent 的工作從頭到尾就是 tie-out（逐欄核對）
+> 🎯 招牌設計：整支 agent 本身就是「驗證者」——它的工作就是 tie-out（逐欄把 LP 對帳單對 NAV pack），驗證是核心功能、不是附加步驟。statement-reader 的 schema 可一次收到 2000 個 LP，撐得住批量分送場景
+
+**改哪裡（快速 map）**
+
+| 想改 | 動這個檔 |
+|---|---|
+| 流程／stop 點／守則 | `agents/statement-auditor.md` 的 Workflow／Guardrails |
+| 用哪些 skill | 同檔的 Skills 行 |
+| 欄位對應／容差 | `nav-tieout/SKILL.md` 真本 → sync |
+| 幾個 sub-agent | `cookbooks/statement-auditor/agent.yaml` 的 callable_agents |
+| statement-reader 輸出限制 | `subagents/statement-reader.yaml` 的 output_schema |
+
+> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
 
 **跨 agent**　基金行政家族 ┄ 跟〔valuation-reviewer〕一樣都是季末/分送前的把關
 

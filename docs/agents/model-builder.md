@@ -51,7 +51,7 @@
 (dcf-model / lbo-model / 3-statement-model / comps-analysis) ──► audit-xls
 依模型類型擇一建                                                  稽核
 ```
-**Skill（共 5 支）**　`dcf-model` 折現估值 · `lbo-model` 槓桿收購 · `3-statement-model` 三表 · `comps-analysis` 同業倍數 · `audit-xls` 稽核Excel
+**Skill（共 6 支）**　`dcf-model` 折現估值 · `lbo-model` 槓桿收購 · `3-statement-model` 三表 · `comps-analysis` 同業倍數 · `audit-xls` 稽核Excel · `xlsx-author` 產出 Excel（builder 寫檔用）
 **可加掛的模型**　現在是 dcf／lbo／3-statement／comps;要建併購案可加掛 `merger-model`、SaaS／訂閱型標的可加 `unit-economics`（怎麼掛見 [Models.md](../Models.md)）
 **MCP（2 個）**　`capiq` · `daloopa`（`capiq` 是 placeholder（佔位）— 可改接 repo 內建的 sp-global（S&P）connector;`daloopa` 是公開供應商）
 
@@ -67,7 +67,19 @@
                         │  └ auditor     稽核      │
                         └──────────────────────────┘
 ```
-> 驗證特色：稽核（auditor）獨立檢查——跑平衡檢查、確認每個 output 都能 trace 回 input
+> 🎯 招牌設計：驗證 = 獨立的 auditor 重查那份 Excel——跑平衡檢查、把每個 output 追回 input。值得注意：這支沒有「髒文件 reader」，因為 input 全來自可信 MCP（capiq／daloopa），所以 data-puller 的 schema 是「乾淨結構化交棒」而非防注入。builder 拿到 bash 是刻意的（要跑算）。
+
+**改哪裡（快速 map）**
+
+| 想改 | 動這個檔 |
+|---|---|
+| 流程／stop 點／守則 | `agents/model-builder.md` 的 Workflow／Guardrails |
+| 用哪些模型/skill | 同檔的 Skills 行（加掛新模型見 [Models.md](../Models.md)） |
+| 建模慣例（WACC／色碼） | `dcf-model`／`lbo-model` 等 SKILL.md → sync |
+| 幾個 sub-agent | `cookbooks/model-builder/agent.yaml` 的 callable_agents |
+| data-puller 結構化輸出 | `subagents/data-puller.yaml` 的 output_schema |
+
+> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
 
 **跨 agent**　研究與建模家族 ┄ 跟〔earnings-reviewer〕（更新既有模型）劃清界線
 

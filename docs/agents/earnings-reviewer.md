@@ -55,7 +55,7 @@
 earnings-analysis ──► model-update ──► audit-xls ──► morning-note
 讀電話會議          更新模型         模型QC        草擬筆記
 ```
-**Skill（共 5 支）**　`earnings-analysis` 讀會議 · `model-update` 更新模型 · `audit-xls` 模型QC · `morning-note` 寫筆記 · `earnings-preview` 財報前瞻
+**Skill（共 6 支）**　`earnings-analysis` 讀會議 · `model-update` 更新模型 · `audit-xls` 模型QC · `morning-note` 寫筆記 · `earnings-preview` 財報前瞻 · `xlsx-author` 產 Excel（note-writer 寫檔用）
 **MCP（2 個）**　`factset` · `daloopa`（都是公開財務資料供應商，core plugin 已經定義好）
 
 > 工具：讀＋**寫檔**＋FactSet/Daloopa MCP　|　模型：opus-4-7
@@ -71,6 +71,20 @@ earnings-analysis ──► model-update ──► audit-xls ──► morning-n
                             └──────────────────────────┘
 ```
 > 跟 meeting-prep 一樣：plugin 版的主代理可以直接寫檔（研究草稿、風險中），CMA 版還是把寫檔權隔離給 note-writer
+
+> 🎯 招牌設計：這支有真正的「髒文件 reader」——逐字稿是外來不可信內容，所以 transcript-reader 設成 `mcp_servers:[]` ＋ output_schema，把它框死來防 prompt injection。驗證走「自查」：audit-xls 做 foot check（平衡驗算），不另外設獨立 critic。
+
+**改哪裡（快速 map）**
+
+| 想改 | 動這個檔 |
+|---|---|
+| 流程／stop 點／守則 | `agents/earnings-reviewer.md` 的 Workflow／Guardrails |
+| 用哪些 skill | 同檔的 Skills 行 |
+| 模型更新邏輯／筆記格式 | `model-update`／`morning-note` 的 SKILL.md → sync |
+| 幾個 sub-agent | `cookbooks/earnings-reviewer/agent.yaml` 的 callable_agents |
+| transcript-reader 輸出限制 | `subagents/transcript-reader.yaml` 的 output_schema |
+
+> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
 
 **跨 agent**　研究與建模家族 ┄ 跟〔market-researcher〕〔model-builder〕互補;初次納入追蹤交給別人做
 

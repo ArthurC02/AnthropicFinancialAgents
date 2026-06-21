@@ -66,7 +66,19 @@ accrual-schedule ──► roll-forward ──► variance-commentary ──► 
                         │  └ poster        唯一可寫 │
                         └──────────────────────────┘
 ```
-> 🆕 驗證特色：**沒有外部 critic**——自我驗證直接內建在「結轉一定要對得上（foot check）」這個檢查裡。因為結帳是在「把平衡表建起來」，不是在「找誤報」，所以驗證怎麼設計，是看任務性質而定
+> 🎯 招牌設計：沒有獨立 critic——驗證直接內建在結轉的「期初＋變動－沖回＝期末」foot check 裡。因為結帳是「建一張平衡的表」、不是「抓誤報」，驗證設計跟著任務性質走
+
+**改哪裡（快速 map）**
+
+| 想改 | 動這個檔 |
+|---|---|
+| 流程／stop 點／守則 | `agents/month-end-closer.md` 的 Workflow／Guardrails |
+| 用哪些 skill | 同檔的 Skills 行 |
+| 重大性門檻（5%）／應計結轉規則 | `variance-commentary`／`accrual-schedule`／`roll-forward` 的 SKILL.md → sync |
+| 幾個 sub-agent | `cookbooks/month-end-closer/agent.yaml` 的 callable_agents |
+| ledger-reader 輸出限制 | `subagents/ledger-reader.yaml` 的 output_schema |
+
+> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
 
 **跨 agent**　fund-admin 三兄弟 ┄ 對帳（gl-reconciler）╳ 本 agent（月底結帳）╳ 報表稽核
 
@@ -94,7 +106,7 @@ accrual-schedule ──► roll-forward ──► variance-commentary ──► 
 | 面向 | 評估 |
 |---|---|
 | **導入風險** | 🔴 高 — 月結直接影響財報數字跟財務誠信，雖然 agent 只產結帳包、要等控制員（controller）核准後才過帳，但底層的應計／結轉／差異一旦失真，就會污染對外財報。覆核擋得住錯，但風險本質是合規跟財務誠信，不是單純的品質問題。 |
-| **導入成本** | 🔴 高 — `internal-gl` 還是 placeholder（佔位），要接公司內部總帳（拉試算表／查分錄／查餘額）；還要客製應計排程、結轉規則、重大性門檻（預設五成分之一）跟「一定要說明」的科目清單，再加上分錄格式跟會計科目表（chart of accounts）。整合工程重、規則又多。 |
+| **導入成本** | 🔴 高 — `internal-gl` 還是 placeholder（佔位），要接公司內部總帳（拉試算表／查分錄／查餘額）；還要客製應計排程、結轉規則、重大性門檻（預設 `5%`）跟「一定要說明」的科目清單，再加上分錄格式跟會計科目表（chart of accounts）。整合工程重、規則又多。 |
 | **適用單位** | 基金行政（後台作業）、財務結帳／總帳部、控制（control）部門 |
 | **單位中角色** | 控制員（下指令＋核准過帳，唯一可過帳者）· 結帳會計（產結帳包＋覆核應計結轉）· 財務主管（簽核結帳包＋核重大差異說明） |
 

@@ -18,10 +18,13 @@
 | `comps-analysis` | financial-analysis | 可比公司倍數(comps) | model-builder · market-researcher · pitch-agent | ✅ 已掛 |
 | `model-update` | equity-research | 更新既有模型(財報後 plug 新數字) | earnings-reviewer | ✅ 已掛 |
 | `returns-analysis` | private-equity | IRR／MOIC 報酬 | valuation-reviewer | ✅ 已掛 |
+| `portfolio-monitoring` | private-equity | 投組監控:變異對預算/槓桿覆蓋率/KPI | valuation-reviewer | ✅ 已掛 |
 | `merger-model` | investment-banking | 併購 accretion／dilution(增稀釋) | **沒有 agent 預設掛** | ⚠️ 未掛 |
 | `unit-economics` | private-equity | 單位經濟分析(SaaS／訂閱型) | **沒有 agent 預設掛** | ⚠️ 未掛 |
 
 > ⚠️ **兩支「現成但沒被任何 agent 掛」的**:`merger-model`(併購模型)、`unit-economics`(單位經濟)。它們的 source 已經在 repo 裡,要用就照[第三段](#三實作把一個新模型掛進-agent)掛進去,不用從零寫。
+>
+> 📌 **pitch-agent 的眉角**:`comps-analysis`／`3-statement-model` 是寫在 plugin 劇本(兩個 surface 共用的 canonical prompt)裡,plugin 版會用;但 CMA 的 `subagents/modeler.yaml` 目前只掛 `dcf-model`／`lbo-model`。若要雲端(CMA)版也跑這兩支,得補進 `modeler.yaml`。
 
 ---
 
@@ -81,7 +84,7 @@ Layer 3  改「數字/假設」    → 執行時的 input,不是改 source      
 |---|---|---|---|
 | 🧮 model-builder | dcf · lbo · 3-statement · comps | `merger-model` · `unit-economics` | 要建併購案模型、或標的是 SaaS/訂閱型 |
 | 🎯 pitch-agent | dcf · lbo · 3-statement · comps | `merger-model` | 提案本身就是併購案,要算 accretion/dilution |
-| 💰 valuation-reviewer | returns-analysis | `unit-economics` | 想連被投組合的單位經濟一起複核 |
+| 💰 valuation-reviewer | returns-analysis · portfolio-monitoring | `unit-economics` | 想連被投組合的單位經濟一起複核 |
 | 📊 earnings-reviewer | model-update(只更新、不建新) | —(本來就不建模型) | — |
 
 > 📎 改 agent 的通用注意事項(真本 vs copy、一份劇本兩邊用、最小權限…)見 [Customizing.md](Customizing.md);各模型內部慣例見對應的 `vertical-plugins/.../skills/<model>/SKILL.md`。

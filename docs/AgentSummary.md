@@ -76,15 +76,38 @@
 
 ---
 
-## 三、兩條貫穿全部的設計原則
+## 三、五條貫穿全部的設計模式（從 10 支 source 歸納）
 
-**原則一：風險越高，越不讓助理自己動手**
+**模式 ①　Write 權跟著風險走——風險越高，越不讓 agent 自己動手**
 ```
 🟢🟡 前台／研究  → 產出只是內部草稿         → 助理可以自己存檔（較寬鬆）
 🔴   後台／合規  → 牽涉法規與帳目正確性     → 助理不能自己存檔，動作嚴格切開、分權
 ```
 
-**原則二：人永遠是最後拍板的人**
+**模式 ②　髒 reader vs 乾淨 puller（決定要不要防注入）**
+
+- 碰外來髒文件的（逐字稿／護照／對手對帳單／發票／LP 單／GP 包／客戶信／第三方報告）→ 那個 reader 一律 `mcp_servers:[]` ＋ output_schema 鎖死，注入指令活不下來。
+- input 全走可信 MCP 的（如 model-builder 的 data-puller）→ schema 只是「乾淨結構化交棒」，不是防注入。
+
+**模式 ③　schema 把「分類」鎖成 enum**
+
+讓 reader 連選項都不能自由發揮：gl 的 `suspected_cause`、valuation 的 `method`、gl reader 的 `status` 都是固定 enum——注入想塞自由文字也塞不進來。
+
+**模式 ④　驗證方式隨任務性質變**
+
+| Agent | 驗證設計 |
+|---|---|
+| model-builder | 獨立 auditor 重查那份檔 |
+| gl-reconciler | critic 拿可信源重算，濾誤報（對抗式） |
+| month-end-closer | 自我 foot check（期初＋變動＝期末），無 critic |
+| statement-auditor | agent 本身就是驗證者（tie-out 即工作） |
+| valuation-reviewer | 對照政策（marks vs policy） |
+| earnings／pitch | 自查（audit-xls／ib-check-deck QC） |
+| kyc-screener | 規則引擎＋篩查，最後合規官決定 |
+
+> 📎 這些模式的 source 細節與「怎麼改才不會破壞它們」見 [TechSummary.md](TechSummary.md) 跟 [Customizing.md](Customizing.md)。
+
+**模式 ⑤　人永遠最後拍板，簽核層級隨風險升高（顧問 → 分析師 → 控制員 → IR → IR+CCO）**
 ```
 所有助理都只「起草、建議」，從不自己決定：
  開戶 → 合規人員決定   過帳 → 控制員核准   發布 → 分析師簽核   寄送 → 主管簽核
@@ -155,5 +178,5 @@
 
 ---
 
-> 📎 想看單一助理的完整內容（工作流程／風險把關／技術架構／上線要補齊的東西／導入評估），見同資料夾各別文件（檔名是各助理的英文名，例如 `market-researcher.md`）。
+> 📎 想看單一助理的完整內容（工作流程／風險把關／技術架構／上線要補齊的東西／導入評估），見 `agents/` 子資料夾各別文件（檔名是各助理的英文名，例如 [agents/market-researcher.md](agents/market-researcher.md)）。
 > 📎 整體技術架構見 [TechSummary.md](TechSummary.md);模型清單與怎麼換見 [Models.md](Models.md);要動手改 agent 見 [Customizing.md](Customizing.md)。

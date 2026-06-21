@@ -65,6 +65,20 @@ returns-analysis ──► portfolio-monitoring ──► (ic-memo / xlsx-author
                         │  └ publisher      唯一可寫 │
                         └──────────────────────────┘
 ```
+> 🎯 招牌設計：這裡的驗證＝對照政策——把 GP 報的 marks 比對公司估值政策，不照單全收。package-reader 的 method 欄鎖成 enum（`market_multiple`／`dcf`／`recent_round`／`cost`／`other`），注入塞不進來。簽核是 IR＋CCO 雙簽，是全 10 支裡最高的簽核層級
+
+**改哪裡（快速 map）**
+
+| 想改 | 動這個檔 |
+|---|---|
+| 流程／stop 點／守則 | `agents/valuation-reviewer.md` 的 Workflow／Guardrails |
+| 用哪些 skill | 同檔的 Skills 行 |
+| 估值政策／carry waterfall 條款 | `portfolio-monitoring`／`returns-analysis` 的 SKILL.md → sync |
+| 幾個 sub-agent | `cookbooks/valuation-reviewer/agent.yaml` 的 callable_agents |
+| package-reader 輸出限制 | `subagents/package-reader.yaml` 的 output_schema |
+
+> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
+
 > 內部報酬率（IRR）、投入本金倍數（MOIC），這兩個都是私募基金（PE）拿來衡量績效的指標
 
 **跨 agent**　基金行政家族 ┄ 跟〔statement-auditor〕一樣是季末把關；跟〔model-builder〕（承做估值）劃清邊界
@@ -75,7 +89,7 @@ returns-analysis ──► portfolio-monitoring ──► (ic-memo / xlsx-author
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
 ```
 - 🔌 **接真實投組來源**：`portfolio` MCP 還是 placeholder（佔位，repo 裡沒定義）
-  - 外掛 → 新增 `plugins/vertical-plugins/private-equity/.mcp.json`（目前不存在）
+  - 外掛 → `plugins/vertical-plugins/private-equity/.mcp.json` 已存在但 `mcpServers` 是空的 `{}`，要在裡面補上 `portfolio` server 定義
   - CMA → 設 env var `PORTFOLIO_MCP_URL`（或改 `managed-agent-cookbooks/valuation-reviewer/agent.yaml`）
   - 🛠️ MCP 要做到：依基金/投組公司查估值輸入跟政策標記（給對照政策用；規格見 `portfolio-monitoring`）
 - 📐 **估值政策／waterfall 條款**：估值方法門檻、carry 分配條款 → `plugins/vertical-plugins/private-equity/skills/portfolio-monitoring/SKILL.md`、`returns-analysis/SKILL.md`

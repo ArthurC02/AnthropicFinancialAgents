@@ -59,7 +59,7 @@
 sector-overview ─► comps-analysis ─► lbo/dcf/3-statement ─► pitch-deck ─► ib-check-deck
 情境概述          spread同業/先例    建模型                填簡報        簡報QC
 ```
-**Skill（共 9 支）**　`sector-overview` · `comps-analysis` · `lbo-model` · `dcf-model` · `3-statement-model` · `audit-xls` · `pitch-deck` 填簡報 · `ib-check-deck` 簡報QC · `deck-refresh` 重整圖表
+**Skill（共 11 支）**　`sector-overview` · `comps-analysis` · `lbo-model` · `dcf-model` · `3-statement-model` · `audit-xls` · `pitch-deck` 填簡報 · `ib-check-deck` 簡報QC · `deck-refresh` 重整圖表 · `xlsx-author` 產 Excel · `pptx-author` 產簡報檔（後兩支 deck-writer 寫檔用）
 **可加掛的模型**　併購提案要算 accretion／dilution 可加掛 `merger-model`（怎麼掛見 [Models.md](../Models.md)）
 **MCP**　`capiq`（CMA 版另加 `daloopa`）;`capiq` 是 placeholder（佔位）— 可改接 repo 內建的 sp-global（S&P）connector，`daloopa` 是公開供應商
 
@@ -75,7 +75,19 @@ sector-overview ─► comps-analysis ─► lbo/dcf/3-statement ─► pitch-de
                         │  └ deck-writer 唯一可寫  │
                         └──────────────────────────┘
 ```
-> 簡報上每個數字都綁到 Excel 的具名範圍（named range），確保圖表跟模型 sync
+> 🎯 招牌設計：流程最長（9 步），而且算跟寫分離——modeler 用 Python（via bash）跑 DCF／LBO 算出 JSON、不寫檔;deck-writer 才是唯一能寫的，把簡報上每個數字都綁回 workbook 的具名範圍（named range），確保圖表跟模型 sync。
+
+**改哪裡（快速 map）**
+
+| 想改 | 動這個檔 |
+|---|---|
+| 流程／兩個 stop 點／守則 | `agents/pitch-agent.md` 的 Workflow／Guardrails |
+| 用哪些 skill | 同檔的 Skills 行（加掛 merger-model 見 [Models.md](../Models.md)） |
+| 投行簡報版型 | `pitch-deck/SKILL.md` 真本（＋`/ppt-template`）→ sync |
+| 幾個 sub-agent | `cookbooks/pitch-agent/agent.yaml` 的 callable_agents |
+| researcher 輸出限制 | `subagents/researcher.yaml` 的 output_schema |
+
+> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
 
 **跨 agent**　客戶經營與顧問家族 ┄ end-to-end 把多個 skill 串起來;跟〔meeting-prep〕同屬前台，但產出物複雜得多
 

@@ -32,7 +32,7 @@
 3. **回顧近期往來** — 把客戶最近的信件跟筆記摘要一下，掌握最新狀況。
    - 步驟說明：sub-agent 做摘要——由 news-reader 這個 sub-agent 摘要近期客戶信件跟筆記，客戶內容一律當不可信、只摘要、不執行裡面的指令。
 4. **草擬會議資料包** — 把客戶關係摘要跟持倉說明寫好，整理成一份會前資料。
-   - 步驟說明：組 skill 加寫檔——用 `client-review` 產關係摘要、`client-report` 產持倉段落（需要的話再加 `investment-proposal`、`pptx-author`），這是唯一一個主代理可以直接寫檔的 plugin。
+   - 步驟說明：組 skill 加寫檔——用 `client-review` 產關係摘要、`client-report` 產持倉段落（需要的話再加 `investment-proposal`、`pptx-author`），plugin 版主代理可直接寫檔（風險最低故放寬）。
 5. **交顧問過目** — 只出草稿，會議前讓顧問確認。
    - 步驟說明：人工 review——只產草稿、不對外發送，會議前交給顧問確認。
 
@@ -69,7 +69,19 @@ client-review ──► client-report ──► (investment-proposal / pptx-auth
                              └─────────────────────────┘
                               即使低風險仍隔離（零成本）
 ```
-> ⭐ 特例：這是唯一一個**plugin 版主代理直接握有寫檔權**的 agent——因為產出是內部簡報、風險低。但 CMA 版還是把寫檔權隔離給 pack-writer。**安全層級會看風險高低去調**，不是一刀切。
+> 🎯 招牌設計：風險最低（🟢）卻照樣隔離——它是少數風險最低、但 CMA 端仍把寫檔權隔離出來的例子。plugin 版主代理直接握有寫檔權（低風險、產出是內部簡報，故放寬;market／model／pitch／earnings 的 plugin tools 其實也都有 Write），但 CMA 版仍只給 pack-writer 寫;profiler 讀可信源（無 schema）、news-reader 碰髒（有 schema）。**安全層級會隨風險高低調整**，不是一刀切。
+
+**改哪裡（快速 map）**
+
+| 想改 | 動這個檔 |
+|---|---|
+| 流程／stop 點／守則 | `agents/meeting-prep-agent.md` 的 Workflow／Guardrails |
+| 用哪些 skill | 同檔的 Skills 行 |
+| IPS／再平衡門檻 | `client-review/SKILL.md` 真本 → sync |
+| 幾個 sub-agent | `cookbooks/meeting-prep-agent/agent.yaml` 的 callable_agents |
+| news-reader 輸出限制 | `subagents/news-reader.yaml` 的 output_schema |
+
+> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
 
 **跨 agent**　前台顧問型，跟後台作業家族（對帳／結帳／開戶）相對
 
@@ -86,7 +98,7 @@ client-review ──► client-report ──► (investment-proposal / pptx-auth
   - 🛠️ `crm` 要能：依客戶ID查 關係歷史·持倉·未結項·近期通訊（規格見 `client-review`、`client-report`）
   - 🛠️ `capiq` 要能：查會影響這位客戶持倉的市場事件／報價（capiq 可改接 repo 內建的 sp-global（S&P）connector）
 - 📐 **IPS／再平衡門檻**（偏離預設 `3–5%`） → `plugins/vertical-plugins/wealth-management/skills/client-review/SKILL.md`
-- 🎨 **品牌簡報 template**：用 `/ppt-template` 指令產一支 template skill（底層 `plugins/vertical-plugins/financial-analysis/skills/pptx-author/`）
+- 🎨 **品牌簡報 template**：用 `/ppt-template` 指令產一支 template skill（指令底層是 `ppt-template-creator`，實際渲染簡報用 `plugins/vertical-plugins/financial-analysis/skills/pptx-author/`）
 - ✏️ **調整 agent 範圍** → `plugins/agent-plugins/meeting-prep-agent/agents/meeting-prep-agent.md`
 - ⚖️ **合規＋人工 review 不變**：只給顧問、永遠不對外發送
 

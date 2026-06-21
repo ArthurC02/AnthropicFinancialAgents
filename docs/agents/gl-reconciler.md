@@ -69,7 +69,19 @@ gl-recon ──► break-trace ──► (audit-xls / xlsx-author)
                             └──────────────────────────┘
                              安全靠：拆分＋分權
 ```
-> 🆕 驗證特色：**critic 對抗式 review**——專門回頭質疑每個差異是真是假，把誤報濾掉，只把真的往上送（對帳很容易誤報，所以才需要這層）
+> 🎯 招牌設計：全 10 支裡唯一「髒 reader + 獨立 critic」的雙層（4 階段）。reader 的 output_schema 把差異原因 suspected_cause 鎖成固定 enum（`temporal_cutoff`／`system_drift`／`reclass`／`unknown`），連分類都不給自由發揮、注入塞不進來；reader 還是 per asset class fan-out 並行。critic 則拿可信 MCP 重算、做對抗式 review，把誤報濾掉只送真的——對帳容易誤報，所以才需要這層
+
+**改哪裡（快速 map）**
+
+| 想改 | 動這個檔 |
+|---|---|
+| 流程／stop 點／守則 | `agents/gl-reconciler.md` 的 Workflow／Guardrails |
+| 用哪些 skill | 同檔的 Skills 行 |
+| 容差門檻（0.01）／根因規則 | `gl-recon`／`break-trace` 的 SKILL.md → sync |
+| 幾個 sub-agent | `cookbooks/gl-reconciler/agent.yaml` 的 callable_agents |
+| reader 輸出限制 | `subagents/reader.yaml` 的 output_schema |
+
+> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
 
 **跨 agent**　fund-admin 三兄弟 ┄ 本 agent（日常對帳）╳ 月底結帳 ╳ 報表稽核，各自劃好邊界
 
