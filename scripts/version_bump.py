@@ -74,7 +74,10 @@ def plugin_root(plugin_json: Path) -> Path:
 
 
 def rel(p: Path) -> str:
-    return str(p.relative_to(ROOT))
+    # Always POSIX separators: these strings feed `git show <ref>:<path>` and
+    # `git add`, which expect forward slashes even on Windows (a backslash path
+    # makes `git show` silently miss the file, defeating base-version lookup).
+    return p.relative_to(ROOT).as_posix()
 
 
 def parse_semver(v: str) -> tuple[int, int, int] | None:
