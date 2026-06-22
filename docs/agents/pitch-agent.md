@@ -77,32 +77,40 @@ sector-overview ─► comps-analysis ─► lbo/dcf/3-statement ─► pitch-de
 ```
 > 🎯 招牌設計：流程最長（9 步），而且算跟寫分離——modeler 用 Python（via bash）跑 DCF／LBO 算出 JSON、不寫檔;deck-writer 才是唯一能寫的，把簡報上每個數字都綁回 workbook 的具名範圍（named range），確保圖表跟模型 sync。
 
-**改哪裡（快速 map）**
-
-| 想改 | 動這個檔 |
-|---|---|
-| 流程／兩個 stop 點／守則 | `agents/pitch-agent.md` 的 Workflow／Guardrails |
-| 用哪些 skill | 同檔的 Skills 行（加掛 merger-model 見 [Models.md](../Models.md)） |
-| 投行簡報版型 | `pitch-deck/SKILL.md` 真本（＋`/ppt-template`）→ sync |
-| 幾個 sub-agent | `cookbooks/pitch-agent/agent.yaml` 的 callable_agents |
-| researcher 輸出限制 | `subagents/researcher.yaml` 的 output_schema |
-
-> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
-
 **跨 agent**　客戶經營與顧問家族 ┄ end-to-end 把多個 skill 串起來;跟〔meeting-prep〕同屬前台，但產出物複雜得多
 
-## 四、上線前要補齊（客製化）
+## 四、要調什麼、改哪裡（業務內容調整表）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
+ (提示詞·技能·流程)          (資料·規則·範本)
 ```
-- 🔌 **接資料訂閱**：`daloopa` 是公開供應商，**要訂閱／API key**;`capiq` 在 vertical `.mcp.json` 已定義、指向本機 mock（`mock-mcp/`，假 CSV）——想離線 demo 跑 `python3 mock-mcp/run_all_http.py`，要上線把 url 改指你的 CapIQ／S&P feed（伺服器名跟 frontmatter `tools:` 都不要改）
-- 🎨 **銀行 PPT template（關鍵）**：用 `/ppt-template` 把貴銀行的版型教給 Claude → `pitch-deck` 才套得對 → `plugins/vertical-plugins/investment-banking/skills/pitch-deck/SKILL.md`
-- 📐 **comps/先例慣例**：指標定義、同業圈選 → `plugins/vertical-plugins/financial-analysis/skills/comps-analysis/SKILL.md`
-- ✏️ **調整範圍** → `plugins/agent-plugins/pitch-agent/agents/pitch-agent.md`
-- 👤 **人工 review 不變**：模型後/簡報後各停一次，banker 核准才往下
 
-> ⚠️ skill 一律改 `vertical-plugins/` 的 source（真本），改完跑 `python3 scripts/sync-agent-skills.py` 做 sync。
+> 先分清楚：門檻、規則、清單多半設計成「執行時餵」就好；要變成公司預設才改 source。
+
+| 想調的業務內容 | 改哪個檔 | 怎麼改 |
+|---|---|---|
+| 建模慣例（WACC·色碼·LBO 假設·三表勾稽） | `dcf-model`／`lbo-model`／`3-statement-model` SKILL.md | 臨時 prompt 給；永久改值 → sync |
+| comps／先例慣例（指標定義·同業圈選·離群判定） | `comps-analysis` SKILL.md | 改 → sync |
+| 投行簡報版型 | `pitch-deck` SKILL.md（先用 `/ppt-template` 把版型教給 Claude）／`pptx-author` 範本 | 改 → sync |
+| QC 規則（簡報四維審查·Excel 稽核範圍） | `ib-check-deck`／`audit-xls` SKILL.md | 改 → sync |
+| 既有 deck 刷新行為（只改值不動格式） | `deck-refresh` SKILL.md | 改 → sync |
+| 流程／兩個 stop 點／守則／掛哪些 skill | `agents/pitch-agent.md`（Workflow／Skills 行） | 直接改劇本（外掛＋CMA 同時生效；加掛 merger-model 見 [Models.md](../Models.md)） |
+| 接真實資料（外掛） | `financial-analysis/.mcp.json` | `capiq` 的 url 從本機 mock 改指你的 CapIQ／S&P feed（capiq 借自 financial-analysis，別改 server 名） |
+| 接真實資料（CMA） | `cookbooks/pitch-agent/agent.yaml` | 設對應 env var（CMA 版另加 `daloopa`；別改 server 名） |
+| sub-agent 數量／researcher 輸出限制 | `agent.yaml`／`subagents/researcher.yaml` | 改 callable_agents／output_schema |
+
+**三條路線**
+- ① 臨時（不改檔）：門檻／政策／清單直接在 prompt 或 `steering-examples.json` 給。
+- ② 永久（改預設）：改 `vertical-plugins/` 的 SKILL.md 真本 → `python3 scripts/sync-agent-skills.py` → `check.py`（drift 會擋 commit；別手改 bundle 的 copy）。
+- ③ 接系統：改 `.mcp.json` 的 url（外掛）或 env var（CMA）；**server 名別改**。
+
+**接真實系統要做到**（上線必補；現都已接本地 mock，跑 `python3 mock-mcp/run_all_http.py` 可離線端到端跑）
+- 🛠️ `capiq`：在 `financial-analysis/.mcp.json` 已定義、指向本機 mock（假 CSV），上線把 url 改指你的 CapIQ／S&P feed
+- 🛠️ `daloopa`：CMA 版另加的公開供應商，**要買訂閱＋API key** 才接得上
+- 👤 **人工覆核不變**：模型後／簡報後各停一次，對外發布前要 banker 審核才往下
+
+> 通用改法見 [Customizing.md](../Customizing.md)。這支刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 

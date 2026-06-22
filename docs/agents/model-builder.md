@@ -69,31 +69,41 @@
 ```
 > 🎯 招牌設計：驗證 = 獨立的 auditor 重查那份 Excel——跑平衡檢查、把每個 output 追回 input。值得注意：這支沒有「髒文件 reader」，因為 input 全來自可信 MCP（capiq／daloopa），所以 data-puller 的 schema 是「乾淨結構化交棒」而非防注入。builder 拿到 bash 是刻意的（要跑算）。
 
-**改哪裡（快速 map）**
-
-| 想改 | 動這個檔 |
-|---|---|
-| 流程／stop 點／守則 | `agents/model-builder.md` 的 Workflow／Guardrails |
-| 用哪些模型/skill | 同檔的 Skills 行（加掛新模型見 [Models.md](../Models.md)） |
-| 建模慣例（WACC／色碼） | `dcf-model`／`lbo-model` 等 SKILL.md → sync |
-| 幾個 sub-agent | `cookbooks/model-builder/agent.yaml` 的 callable_agents |
-| data-puller 結構化輸出 | `subagents/data-puller.yaml` 的 output_schema |
-
-> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
-
 **跨 agent**　研究與建模家族 ┄ 跟〔earnings-reviewer〕（更新既有模型）劃清界線
 
-## 四、上線前要補齊（客製化）
+## 四、要調什麼、改哪裡（業務內容調整表）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
+ (提示詞·技能·流程)          (資料·規則·範本)
 ```
-- 🔌 **接資料訂閱**：`daloopa` 是公開供應商，**要訂閱／API key**;`capiq` 在 vertical `.mcp.json` 已定義、指向本機 mock（`mock-mcp/`，假 CSV）——想離線 demo 跑 `python3 mock-mcp/run_all_http.py`，要上線把 url 改指你的 CapIQ／S&P feed（伺服器名跟 frontmatter `tools:` 都不要改）
-- 📐 **建模慣例**：WACC 組成、色碼、計算慣例、各模型 template → `plugins/vertical-plugins/financial-analysis/skills/dcf-model/SKILL.md`（還有 `lbo-model`、`3-statement-model`）
-- ✏️ **調整範圍** → `plugins/agent-plugins/model-builder/agents/model-builder.md`
-- 👤 **人工 review 不變**：建完先停，使用者核准才往下
 
-> ⚠️ skill 一律改 `vertical-plugins/` 的 source（真本），改完跑 `python3 scripts/sync-agent-skills.py` 做 sync。
+> 先分清楚：門檻、規則、清單多半設計成「執行時餵」就好；要變成公司預設才改 source。
+
+| 想調的業務內容 | 改哪個檔 | 怎麼改 |
+|---|---|---|
+| DCF 慣例（WACC 組成／藍黑綠色碼／循環參照規則） | `dcf-model` SKILL.md | 臨時 prompt 給；永久改值 → sync |
+| LBO 慣例（來源用途·債務排程·報酬假設） | `lbo-model` SKILL.md | 改 → sync |
+| 三表勾稽規則（BS 平衡·CF 釘現金） | `3-statement-model` SKILL.md | 改 → sync |
+| comps 指標定義／同業圈選 | `comps-analysis` SKILL.md | 改 → sync |
+| Excel QC 範圍（平衡·循環參照·死數字） | `audit-xls` SKILL.md | 改 → sync |
+| Excel 範本／配色 | `xlsx-author` SKILL.md | 換範本 → sync |
+| 流程／stop 點／守則／掛哪些 skill | `agents/model-builder.md`（Workflow／Skills 行） | 直接改劇本（外掛＋CMA 同時生效；加掛模型見 [Models.md](../Models.md)） |
+| 接真實資料（外掛） | `financial-analysis/.mcp.json` | `capiq` 的 url 從本機 mock 改指你的 CapIQ／S&P feed（別改 server 名） |
+| 接真實資料（CMA） | `cookbooks/model-builder/agent.yaml` | 設對應 env var（別改 server 名） |
+| sub-agent 數量／data-puller 輸出限制 | `agent.yaml`／`subagents/data-puller.yaml` | 改 callable_agents／output_schema |
+
+**三條路線**
+- ① 臨時（不改檔）：門檻／政策／清單直接在 prompt 或 `steering-examples.json` 給。
+- ② 永久（改預設）：改 `vertical-plugins/` 的 SKILL.md 真本 → `python3 scripts/sync-agent-skills.py` → `check.py`（drift 會擋 commit；別手改 bundle 的 copy）。
+- ③ 接系統：改 `.mcp.json` 的 url（外掛）或 env var（CMA）；**server 名別改**。
+
+**接真實系統要做到**（上線必補；現都已接本地 mock，跑 `python3 mock-mcp/run_all_http.py` 可離線端到端跑）
+- 🛠️ `capiq`：在 vertical `.mcp.json` 已定義、指向本機 mock（假 CSV），上線把 url 改指你的 CapIQ／S&P feed
+- 🛠️ `daloopa`：公開供應商，**要買訂閱＋API key** 才接得上
+- 👤 **人工覆核不變**：建完／稽核後都停下來給人審，使用者核准才往下
+
+> 通用改法見 [Customizing.md](../Customizing.md)。這支刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 

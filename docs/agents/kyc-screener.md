@@ -69,40 +69,41 @@ kyc-doc-parse ──► kyc-rules ──► (screening MCP)
 ```
 > 🎯 招牌設計：KYC 的輸入是全 10 支裡最髒的領域（護照、設立文件、UBO 股權圖），所以 doc-reader 的 output_schema 切得最細——country 限兩碼大寫（`^[A-Z]{2}$`）、每個 UBO 的 pct 限數字，硬把不可信文件壓成嚴格結構。配上「不下決定」守則：agent 只建議風險評等，真正放行是合規官
 
-**改哪裡（快速 map）**
-
-| 想改 | 動這個檔 |
-|---|---|
-| 流程／stop 點／守則 | `agents/kyc-screener.md` 的 Workflow／Guardrails |
-| 用哪些 skill | 同檔的 Skills 行 |
-| KYC 規則／風險評等門檻 | `kyc-rules/SKILL.md` 真本 → sync |
-| 幾個 sub-agent | `cookbooks/kyc-screener/agent.yaml` 的 callable_agents |
-| doc-reader 輸出限制 | `subagents/doc-reader.yaml` 的 output_schema |
-
-> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
-
 > Claude 託管代理（CMA, Claude Managed Agents），deploy 到 Anthropic 雲端、無頭自動跑
 
 **跨 agent**　後台作業家族 ┄ 跟〔對帳〕〔結帳〕並列，各管一塊
 
-## 四、上線前要補齊的（客製化）
+## 四、要調什麼、改哪裡（業務內容調整表）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實篩查源**：`screening` MCP（port 8006）已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
-  - 外掛 → server 已定義在 `plugins/vertical-plugins/operations/.mcp.json`，上線只要把該 server 的 `url` 從 `127.0.0.1:8006` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
-  - CMA → 設 env var `SCREENING_MCP_URL`（或改 `managed-agent-cookbooks/kyc-screener/agent.yaml`）
-  - 🛠️ MCP 要做到：**依人名查** → 回傳制裁／PEP／負面新聞命中＋比對信心（規格見 `kyc-rules` 這個 skill）
-- 📋 **規則表／門檻**：風險因子·高風險國家·風險評等邏輯 → `plugins/vertical-plugins/operations/skills/kyc-rules/SKILL.md`
-- 📋 **必備文件清單** → `plugins/vertical-plugins/operations/skills/kyc-doc-parse/SKILL.md`
-- 📄 **Excel template** → `plugins/vertical-plugins/financial-analysis/skills/xlsx-author/`
-- ✏️ **調整 agent 範圍** → `plugins/agent-plugins/kyc-screener/agents/kyc-screener.md`
-- 👤 **人工覆核不變**：只產建議評等，合規官決定，永遠不自動核准
+> 先分清楚：門檻、規則、清單多半設計成「執行時餵」就好；要變成公司預設才改 source。
 
-> ⚠️ skill 一律改 `vertical-plugins/` 的 **source(真本)**，改完跑 `python3 scripts/sync-agent-skills.py` sync 到 agent。這個 agent 是刻意把公司專屬的東西留空，你填上去才算完整。
+| 想調的業務內容 | 改哪個檔 | 怎麼改 |
+|---|---|---|
+| KYC／AML 規則格·風險評等門檻（風險因子·高風險國家） | `kyc-rules` SKILL.md | 臨時 prompt 給；永久改規則／門檻 → sync |
+| 必備文件清單 | `kyc-doc-parse` SKILL.md | 改清單 → sync |
+| 文件解析欄位／抽取規格（身分·UBO·控制人·資金來源） | `kyc-doc-parse` SKILL.md | 改抽取欄位 → sync |
+| 制裁／PEP／負面新聞名單來源 | `operations/.mcp.json` 的 `screening` | repoint url 到你的篩查源（規格見 `kyc-rules`） |
+| Excel 報告範本 | `xlsx-author` skill | 換範本 |
+| 流程／stop 點／守則／掛哪些 skill | `agents/kyc-screener.md`（Workflow／Skills 行） | 直接改劇本（外掛＋CMA 同時生效） |
+| 接真實系統（外掛） | `operations/.mcp.json` | `screening` 的 url 從 `127.0.0.1:8006` 改指真實系統（別改 server 名） |
+| 接真實系統（CMA） | `cookbooks/kyc-screener/agent.yaml` | 設 env var `SCREENING_MCP_URL` |
+| sub-agent 數量／doc-reader 輸出限制 | `agent.yaml`／`subagents/doc-reader.yaml` | 改 callable_agents／output_schema |
+
+**三條路線**
+- ① 臨時（不改檔）：門檻／政策／清單直接在 prompt 或 `steering-examples.json` 給。
+- ② 永久（改預設）：改 `vertical-plugins/` 的 SKILL.md 真本 → `python3 scripts/sync-agent-skills.py` → `check.py`（drift 會擋 commit；別手改 bundle 的 copy）。
+- ③ 接系統：改 `.mcp.json` 的 url（外掛）或 env var（CMA）；**server 名別改**。
+
+**接真實系統要做到**（上線必補；現已接本地 mock，跑 `python3 mock-mcp/run_all_http.py` 可離線端到端跑）
+- 🛠️ `screening`（port 8006）：依人名查 → 回傳制裁／PEP／負面新聞命中＋比對信心（規格見 `kyc-rules`）
+- 👤 **人工覆核不變**：這支最後關卡是合規官簽核，agent 只產建議評等、永不核准
+
+> 通用改法見 [Customizing.md](../Customizing.md)。這支刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 

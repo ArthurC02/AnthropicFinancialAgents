@@ -67,36 +67,41 @@ returns-analysis ──► portfolio-monitoring ──► (ic-memo / xlsx-author
 ```
 > 🎯 招牌設計：這裡的驗證＝對照政策——把 GP 報的 marks 比對公司估值政策，不照單全收。package-reader 的 method 欄鎖成 enum（`market_multiple`／`dcf`／`recent_round`／`cost`／`other`），注入塞不進來。簽核是 IR＋CCO 雙簽，是全 10 支裡最高的簽核層級
 
-**改哪裡（快速 map）**
-
-| 想改 | 動這個檔 |
-|---|---|
-| 流程／stop 點／守則 | `agents/valuation-reviewer.md` 的 Workflow／Guardrails |
-| 用哪些 skill | 同檔的 Skills 行 |
-| 估值政策／carry waterfall 條款 | `portfolio-monitoring`／`returns-analysis` 的 SKILL.md → sync |
-| 幾個 sub-agent | `cookbooks/valuation-reviewer/agent.yaml` 的 callable_agents |
-| package-reader 輸出限制 | `subagents/package-reader.yaml` 的 output_schema |
-
-> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
-
 > 內部報酬率（IRR）、投入本金倍數（MOIC），這兩個都是私募基金（PE）拿來衡量績效的指標
 
 **跨 agent**　基金行政家族 ┄ 跟〔statement-auditor〕一樣是季末把關；跟〔model-builder〕（承做估值）劃清邊界
 
-## 四、上線前要補齊（客製化）
+## 四、要調什麼、改哪裡（業務內容調整表）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
+ (提示詞·技能·流程)          (資料·規則·範本)
 ```
-- 🔌 **接真實投組來源**：`portfolio` MCP（port 8003）已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
-  - 外掛 → `plugins/vertical-plugins/private-equity/.mcp.json` 已存在且已定義 `portfolio` server，上線只要把該 server 的 `url` 從 `127.0.0.1:8003` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
-  - CMA → 設 env var `PORTFOLIO_MCP_URL`（或改 `managed-agent-cookbooks/valuation-reviewer/agent.yaml`）
-  - 🛠️ MCP 要做到：依基金/投組公司查估值輸入跟政策標記（給對照政策用；規格見 `portfolio-monitoring`）
-- 📐 **估值政策／waterfall 條款**：估值方法門檻、carry 分配條款 → `plugins/vertical-plugins/private-equity/skills/portfolio-monitoring/SKILL.md`、`returns-analysis/SKILL.md`
-- ✏️ **調整範圍** → `plugins/agent-plugins/valuation-reviewer/agents/valuation-reviewer.md`
-- 👤 **人工覆核不變**：只備 LP 報告，要 IR+CCO 簽核才分送
 
-> ⚠️ skill 一律改 `vertical-plugins/` 的 source(真本)，改完跑 `python3 scripts/sync-agent-skills.py` sync。
+> 先分清楚：門檻、規則、清單多半設計成「執行時餵」就好；要變成公司預設才改 source。
+
+| 想調的業務內容 | 改哪個檔 | 怎麼改 |
+|---|---|---|
+| 估值政策／marks 對照規則 | `portfolio-monitoring` SKILL.md · Policy 段 | 臨時 prompt 給；永久改值 → sync |
+| IRR／MOIC 假設（進場倍數·持有期·槓桿） | `returns-analysis` SKILL.md · Assumptions 段 | 改假設值 → sync |
+| Waterfall／carry／hurdle 條款 | `returns-analysis` SKILL.md · Waterfall 段 | 改條款定義 → sync |
+| IC 備忘錄格式與欄位 | `ic-memo` SKILL.md | 改結構與欄位 → sync |
+| 報告範本（xlsx 格式） | `xlsx-author` SKILL.md | 換範本 → sync |
+| 流程／stop 點／守則／掛哪些 skill | `agents/valuation-reviewer.md`（Workflow／Skills 行） | 直接改劇本（外掛＋CMA 同時生效） |
+| 接真實投組系統（外掛） | `plugins/vertical-plugins/private-equity/.mcp.json` | `portfolio` server 的 `url` 從 `127.0.0.1:8003` 改指真實系統（別改 server 名） |
+| 接真實投組系統（CMA） | `managed-agent-cookbooks/valuation-reviewer/agent.yaml` | 設 env var `PORTFOLIO_MCP_URL` |
+| sub-agent 數量／reader 輸出限制 | `agent.yaml`／`subagents/package-reader.yaml` | 改 callable_agents／output_schema |
+
+**三條路線**
+- ① 臨時（不改檔）：門檻／政策／清單直接在 prompt 或 `steering-examples.json` 給。
+- ② 永久（改預設）：改 `vertical-plugins/` 的 SKILL.md 真本 → `python3 scripts/sync-agent-skills.py` → `check.py`（drift 會擋 commit；別手改 bundle 的 copy）。
+- ③ 接系統：改 `.mcp.json` 的 url（外掛）或 env var（CMA）；**server 名別改**。
+
+**接真實系統要做到**（上線必補）
+- 🛠️ `portfolio`：依基金／投組公司查估值輸入與政策標記（給對照政策複核用；規格見 `portfolio-monitoring` SKILL.md）
+- 👤 **人工覆核不變**：只備 LP 報告，IR＋CCO 簽核後才對外分送（agent 不對外分送）
+
+> 通用改法見 [Customizing.md](../Customizing.md)。這支刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 

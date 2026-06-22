@@ -64,34 +64,38 @@ nav-tieout ──► (audit-xls / xlsx-author)
 ```
 > 🎯 招牌設計：整支 agent 本身就是「驗證者」——它的工作就是 tie-out（逐欄把 LP 對帳單對 NAV pack），驗證是核心功能、不是附加步驟。statement-reader 的 schema 可一次收到 2000 個 LP，撐得住批量分送場景
 
-**改哪裡（快速 map）**
-
-| 想改 | 動這個檔 |
-|---|---|
-| 流程／stop 點／守則 | `agents/statement-auditor.md` 的 Workflow／Guardrails |
-| 用哪些 skill | 同檔的 Skills 行 |
-| 欄位對應／容差 | `nav-tieout/SKILL.md` 真本 → sync |
-| 幾個 sub-agent | `cookbooks/statement-auditor/agent.yaml` 的 callable_agents |
-| statement-reader 輸出限制 | `subagents/statement-reader.yaml` 的 output_schema |
-
-> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
-
 **跨 agent**　基金行政家族 ┄ 跟〔valuation-reviewer〕一樣都是季末/分送前的把關
 
-## 四、上線前要補齊（客製化）
+## 四、要調什麼、改哪裡（業務內容調整表）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
+ (提示詞·技能·流程)          (資料·規則·範本)
 ```
-- 🔌 **接真實 NAV 來源**：`nav` MCP（port 8004）已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
-  - 外掛 → server 已定義在 `plugins/vertical-plugins/fund-admin/.mcp.json`，上線只要把該 server 的 `url` 從 `127.0.0.1:8004` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
-  - CMA → 設 env var `NAV_MCP_URL`（或改 `managed-agent-cookbooks/statement-auditor/agent.yaml`）
-  - 🛠️ MCP 要做到：依基金/LP/欄位查 NAV pack 的數值（給逐欄比對用；規格見 `nav-tieout` 這個 skill）
-- 📐 **欄位對應**：LP 對帳單欄位 ↔ NAV pack 欄位的對應表 → `plugins/vertical-plugins/fund-admin/skills/nav-tieout/SKILL.md`
-- ✏️ **調整範圍** → `plugins/agent-plugins/statement-auditor/agents/statement-auditor.md`
-- 👤 **人工覆核不變**：只建議 pass/hold，要 IR 簽核才分送
 
-> ⚠️ skill 一律改 `vertical-plugins/` 的 source(真本)，改完跑 `python3 scripts/sync-agent-skills.py` sync。
+> 先分清楚：門檻、規則、清單多半設計成「執行時餵」就好；要變成公司預設才改 source。
+
+| 想調的業務內容 | 改哪個檔 | 怎麼改 |
+|---|---|---|
+| 逐欄容差／比對規則（金額門檻·欄位對應） | `nav-tieout` SKILL.md · Tolerance／Match 段 | 臨時 prompt 給；永久改值 → sync |
+| 例外清單分類／放行門檻 | `nav-tieout` SKILL.md · Exception 段 | 改類別與門檻 → sync |
+| Excel QC 規則（公式健檢） | `audit-xls` SKILL.md | 改 → sync |
+| 報告範本（xlsx 格式） | `xlsx-author` SKILL.md | 換範本 → sync |
+| 流程／stop 點／守則／掛哪些 skill | `agents/statement-auditor.md`（Workflow／Skills 行） | 直接改劇本（外掛＋CMA 同時生效） |
+| 接真實 NAV 系統（外掛） | `plugins/vertical-plugins/fund-admin/.mcp.json` | `nav` server 的 `url` 從 `127.0.0.1:8004` 改指真實系統（別改 server 名） |
+| 接真實 NAV 系統（CMA） | `managed-agent-cookbooks/statement-auditor/agent.yaml` | 設 env var `NAV_MCP_URL` |
+| sub-agent 數量／reader 輸出限制 | `agent.yaml`／`subagents/statement-reader.yaml` | 改 callable_agents／output_schema |
+
+**三條路線**
+- ① 臨時（不改檔）：門檻／政策／清單直接在 prompt 或 `steering-examples.json` 給。
+- ② 永久（改預設）：改 `vertical-plugins/` 的 SKILL.md 真本 → `python3 scripts/sync-agent-skills.py` → `check.py`（drift 會擋 commit；別手改 bundle 的 copy）。
+- ③ 接系統：改 `.mcp.json` 的 url（外掛）或 env var（CMA）；**server 名別改**。
+
+**接真實系統要做到**（上線必補）
+- 🛠️ `nav`：依基金／LP／欄位查 NAV pack 的數值（給逐欄比對用；規格見 `nav-tieout` SKILL.md）
+- 👤 **人工覆核不變**：只建議 pass/hold，IR 簽核後才分送（agent 不分送）
+
+> 通用改法見 [Customizing.md](../Customizing.md)。這支刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 

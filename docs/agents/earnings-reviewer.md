@@ -74,32 +74,37 @@ earnings-analysis ──► model-update ──► audit-xls ──► morning-n
 
 > 🎯 招牌設計：這支有真正的「髒文件 reader」——逐字稿是外來不可信內容，所以 transcript-reader 設成 `mcp_servers:[]` ＋ output_schema，把它框死來防 prompt injection。驗證走「自查」：audit-xls 做 foot check（平衡驗算），不另外設獨立 critic。
 
-**改哪裡（快速 map）**
-
-| 想改 | 動這個檔 |
-|---|---|
-| 流程／stop 點／守則 | `agents/earnings-reviewer.md` 的 Workflow／Guardrails |
-| 用哪些 skill | 同檔的 Skills 行 |
-| 模型更新邏輯／筆記格式 | `model-update`／`morning-note` 的 SKILL.md → sync |
-| 幾個 sub-agent | `cookbooks/earnings-reviewer/agent.yaml` 的 callable_agents |
-| transcript-reader 輸出限制 | `subagents/transcript-reader.yaml` 的 output_schema |
-
-> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
-
 **跨 agent**　研究與建模家族 ┄ 跟〔market-researcher〕〔model-builder〕互補;初次納入追蹤交給別人做
 
-## 四、上線前要補齊（客製化）
+## 四、要調什麼、改哪裡（業務內容調整表）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
+ (提示詞·技能·流程)          (資料·規則·範本)
 ```
-- 🔌 **接資料訂閱**：`factset`/`daloopa` 在 core plugin 已經定義好，但**要先向供應商買訂閱／API key** 才會有資料
-- 📈 **追蹤模型 template**：`model-update` 要對著貴公司「持續追蹤標的的活 workbook」格式 → `plugins/vertical-plugins/equity-research/skills/model-update/SKILL.md`
-- 📝 **筆記 template**：研究筆記格式 → `plugins/vertical-plugins/equity-research/skills/morning-note/SKILL.md`
-- ✏️ **調整範圍** → `plugins/agent-plugins/earnings-reviewer/agents/earnings-reviewer.md`
-- 👤 **人工 review 不變**：只產草稿，資深分析師簽核才發布
 
-> ⚠️ skill 一律改 `vertical-plugins/` 的 source（真本），改完跑 `python3 scripts/sync-agent-skills.py` 做 sync。
+> 先分清楚：門檻、規則、清單多半設計成「執行時餵」就好；要變成公司預設才改 source。
+
+| 想調的業務內容 | 改哪個檔 | 怎麼改 |
+|---|---|---|
+| 模型更新慣例（欄位對應、估值邏輯） | `vertical-plugins/equity-research/skills/model-update/SKILL.md` | 改值 → sync |
+| 財報前瞻假設（bull/base/bear 情境參數） | `vertical-plugins/equity-research/skills/earnings-preview/SKILL.md` | 改值 → sync；臨時可直接 prompt 給 |
+| 筆記格式／語氣（headline、beat/miss 表） | `vertical-plugins/equity-research/skills/morning-note/SKILL.md` | 改範本 → sync |
+| Excel QC 驗算範圍（foot check 規則） | `vertical-plugins/equity-research/skills/audit-xls/SKILL.md` | 改規則 → sync |
+| 流程／stop 點／守則 | `agents/earnings-reviewer.md` 的 Workflow／Guardrails | 直接改 agents 檔 |
+| 用哪些 skill／幾個 sub-agent | `agents/earnings-reviewer.md` Skills 行；`cookbooks/earnings-reviewer/agent.yaml` callable_agents | 改 agents 檔或 agent.yaml |
+| 接 factset／daloopa（真實資料） | core plugin 已定義，網址照用 | 申請訂閱＋API 金鑰，網址照用 |
+
+**三條路線**
+- ① 臨時（不改檔）：門檻／政策／清單直接在 prompt 或 `steering-examples.json` 給。
+- ② 永久（改預設）：改 `vertical-plugins/` 的 SKILL.md 真本 → `python3 scripts/sync-agent-skills.py` → `check.py`（drift 會擋 commit；別手改 bundle 的 copy）。
+- ③ 接系統：改 `.mcp.json` 的 url（外掛）或 env var（CMA）；**server 名別改**。
+
+**接真實系統要做到**（上線必補）
+- 🛠️ `factset`／`daloopa`：兩者皆為公開財務資料供應商，core plugin 已定義好 server；向供應商申請訂閱＋API 金鑰，網址照用，不需改 url。
+- 👤 **人工覆核不變**：模型與筆記只交草稿，資深分析師簽核才發布；CMA 版寫檔權隔離給 note-writer sub-agent。
+
+> 通用改法見 [Customizing.md](../Customizing.md)。這支刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 

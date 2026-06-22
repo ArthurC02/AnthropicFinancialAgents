@@ -68,38 +68,39 @@ accrual-schedule ──► roll-forward ──► variance-commentary ──► 
 ```
 > 🎯 招牌設計：沒有獨立 critic——驗證直接內建在結轉的「期初＋變動－沖回＝期末」foot check 裡。因為結帳是「建一張平衡的表」、不是「抓誤報」，驗證設計跟著任務性質走
 
-**改哪裡（快速 map）**
-
-| 想改 | 動這個檔 |
-|---|---|
-| 流程／stop 點／守則 | `agents/month-end-closer.md` 的 Workflow／Guardrails |
-| 用哪些 skill | 同檔的 Skills 行 |
-| 重大性門檻（5%）／應計結轉規則 | `variance-commentary`／`accrual-schedule`／`roll-forward` 的 SKILL.md → sync |
-| 幾個 sub-agent | `cookbooks/month-end-closer/agent.yaml` 的 callable_agents |
-| ledger-reader 輸出限制 | `subagents/ledger-reader.yaml` 的 output_schema |
-
-> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
-
 **跨 agent**　fund-admin 三兄弟 ┄ 對帳（gl-reconciler）╳ 本 agent（月底結帳）╳ 報表稽核
 
-## 四、上線前要補齊的（客製化）
+## 四、要調什麼、改哪裡（業務內容調整表）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實總帳**：`internal-gl`（port 8001）已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
-  - 外掛 → server 已定義在 `plugins/vertical-plugins/fund-admin/.mcp.json`，上線只要把該 server 的 `url` 從 `127.0.0.1:8001` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
-  - CMA → 設 env var `GL_MCP_URL`（或改 `managed-agent-cookbooks/month-end-closer/agent.yaml`）
-  - 🛠️ `internal-gl` 要做到：①拉試算表（實體·期間）②查分錄（科目·日期區間·來源篩選）③查餘額（科目·日期）（規格見 `roll-forward`、`variance-commentary`）
-- 🎚️ **重大性門檻**（預設 `5%`）＋「一定要說明」科目 → `plugins/vertical-plugins/fund-admin/skills/variance-commentary/SKILL.md`
-- 📋 **應計／結轉規則** → `plugins/vertical-plugins/fund-admin/skills/accrual-schedule/SKILL.md`、`.../roll-forward/SKILL.md`
-- 🧾 **分錄格式／會計科目表（chart of accounts）**＋✏️ **調整範圍** → `plugins/agent-plugins/month-end-closer/agents/month-end-closer.md`
-- 📄 **Excel template** → `plugins/vertical-plugins/financial-analysis/skills/xlsx-author/`
+> 先分清楚：門檻、規則、清單多半設計成「執行時餵」就好；要變成公司預設才改 source。
+
+| 想調的業務內容 | 改哪個檔 | 怎麼改 |
+|---|---|---|
+| 重大性門檻（預設 `5%`）＋「一定要說明」科目清單 | `variance-commentary` SKILL.md · Threshold 段 | 臨時 prompt 給；永久改值 → sync |
+| 應計政策（攤提公式·auto-reversing） | `accrual-schedule` SKILL.md | 改慣例 → sync（應計「清單」本身執行時餵） |
+| 結轉項目／foot 規則 | `roll-forward` SKILL.md | 改結構 → sync |
+| 流程／stop 點／守則／掛哪些 skill | `agents/month-end-closer.md`（Workflow／Skills 行） | 直接改劇本（外掛＋CMA 同時生效） |
+| 分錄格式／會計科目表（chart of accounts） | `agents/month-end-closer.md` | 改劇本 |
+| 接真實總帳（外掛） | `fund-admin/.mcp.json` | `internal-gl` 的 url 從 `127.0.0.1:8001` 改指真實總帳（別改 server 名） |
+| 接真實總帳（CMA） | `cookbooks/month-end-closer/agent.yaml` | 設 env var `GL_MCP_URL` |
+| sub-agent 數量／ledger-reader 輸出限制 | `agent.yaml`／`subagents/ledger-reader.yaml` | 改 callable_agents／output_schema |
+| Excel 報告範本 | `xlsx-author` skill | 換範本 |
+
+**三條路線**
+- ① 臨時（不改檔）：門檻／政策／清單直接在 prompt 或 `steering-examples.json` 給。
+- ② 永久（改預設）：改 `vertical-plugins/` 的 SKILL.md 真本 → `python3 scripts/sync-agent-skills.py` → `check.py`（drift 會擋 commit；別手改 bundle 的 copy）。
+- ③ 接系統：改 `.mcp.json` 的 url（外掛）或 env var（CMA）；**server 名別改**。
+
+**接真實系統要做到**（上線必補；現已接本地 mock，跑 `python3 mock-mcp/run_all_http.py` 可離線端到端跑）
+- 🛠️ `internal-gl`：①拉試算表（實體·期間）②查分錄（科目·日期區間·來源篩選）③查餘額（科目·日期）
 - 👤 **人工覆核不變**：只草擬分錄，核准後才過帳
 
-> ⚠️ skill 一律改 `vertical-plugins/` 的**source(真本)**，改完跑 `python3 scripts/sync-agent-skills.py` sync 到 agent。這個 agent 是刻意把公司專屬的東西留空，你填上去才算完整。
+> 通用改法見 [Customizing.md](../Customizing.md)。這支刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 

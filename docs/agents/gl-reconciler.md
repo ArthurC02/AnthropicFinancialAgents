@@ -71,39 +71,41 @@ gl-recon ──► break-trace ──► (audit-xls / xlsx-author)
 ```
 > 🎯 招牌設計：全 10 支裡唯一「髒 reader + 獨立 critic」的雙層（4 階段）。reader 的 output_schema 把差異原因 suspected_cause 鎖成固定 enum（`temporal_cutoff`／`system_drift`／`reclass`／`unknown`），連分類都不給自由發揮、注入塞不進來；reader 還是 per asset class fan-out 並行。critic 則拿可信 MCP 重算、做對抗式 review，把誤報濾掉只送真的——對帳容易誤報，所以才需要這層
 
-**改哪裡（快速 map）**
-
-| 想改 | 動這個檔 |
-|---|---|
-| 流程／stop 點／守則 | `agents/gl-reconciler.md` 的 Workflow／Guardrails |
-| 用哪些 skill | 同檔的 Skills 行 |
-| 容差門檻（0.01）／根因規則 | `gl-recon`／`break-trace` 的 SKILL.md → sync |
-| 幾個 sub-agent | `cookbooks/gl-reconciler/agent.yaml` 的 callable_agents |
-| reader 輸出限制 | `subagents/reader.yaml` 的 output_schema |
-
-> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
-
 **跨 agent**　fund-admin 三兄弟 ┄ 本 agent（日常對帳）╳ 月底結帳 ╳ 報表稽核，各自劃好邊界
 
-## 四、上線前要補齊的（客製化）
+## 四、要調什麼、改哪裡（業務內容調整表）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實帳務系統**：`internal-gl`（port 8001）／`subledger`（port 8002）都已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
-  - 外掛 → 兩個 server 都已定義在 `plugins/vertical-plugins/fund-admin/.mcp.json`，上線只要把該 server 的 `url` 從 `127.0.0.1:800x` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
-  - CMA → 設 env var `GL_MCP_URL`／`SUBLEDGER_MCP_URL`（或改 `managed-agent-cookbooks/gl-reconciler/agent.yaml`）
-  - 🛠️ `internal-gl` 要做到：①查餘額（資產類別·交易日）②依 GL 明細查分錄 → 分錄號·過帳日·來源系統·批次號·製單人
-  - 🛠️ `subledger` 要做到：①查持倉/餘額（資產類別·交易日）②依 key 查交易 → 交易號·交易日·交割日·對手·feed·FX率（規格見 `gl-recon`、`break-trace`）
-- 🎚️ **容差門檻**（預設金額 `0.01`／數量 `0`）＋🗺️ **科目對應表** → `plugins/vertical-plugins/fund-admin/skills/gl-recon/SKILL.md`
-- 🔎 **追根因規則** → `plugins/vertical-plugins/fund-admin/skills/break-trace/SKILL.md`
-- 📦 **資產類別清單**（決定要 fan-out 幾個 reader）＋✏️ **調整範圍** → `plugins/agent-plugins/gl-reconciler/agents/gl-reconciler.md`
-- 📄 **Excel template** → `plugins/vertical-plugins/financial-analysis/skills/xlsx-author/`
+> 先分清楚：門檻、規則、清單多半設計成「執行時餵」就好；要變成公司預設才改 source。
+
+| 想調的業務內容 | 改哪個檔 | 怎麼改 |
+|---|---|---|
+| 容差門檻（金額 `0.01`／數量 `0`／FX 進位） | `gl-recon` SKILL.md · Tolerance 段 | 臨時 prompt 給；永久改值 → sync |
+| 比對分桶／差異分類（時間差·FX·重分類·漏記） | `gl-recon` SKILL.md · Match／Classify 段 | 改類別定義 → sync |
+| 追根因規則、負責人路由 | `break-trace` SKILL.md | 改 → sync |
+| 科目對應表 | `gl-recon` SKILL.md | 改 → sync |
+| 流程／stop 點／守則／掛哪些 skill | `agents/gl-reconciler.md`（Workflow／Skills 行） | 直接改劇本（外掛＋CMA 同時生效） |
+| 資產類別清單（決定 fan-out 幾個 reader） | `agents/gl-reconciler.md` | 改劇本 |
+| 接真實總帳／子帳（外掛） | `fund-admin/.mcp.json` | `internal-gl`／`subledger` 的 url 從 `127.0.0.1:800x` 改指真實系統（別改 server 名） |
+| 接真實系統（CMA） | `cookbooks/gl-reconciler/agent.yaml` | 設 env var `GL_MCP_URL`／`SUBLEDGER_MCP_URL` |
+| sub-agent 數量／reader 輸出限制 | `agent.yaml`／`subagents/reader.yaml` | 改 callable_agents／output_schema |
+| Excel 報告範本 | `xlsx-author` skill | 換範本 |
+
+**三條路線**
+- ① 臨時（不改檔）：門檻／政策／清單直接在 prompt 或 `steering-examples.json` 給。
+- ② 永久（改預設）：改 `vertical-plugins/` 的 SKILL.md 真本 → `python3 scripts/sync-agent-skills.py` → `check.py`（drift 會擋 commit；別手改 bundle 的 copy）。
+- ③ 接系統：改 `.mcp.json` 的 url（外掛）或 env var（CMA）；**server 名別改**。
+
+**接真實系統要做到**（上線必補；現都已接本地 mock，跑 `python3 mock-mcp/run_all_http.py` 可離線端到端跑）
+- 🛠️ `internal-gl`：①查餘額（資產類別·交易日）②依明細查分錄 → 分錄號·過帳日·來源·批號·製單人
+- 🛠️ `subledger`：①查持倉（資產類別·交易日）②依 key 查交易 → 交易號·交易/交割日·對手·feed·FX 率
 - 👤 **人工覆核不變**：只產例外報告，永遠不 post（不過帳）
 
-> ⚠️ skill 一律改 `vertical-plugins/` 的**source(真本)**，改完跑 `python3 scripts/sync-agent-skills.py` sync 到 agent。這個 agent 是刻意把公司專屬的東西留空，你填上去才算完整。
+> 通用改法見 [Customizing.md](../Customizing.md)。這支刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 

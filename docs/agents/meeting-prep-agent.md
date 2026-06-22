@@ -71,38 +71,39 @@ client-review ──► client-report ──► (investment-proposal / pptx-auth
 ```
 > 🎯 招牌設計：風險最低（🟢）卻照樣隔離——它是少數風險最低、但 CMA 端仍把寫檔權隔離出來的例子。plugin 版主代理直接握有寫檔權（低風險、產出是內部簡報，故放寬;market／model／pitch／earnings 的 plugin tools 其實也都有 Write），但 CMA 版仍只給 pack-writer 寫;profiler 讀可信源（無 schema）、news-reader 碰髒（有 schema）。**安全層級會隨風險高低調整**，不是一刀切。
 
-**改哪裡（快速 map）**
-
-| 想改 | 動這個檔 |
-|---|---|
-| 流程／stop 點／守則 | `agents/meeting-prep-agent.md` 的 Workflow／Guardrails |
-| 用哪些 skill | 同檔的 Skills 行 |
-| IPS／再平衡門檻 | `client-review/SKILL.md` 真本 → sync |
-| 幾個 sub-agent | `cookbooks/meeting-prep-agent/agent.yaml` 的 callable_agents |
-| news-reader 輸出限制 | `subagents/news-reader.yaml` 的 output_schema |
-
-> 通用改法見 [Customizing.md](../Customizing.md);上線要補的見下方 §四。
-
 **跨 agent**　前台顧問型，跟後台作業家族（對帳／結帳／開戶）相對
 
-## 四、上線前要補齊的（客製化）
+## 四、要調什麼、改哪裡（業務內容調整表）
 
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實系統**：`crm`／`capiq` 都已在 vertical `.mcp.json` 定義、指向本機 mock（`mock-mcp/`，假 CSV）——想離線 demo 跑 `python3 mock-mcp/run_all_http.py` 就能連 mock
-  - plugin → 把 `plugins/vertical-plugins/wealth-management/.mcp.json` 裡 `crm` 的 url 從本機 mock 改指你的 CRM 系統（伺服器名跟 frontmatter `tools:` 都不要改）
-  - CMA → 設 env var `CRM_MCP_URL`／`CAPIQ_MCP_URL`（或改 `managed-agent-cookbooks/meeting-prep-agent/agent.yaml`）
-  - 🛠️ `crm` 要能：依客戶ID查 關係歷史·持倉·未結項·近期通訊（規格見 `client-review`、`client-report`）
-  - 🛠️ `capiq` 要能：查會影響這位客戶持倉的市場事件／報價（要上線把 url 改指你的 CapIQ／S&P feed）
-- 📐 **IPS／再平衡門檻**（偏離預設 `3–5%`） → `plugins/vertical-plugins/wealth-management/skills/client-review/SKILL.md`
-- 🎨 **品牌簡報 template**：用 `/ppt-template` 指令產一支 template skill（指令底層是 `ppt-template-creator`，實際渲染簡報用 `plugins/vertical-plugins/financial-analysis/skills/pptx-author/`）
-- ✏️ **調整 agent 範圍** → `plugins/agent-plugins/meeting-prep-agent/agents/meeting-prep-agent.md`
-- ⚖️ **合規＋人工 review 不變**：只給顧問、永遠不對外發送
+> 先分清楚：門檻、規則、清單多半設計成「執行時餵」就好；要變成公司預設才改 source。
 
-> ⚠️ skill 一律改 `vertical-plugins/` 的 **source（真本）**，改完跑 `python3 scripts/sync-agent-skills.py` sync 到 agent。這個 agent 刻意把公司專屬的內容留空，填上去才完整。
+| 想調的業務內容 | 改哪個檔 | 怎麼改 |
+|---|---|---|
+| IPS／再平衡偏離門檻（預設 `3–5%`） | `client-review` SKILL.md | 臨時 prompt 給；永久改值 → sync |
+| 持倉績效報告格式（benchmark·配置·免責） | `client-report` SKILL.md | 改格式定義 → sync |
+| 提案規則（配置·費用·預期結果） | `investment-proposal` SKILL.md | 改 → sync |
+| 品牌簡報範本 | `pptx-author` skill（`/ppt-template` 產 template） | 換範本 |
+| 流程／stop 點／守則／掛哪些 skill | `agents/meeting-prep-agent.md`（Workflow／Skills 行） | 直接改劇本（外掛＋CMA 同時生效） |
+| 接真實系統（外掛） | `wealth-management/.mcp.json` | `crm`／`capiq` 的 url 從本機 mock 改指真實系統（別改 server 名） |
+| 接真實系統（CMA） | `cookbooks/meeting-prep-agent/agent.yaml` | 設 env var `CRM_MCP_URL`／`CAPIQ_MCP_URL` |
+| sub-agent 數量／news-reader 輸出限制 | `agent.yaml`／`subagents/news-reader.yaml` | 改 callable_agents／output_schema |
+
+**三條路線**
+- ① 臨時（不改檔）：門檻／政策／清單直接在 prompt 或 `steering-examples.json` 給。
+- ② 永久（改預設）：改 `vertical-plugins/` 的 SKILL.md 真本 → `python3 scripts/sync-agent-skills.py` → `check.py`（drift 會擋 commit；別手改 bundle 的 copy）。
+- ③ 接系統：改 `.mcp.json` 的 url（外掛）或 env var（CMA）；**server 名別改**。
+
+**接真實系統要做到**（上線必補；現都已接本地 mock，跑 `python3 mock-mcp/run_all_http.py` 可離線端到端跑）
+- 🛠️ `crm`：依客戶ID查 關係歷史·持倉·未結項·近期通訊（規格見 `client-review`、`client-report`）
+- 🛠️ `capiq`：查會影響這位客戶持倉的市場事件／報價（url 改指你的 CapIQ／S&P feed）
+- 👤 **人工覆核不變**：見客／對外前一律由顧問定案，只產草稿、永遠不對外發送
+
+> 通用改法見 [Customizing.md](../Customizing.md)。這支刻意把公司專屬的東西留空，你填上去才算完整。
 
 ## 五、導入評估
 
