@@ -83,8 +83,8 @@ nav-tieout ──► (audit-xls / xlsx-author)
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
 ```
-- 🔌 **接真實 NAV 來源**：`nav` MCP 還是 placeholder（佔位，repo 裡沒定義）
-  - 外掛 → 新增 `plugins/vertical-plugins/fund-admin/.mcp.json`（目前不存在）
+- 🔌 **接真實 NAV 來源**：`nav` MCP（port 8004）已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
+  - 外掛 → server 已定義在 `plugins/vertical-plugins/fund-admin/.mcp.json`，上線只要把該 server 的 `url` 從 `127.0.0.1:8004` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
   - CMA → 設 env var `NAV_MCP_URL`（或改 `managed-agent-cookbooks/statement-auditor/agent.yaml`）
   - 🛠️ MCP 要做到：依基金/LP/欄位查 NAV pack 的數值（給逐欄比對用；規格見 `nav-tieout` 這個 skill）
 - 📐 **欄位對應**：LP 對帳單欄位 ↔ NAV pack 欄位的對應表 → `plugins/vertical-plugins/fund-admin/skills/nav-tieout/SKILL.md`
@@ -98,7 +98,7 @@ nav-tieout ──► (audit-xls / xlsx-author)
 | 面向 | 評估 |
 |---|---|
 | **導入風險** | 🔴 高 — 這是出資人（LP）對帳單對外分送前的最後一道把關，數字核對錯了，直接影響對 LP 的正式財務報告跟機構誠信；雖然 agent 只給 pass/hold 建議、要等投資人關係（IR）人工簽核才寄出，但這是合規等級的對外文件，不容差錯。 |
-| **導入成本** | 🔴 高 — `nav` MCP 還是 placeholder（佔位），要實接基金淨值（NAV）來源（依基金／LP／欄位查 NAV pack 數值）；還要客製 LP 對帳單欄位 ↔ NAV pack 欄位的對應表跟比對容差，這是要自建內部系統整合的重度工程。 |
+| **導入成本** | 🔴 高 — `nav` MCP 雖然已接好本地 mock（可離線端到端跑），但上線要把它從 mock repoint 到真實基金淨值（NAV）來源（依基金／LP／欄位查 NAV pack 數值）；還要客製 LP 對帳單欄位 ↔ NAV pack 欄位的對應表跟比對容差，這是要自建內部系統整合的重度工程。 |
 | **適用單位** | 基金行政部、基金會計、投資人關係（IR） |
 | **單位中角色** | 基金會計（下指令＋審例外清單）· 投資人關係（IR，簽核＋對外分送）· 行政主管（覆核過／留決定） |
 

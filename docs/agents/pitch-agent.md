@@ -61,7 +61,7 @@ sector-overview ─► comps-analysis ─► lbo/dcf/3-statement ─► pitch-de
 ```
 **Skill（共 11 支）**　`sector-overview` · `comps-analysis` · `lbo-model` · `dcf-model` · `3-statement-model` · `audit-xls` · `pitch-deck` 填簡報 · `ib-check-deck` 簡報QC · `deck-refresh` 重整圖表 · `xlsx-author` 產 Excel · `pptx-author` 產簡報檔（後兩支 deck-writer 寫檔用）
 **可加掛的模型**　併購提案要算 accretion／dilution 可加掛 `merger-model`（怎麼掛見 [Models.md](../Models.md)）
-**MCP**　`capiq`（CMA 版另加 `daloopa`）;`capiq` 是 placeholder（佔位）— 可改接 repo 內建的 sp-global（S&P）connector，`daloopa` 是公開供應商
+**MCP**　`capiq`（CMA 版另加 `daloopa`）;`capiq` 在 vertical `.mcp.json` 已定義，指向本機 mock（`mock-mcp/`，假 CSV），要上線把 url 改指你的 CapIQ／S&P feed，`daloopa` 是公開供應商
 
 > 工具：讀＋**寫檔**＋CapIQ MCP　|　模型：opus-4-7
 
@@ -96,7 +96,7 @@ sector-overview ─► comps-analysis ─► lbo/dcf/3-statement ─► pitch-de
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
 ```
-- 🔌 **接資料訂閱**：`daloopa` 是公開供應商，**要訂閱／API key**;`capiq` 是 placeholder（佔位）— 可改接 repo 內建的 sp-global（S&P）connector
+- 🔌 **接資料訂閱**：`daloopa` 是公開供應商，**要訂閱／API key**;`capiq` 在 vertical `.mcp.json` 已定義、指向本機 mock（`mock-mcp/`，假 CSV）——想離線 demo 跑 `python3 mock-mcp/run_all_http.py`，要上線把 url 改指你的 CapIQ／S&P feed（伺服器名跟 frontmatter `tools:` 都不要改）
 - 🎨 **銀行 PPT template（關鍵）**：用 `/ppt-template` 把貴銀行的版型教給 Claude → `pitch-deck` 才套得對 → `plugins/vertical-plugins/investment-banking/skills/pitch-deck/SKILL.md`
 - 📐 **comps/先例慣例**：指標定義、同業圈選 → `plugins/vertical-plugins/financial-analysis/skills/comps-analysis/SKILL.md`
 - ✏️ **調整範圍** → `plugins/agent-plugins/pitch-agent/agents/pitch-agent.md`
@@ -109,7 +109,7 @@ sector-overview ─► comps-analysis ─► lbo/dcf/3-statement ─► pitch-de
 | 面向 | 評估 |
 |---|---|
 | **導入風險** | 🟡 中 — 提案簡報（pitch）是對外要給客戶看的正式文件，會影響投資跟併購決策的溝通，但有 banker 在模型後、簡報後各簽核一次把關，不是法規強制過帳那種，所以算中度。 |
-| **導入成本** | 🟡 中（偏高） — 資料端 `capiq` 是 placeholder（佔位）— 可改接 repo 內建的 sp-global（S&P）connector，或接其他公開 source（訂閱＋API key）;更重的是要重度客製投行簡報 template（PPT 版型）、QC 規則跟財務模型慣例（comps／先例指標定義、建模配色稽核），整合工程不輕鬆。 |
+| **導入成本** | 🟡 中（偏高） — 資料端 `capiq` 在 vertical `.mcp.json` 已接本機 mock，要上線把 url 改指你的 CapIQ／S&P feed（或其他公開 source，訂閱＋API key）;更重的是要重度客製投行簡報 template（PPT 版型）、QC 規則跟財務模型慣例（comps／先例指標定義、建模配色稽核），整合工程不輕鬆。 |
 | **適用單位** | 投資銀行部前台（併購／企業融資）、產業組（Coverage） |
 | **單位中角色** | 資深 banker／董事總經理（下情境指令＋兩次簽核把關）· 分析師／經理（覆核模型與簡報數字）· 助理（草稿與資料加工） |
 

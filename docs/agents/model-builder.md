@@ -53,7 +53,7 @@
 ```
 **Skill（共 6 支）**　`dcf-model` 折現估值 · `lbo-model` 槓桿收購 · `3-statement-model` 三表 · `comps-analysis` 同業倍數 · `audit-xls` 稽核Excel · `xlsx-author` 產出 Excel（builder 寫檔用）
 **可加掛的模型**　現在是 dcf／lbo／3-statement／comps;要建併購案可加掛 `merger-model`、SaaS／訂閱型標的可加 `unit-economics`（怎麼掛見 [Models.md](../Models.md)）
-**MCP（2 個）**　`capiq` · `daloopa`（`capiq` 是 placeholder（佔位）— 可改接 repo 內建的 sp-global（S&P）connector;`daloopa` 是公開供應商）
+**MCP（2 個）**　`capiq` · `daloopa`（`capiq` 在 vertical `.mcp.json` 已定義，指向本機 mock（`mock-mcp/`，假 CSV），要上線把 url 改指你的 CapIQ／S&P feed;`daloopa` 是公開供應商）
 
 > 工具：讀＋**寫檔**＋CapIQ/Daloopa MCP　|　模型：opus-4-7
 
@@ -88,7 +88,7 @@
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
 ```
-- 🔌 **接資料訂閱**：`daloopa` 是公開供應商，**要訂閱／API key**;`capiq` 是 placeholder（佔位）— 可改接 repo 內建的 sp-global（S&P）connector
+- 🔌 **接資料訂閱**：`daloopa` 是公開供應商，**要訂閱／API key**;`capiq` 在 vertical `.mcp.json` 已定義、指向本機 mock（`mock-mcp/`，假 CSV）——想離線 demo 跑 `python3 mock-mcp/run_all_http.py`，要上線把 url 改指你的 CapIQ／S&P feed（伺服器名跟 frontmatter `tools:` 都不要改）
 - 📐 **建模慣例**：WACC 組成、色碼、計算慣例、各模型 template → `plugins/vertical-plugins/financial-analysis/skills/dcf-model/SKILL.md`（還有 `lbo-model`、`3-statement-model`）
 - ✏️ **調整範圍** → `plugins/agent-plugins/model-builder/agents/model-builder.md`
 - 👤 **人工 review 不變**：建完先停，使用者核准才往下
@@ -100,7 +100,7 @@
 | 面向 | 評估 |
 |---|---|
 | **導入風險** | 🟡 中 — 模型是拿去做投資決策用的，但建完就停、敏感度跟下游都要使用者核准才往下，不是法規強制簽核那種;每個 output 都是公式、可以 trace 回 input，再配上獨立的稽核（auditor）攔錯。風險在估值假設跟計算正不正確，靠人工 review 把關。 |
-| **導入成本** | 🟡 中 — 要訂閱公開資料供應商（CapIQ／Daloopa，買訂閱＋API key），還要客製建模慣例（WACC（加權平均資金成本）組成、藍／黑／綠色碼、計算慣例）跟各模型 template（DCF／LBO／三表）;不用自己蓋內部系統，整合很輕。 |
+| **導入成本** | 🟡 中 — `daloopa` 要訂閱公開資料供應商（買訂閱＋API key）;`capiq` 已接本機 mock，要上線把 url 改指你的 CapIQ／S&P feed;還要客製建模慣例（WACC（加權平均資金成本）組成、藍／黑／綠色碼、計算慣例）跟各模型 template（DCF／LBO／三表）;不用自己蓋內部系統，整合很輕。 |
 | **適用單位** | 投資銀行（IB）、股票研究部、私募股權（PE）／併購團隊、企業發展（corp dev）／財務規劃（FP&A） |
 | **單位中角色** | 建模專員／分析師（下指令＋建模＋覆核）· 投資銀行家／投組經理（提需求＋核准模型）· 研究分析師（消費估值結論） |
 

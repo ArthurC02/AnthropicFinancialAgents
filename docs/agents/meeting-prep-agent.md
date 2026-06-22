@@ -92,11 +92,11 @@ client-review ──► client-report ──► (investment-proposal / pptx-auth
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實系統**：`crm`／`capiq` 是 placeholder（佔位）（repo 未定義）
-  - plugin → 新增 `plugins/vertical-plugins/wealth-management/.mcp.json`（目前不存在）
+- 🔌 **接真實系統**：`crm`／`capiq` 都已在 vertical `.mcp.json` 定義、指向本機 mock（`mock-mcp/`，假 CSV）——想離線 demo 跑 `python3 mock-mcp/run_all_http.py` 就能連 mock
+  - plugin → 把 `plugins/vertical-plugins/wealth-management/.mcp.json` 裡 `crm` 的 url 從本機 mock 改指你的 CRM 系統（伺服器名跟 frontmatter `tools:` 都不要改）
   - CMA → 設 env var `CRM_MCP_URL`／`CAPIQ_MCP_URL`（或改 `managed-agent-cookbooks/meeting-prep-agent/agent.yaml`）
   - 🛠️ `crm` 要能：依客戶ID查 關係歷史·持倉·未結項·近期通訊（規格見 `client-review`、`client-report`）
-  - 🛠️ `capiq` 要能：查會影響這位客戶持倉的市場事件／報價（capiq 可改接 repo 內建的 sp-global（S&P）connector）
+  - 🛠️ `capiq` 要能：查會影響這位客戶持倉的市場事件／報價（要上線把 url 改指你的 CapIQ／S&P feed）
 - 📐 **IPS／再平衡門檻**（偏離預設 `3–5%`） → `plugins/vertical-plugins/wealth-management/skills/client-review/SKILL.md`
 - 🎨 **品牌簡報 template**：用 `/ppt-template` 指令產一支 template skill（指令底層是 `ppt-template-creator`，實際渲染簡報用 `plugins/vertical-plugins/financial-analysis/skills/pptx-author/`）
 - ✏️ **調整 agent 範圍** → `plugins/agent-plugins/meeting-prep-agent/agents/meeting-prep-agent.md`
@@ -109,7 +109,7 @@ client-review ──► client-report ──► (investment-proposal / pptx-auth
 | 面向 | 評估 |
 |---|---|
 | **導入風險** | 🟢 低 — 產出是會前的內部簡報，只給財富顧問參考、永遠不直接發給客戶;不碰法規簽核、財務過帳或對外正式文件，顧問會前 review 一下就能攔錯。 |
-| **導入成本** | 🟡 中（偏高，CRM 要接內部系統） — `crm` 是內部的 placeholder（佔位）MCP，要接貴公司的客戶關係系統（查關係歷史·持倉·未結項·近期通訊）;`capiq` 要接市場資料平台（可直接用 repo 內建的 sp-global（S&P）connector）;另外要客製投資政策聲明（IPS）／再平衡偏離門檻跟品牌簡報 template。 |
+| **導入成本** | 🟡 中（偏高，CRM 要接內部系統） — `crm` 已在 vertical `.mcp.json` 接本機 mock，要上線把 url 改指貴公司的客戶關係系統（查關係歷史·持倉·未結項·近期通訊）;`capiq` 同樣已接本機 mock，要上線把 url 改指你的市場資料平台（CapIQ／S&P feed）;另外要客製投資政策聲明（IPS）／再平衡偏離門檻跟品牌簡報 template。 |
 | **適用單位** | 財富管理／私人銀行前台、理財顧問團隊 |
 | **單位中角色** | 財富顧問（下指令＋會前覆核草稿·對客戶溝通）· 投組經理（提持倉與再平衡需求）· 助理顧問（草稿加工·彙整行事曆會議） |
 

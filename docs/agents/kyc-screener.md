@@ -92,8 +92,8 @@ kyc-doc-parse ──► kyc-rules ──► (screening MCP)
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實篩查源**：`screening` MCP 還是 placeholder（佔位，repo 裡沒定義）
-  - 外掛 → 新增 `plugins/vertical-plugins/operations/.mcp.json`（目前不存在）
+- 🔌 **接真實篩查源**：`screening` MCP（port 8006）已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
+  - 外掛 → server 已定義在 `plugins/vertical-plugins/operations/.mcp.json`，上線只要把該 server 的 `url` 從 `127.0.0.1:8006` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
   - CMA → 設 env var `SCREENING_MCP_URL`（或改 `managed-agent-cookbooks/kyc-screener/agent.yaml`）
   - 🛠️ MCP 要做到：**依人名查** → 回傳制裁／PEP／負面新聞命中＋比對信心（規格見 `kyc-rules` 這個 skill）
 - 📋 **規則表／門檻**：風險因子·高風險國家·風險評等邏輯 → `plugins/vertical-plugins/operations/skills/kyc-rules/SKILL.md`
@@ -109,7 +109,7 @@ kyc-doc-parse ──► kyc-rules ──► (screening MCP)
 | 面向 | 評估 |
 |---|---|
 | **導入風險** | 🔴 高 — 開戶審查跟防制洗錢（AML）是法遵把關，制裁／政治公眾人物（PEP）一旦錯放，後果直接牽涉監管裁罰跟聲譽風險；雖然 agent 只產建議評等、要合規官簽核，但這業務本身高度敏感，誤判的成本極高。 |
-| **導入成本** | 🔴 高 — screening MCP 還是 placeholder（佔位），要自己接制裁／PEP／負面新聞的篩查源（內部或訂閱），還要客製規則表（風險因子·高風險國家·風險評等邏輯）、門檻跟必備文件清單；這是自建內部系統＋內部資料／規則表的重整合。 |
+| **導入成本** | 🔴 高 — `screening` MCP 雖然已接好本地 mock（可離線端到端跑），但上線要把它從 mock repoint 到真實的制裁／PEP／負面新聞篩查源（內部或訂閱），還要客製規則表（風險因子·高風險國家·風險評等邏輯）、門檻跟必備文件清單；這是自建內部系統＋內部資料／規則表的重整合。 |
 | **適用單位** | 法令遵循部、防制洗錢專責單位、開戶／客戶盡職調查（KYC）作業部門 |
 | **單位中角色** | 合規官（下指令＋審查建議＋簽核決定）· 防制洗錢專責人員（維護規則表／門檻＋複審命中）· 開戶作業人員（備齊文件＋送件） |
 

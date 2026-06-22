@@ -66,7 +66,7 @@
 
 試水溫用「餵檔案」就夠；但要真正天天用，得補：
 
-- 🔌 接真實 nav 淨值來源（新增 fund-admin/.mcp.json，目前不存在）
+- 🔌 接真實 nav 淨值來源（fund-admin/.mcp.json 的 `nav` 現在指本機 mock，上線把 url 改指真實 NAV 系統）
 - 🗺️ LP 對帳單欄位 ↔ NAV pack 欄位的「對應表」與比對容差
 - 👤 人工簽核流程不變：只建議，IR 簽核才分送
 

@@ -88,8 +88,8 @@ returns-analysis ──► portfolio-monitoring ──► (ic-memo / xlsx-author
 ```
  Anthropic 參考骨架    ＋    貴公司要補的    ＝    可實際上線
 ```
-- 🔌 **接真實投組來源**：`portfolio` MCP 還是 placeholder（佔位，repo 裡沒定義）
-  - 外掛 → `plugins/vertical-plugins/private-equity/.mcp.json` 已存在但 `mcpServers` 是空的 `{}`，要在裡面補上 `portfolio` server 定義
+- 🔌 **接真實投組來源**：`portfolio` MCP（port 8003）已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
+  - 外掛 → `plugins/vertical-plugins/private-equity/.mcp.json` 已存在且已定義 `portfolio` server，上線只要把該 server 的 `url` 從 `127.0.0.1:8003` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
   - CMA → 設 env var `PORTFOLIO_MCP_URL`（或改 `managed-agent-cookbooks/valuation-reviewer/agent.yaml`）
   - 🛠️ MCP 要做到：依基金/投組公司查估值輸入跟政策標記（給對照政策用；規格見 `portfolio-monitoring`）
 - 📐 **估值政策／waterfall 條款**：估值方法門檻、carry 分配條款 → `plugins/vertical-plugins/private-equity/skills/portfolio-monitoring/SKILL.md`、`returns-analysis/SKILL.md`
@@ -103,7 +103,7 @@ returns-analysis ──► portfolio-monitoring ──► (ic-memo / xlsx-author
 | 面向 | 評估 |
 |---|---|
 | **導入風險** | 🔴 高 — 季末估值複核跟收益分配（waterfall）直接決定管理團隊的績效分成（carry）跟每位出資人（LP）分多少錢，而且產出是對外的正式報告。雖然 agent 只備稿、要等投資人關係（IR）＋法遵長（CCO）人工簽核才分送，但還是落在財務誠信＋對外文件的高風險範疇。 |
-| **導入成本** | 🔴 高 — 要自建內部系統整合：`portfolio` MCP 還是 placeholder（佔位），要接真實的投組（portfolio）資料來源；還要客製估值政策、分配 waterfall 邏輯（carry 條款）跟出資人報告 template，整合工程不小。 |
+| **導入成本** | 🔴 高 — `portfolio` MCP 雖然已接好本地 mock（可離線端到端跑），但上線要把它從 mock repoint 到真實的投組（portfolio）資料來源；還要客製估值政策、分配 waterfall 邏輯（carry 條款）跟出資人報告 template，整合工程不小。 |
 | **適用單位** | 基金行政／基金會計部、私募基金（PE）後台營運 |
 | **單位中角色** | 基金會計主管（下指令＋覆核估值與分配）· 投資人關係（IR）（覆核並簽核 LP 報告）· 法遵長（CCO）（合規簽核＋對外分送把關） |
 

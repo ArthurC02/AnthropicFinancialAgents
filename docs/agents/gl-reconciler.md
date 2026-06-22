@@ -92,8 +92,8 @@ gl-recon ──► break-trace ──► (audit-xls / xlsx-author)
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實帳務系統**：`internal-gl`／`subledger` 都還是 placeholder（佔位，repo 裡沒定義）
-  - 外掛 → 新增 `plugins/vertical-plugins/fund-admin/.mcp.json`（目前不存在）
+- 🔌 **接真實帳務系統**：`internal-gl`（port 8001）／`subledger`（port 8002）都已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
+  - 外掛 → 兩個 server 都已定義在 `plugins/vertical-plugins/fund-admin/.mcp.json`，上線只要把該 server 的 `url` 從 `127.0.0.1:800x` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
   - CMA → 設 env var `GL_MCP_URL`／`SUBLEDGER_MCP_URL`（或改 `managed-agent-cookbooks/gl-reconciler/agent.yaml`）
   - 🛠️ `internal-gl` 要做到：①查餘額（資產類別·交易日）②依 GL 明細查分錄 → 分錄號·過帳日·來源系統·批次號·製單人
   - 🛠️ `subledger` 要做到：①查持倉/餘額（資產類別·交易日）②依 key 查交易 → 交易號·交易日·交割日·對手·feed·FX率（規格見 `gl-recon`、`break-trace`）
@@ -110,7 +110,7 @@ gl-recon ──► break-trace ──► (audit-xls / xlsx-author)
 | 面向 | 評估 |
 |---|---|
 | **導入風險** | 🔴 高 — 對帳結果直接牽涉帳務正不正確跟財務誠信，差異沒抓到就會污染後面的結帳跟報表。雖然 agent 只產例外報告、永遠不過帳，最後一定由控制員簽核覆核，但只要把真差異漏掉、或是硬湊（plug），影響的就是財務真實性，這是合規等級的風險。 |
-| **導入成本** | 🔴 高 — 要自建內部系統整合：`internal-gl` 跟 `subledger` 都還是 placeholder（佔位），得接內部總帳／子帳系統（查餘額、查分錄／交易明細），還要設容差門檻、科目對應表、追根因規則，再決定資產類別清單（決定要 fan-out 幾個 reader）。資料格式跟規則都是內部專屬的，整合工程不小。 |
+| **導入成本** | 🔴 高 — `internal-gl` 跟 `subledger` 雖然已接好本地 mock（可離線端到端跑），但上線要把它們從 mock repoint 到內部總帳／子帳系統（查餘額、查分錄／交易明細），還要設容差門檻、科目對應表、追根因規則，再決定資產類別清單（決定要 fan-out 幾個 reader）。資料格式跟規則都是內部專屬的，整合工程不小。 |
 | **適用單位** | 基金行政後台作業、財務／帳務控制、託管行對帳團隊 |
 | **單位中角色** | 對帳控制員（下指令＋簽核例外報告）· 帳務主管（核定容差與科目對應）· 後台作業員（提供帳務／對帳單來源） |
 

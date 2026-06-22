@@ -18,13 +18,15 @@
 | `comps-analysis` | financial-analysis | 可比公司倍數(comps) | model-builder · market-researcher · pitch-agent | ✅ 已掛 |
 | `model-update` | equity-research | 更新既有模型(財報後 plug 新數字) | earnings-reviewer | ✅ 已掛 |
 | `returns-analysis` | private-equity | IRR／MOIC 報酬 | valuation-reviewer | ✅ 已掛 |
-| `portfolio-monitoring` | private-equity | 投組監控:變異對預算/槓桿覆蓋率/KPI | valuation-reviewer | ✅ 已掛 |
+| `portfolio-monitoring` | private-equity | 投組監控:變異對預算/槓桿覆蓋率/KPI | valuation-reviewer | ⚠️ plugin 掛、CMA 未掛 |
 | `merger-model` | investment-banking | 併購 accretion／dilution(增稀釋) | **沒有 agent 預設掛** | ⚠️ 未掛 |
 | `unit-economics` | private-equity | 單位經濟分析(SaaS／訂閱型) | **沒有 agent 預設掛** | ⚠️ 未掛 |
 
 > ⚠️ **兩支「現成但沒被任何 agent 掛」的**:`merger-model`(併購模型)、`unit-economics`(單位經濟)。它們的 source 已經在 repo 裡,要用就照[第三段](#三實作把一個新模型掛進-agent)掛進去,不用從零寫。
 >
-> 📌 **pitch-agent 的眉角**:`comps-analysis`／`3-statement-model` 是寫在 plugin 劇本(兩個 surface 共用的 canonical prompt)裡,plugin 版會用;但 CMA 的 `subagents/modeler.yaml` 目前只掛 `dcf-model`／`lbo-model`。若要雲端(CMA)版也跑這兩支,得補進 `modeler.yaml`。
+> 📌 **plugin 掛了、CMA 沒掛的兩個眉角**（雲端版要補才會跑）：
+> - **pitch-agent**:`comps-analysis`／`3-statement-model` 寫在 plugin 劇本(兩個 surface 共用的 canonical prompt),plugin 版會用;但 CMA 的 `subagents/modeler.yaml` 只掛 `dcf-model`／`lbo-model`。要雲端版也跑這兩支,得補進 `modeler.yaml`。
+> - **valuation-reviewer**:`portfolio-monitoring` 寫在 plugin 劇本,plugin 版會用;但 CMA 的 `subagents/valuation-runner.yaml` 只掛 `returns-analysis`。要雲端版也跑,得補進 `valuation-runner.yaml`。
 
 ---
 
@@ -74,7 +76,7 @@ Layer 3  改「數字/假設」    → 執行時的 input,不是改 source      
                           → 本地 /plugin install model-builder@fsi-local 測一次
 ```
 
-> ⚠️ **drift 檢查**:check.py 會比對 bundle 與 vertical source **byte 一致**。所以 bundle 進去後**別手改那份 copy**,要改一律去 investment-banking 真本再 `sync`。
+> ⚠️ **drift 檢查**:check.py 會比對 bundle 與 vertical source **是否一致**(檔案有出入就擋下 commit)。所以 bundle 進去後**別手改那份 copy**,要改一律去 investment-banking 真本再 `sync`。
 
 ---
 

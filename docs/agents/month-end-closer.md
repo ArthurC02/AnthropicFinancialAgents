@@ -89,8 +89,8 @@ accrual-schedule ──► roll-forward ──► variance-commentary ──► 
  (提示詞·技能·流程)          (資料·規則·範本)
 ```
 
-- 🔌 **接真實總帳**：`internal-gl` 還是 placeholder（佔位，repo 裡沒定義）
-  - 外掛 → 新增 `plugins/vertical-plugins/fund-admin/.mcp.json`（目前不存在）
+- 🔌 **接真實總帳**：`internal-gl`（port 8001）已經接到本地 mock（`mock-mcp/`），跑 `python3 mock-mcp/run_all_http.py` 就能用假資料把 agent 端到端離線跑起來（零金鑰、零內部系統）
+  - 外掛 → server 已定義在 `plugins/vertical-plugins/fund-admin/.mcp.json`，上線只要把該 server 的 `url` 從 `127.0.0.1:8001` 改指向你的真實系統（別改 server 名、也別動 agent frontmatter 的 `tools:` 名稱）
   - CMA → 設 env var `GL_MCP_URL`（或改 `managed-agent-cookbooks/month-end-closer/agent.yaml`）
   - 🛠️ `internal-gl` 要做到：①拉試算表（實體·期間）②查分錄（科目·日期區間·來源篩選）③查餘額（科目·日期）（規格見 `roll-forward`、`variance-commentary`）
 - 🎚️ **重大性門檻**（預設 `5%`）＋「一定要說明」科目 → `plugins/vertical-plugins/fund-admin/skills/variance-commentary/SKILL.md`
@@ -106,7 +106,7 @@ accrual-schedule ──► roll-forward ──► variance-commentary ──► 
 | 面向 | 評估 |
 |---|---|
 | **導入風險** | 🔴 高 — 月結直接影響財報數字跟財務誠信，雖然 agent 只產結帳包、要等控制員（controller）核准後才過帳，但底層的應計／結轉／差異一旦失真，就會污染對外財報。覆核擋得住錯，但風險本質是合規跟財務誠信，不是單純的品質問題。 |
-| **導入成本** | 🔴 高 — `internal-gl` 還是 placeholder（佔位），要接公司內部總帳（拉試算表／查分錄／查餘額）；還要客製應計排程、結轉規則、重大性門檻（預設 `5%`）跟「一定要說明」的科目清單，再加上分錄格式跟會計科目表（chart of accounts）。整合工程重、規則又多。 |
+| **導入成本** | 🔴 高 — `internal-gl` 雖然已接好本地 mock（可離線端到端跑），但上線要把它從 mock repoint 到公司內部總帳（拉試算表／查分錄／查餘額）；還要客製應計排程、結轉規則、重大性門檻（預設 `5%`）跟「一定要說明」的科目清單，再加上分錄格式跟會計科目表（chart of accounts）。整合工程重、規則又多。 |
 | **適用單位** | 基金行政（後台作業）、財務結帳／總帳部、控制（control）部門 |
 | **單位中角色** | 控制員（下指令＋核准過帳，唯一可過帳者）· 結帳會計（產結帳包＋覆核應計結轉）· 財務主管（簽核結帳包＋核重大差異說明） |
 

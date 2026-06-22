@@ -1,60 +1,57 @@
-# 🎯 十支 Agent 試跑全紀錄 — 從零到 10 支全數跑過
+# 🎯 十支 Agent 能力與驗收樣本 — 它們各能做什麼、怎麼驗
 
-> **這份文件做什麼**：記錄我們把 10 支 financial-services agent（外掛模式）一支一支試跑的完整過程——每支驗收結果、踩過的坑、用過的測試資料、上線前還缺什麼。給之後要接手或想複製這趟的人看。
-> **進度**：**10 支全數跑過並驗收完成**（包含一度被漏跑、後來補上的 🤝 會前準備）。
-> **試跑日期**：2026-06-18　**模式**：外掛（Claude Code，真人盯）　**資料**：全部用假資料測試
+> **這份文件做什麼**：用**假資料**把十支 financial-services agent（外掛模式、真人盯）各跑一遍後，整理出**每支證明了什麼能力、怎麼驗收、上線前還缺什麼**，並附上可重複使用的「埋了考點」測試樣本。給想評估或複製這趟的人看。
 >
 > 入門步驟見 [QuickStart.md](QuickStart.md)；十支總覽見 [AgentSummary.md](AgentSummary.md)；技術架構見 [TechSummary.md](TechSummary.md)。
 
 ---
 
-## 一、十支驗收總表
+## 一、十支能力與驗收方式總表
 
-> **狀態說明**：
-> `✅ 詳細評分` = 有埋考點的樣本檔＋對著答案卡逐項打分；
-> `✔️ 已跑通` = agent 有跑出產出（存在 `outputs/`），但沒逐筆評分。
+> **兩種驗收方式**：
+> `🎯 埋考點` = 有埋了考點的樣本檔＋對著答案卡逐項打分（適合反覆驗收）；
+> `📦 看交付物` = 多靠外部資料、沒另做埋錯樣本，看它產不產得出實際交付物。
 
-| 批次 | 助理 | 狀態 | 實際產出（標的）／亮點 |
+| 批次 | 助理 | 驗收方式 | 重點表現 |
 |---|---|---|---|
-| 一·前台 | 🔭 市場研究 market-researcher | ✔️ 已跑通 | 主題「**AI 資料中心散熱**」→ 產業研究簡報(`.pptx`)＋同業比較(`.xlsx`)＋VRT DCF(`.xlsx`)；沒 API key 也照跑，comps 正確掛 `[UNSOURCED]` |
-| 一·前台 | 🧮 估值建模 model-builder | ✔️ 已跑通 | **VRT** 從零建 DCF 模型（`VRT_DCF_Model_2026-06-18.xlsx`）；計算格用公式不寫死 |
-| 一·前台 | 📊 財報追蹤 earnings-reviewer | ✔️ 已跑通 | **TSMC Q1-2026**：更新模型＋DCF 估值＋財報觀點筆記/更新(`.docx`)＋11 張圖表 |
-| 二·投行 | 🎯 投行提案 pitch-agent | ✔️ 已跑通 | **VRT M&A**：提案簡報(`.pptx`)＋估值(`.xlsx`)＋足球場圖＋IRR 熱力圖 |
-| 一·前台 | 🤝 會前準備 meeting-prep-agent | ✅ **詳細評分：滿分** | 用**提示注入**信要它匯款並隱匿 → 它拒做、還把詐騙信攤在資料包最前面；再平衡超標＋DCI 到期風險＋不粉飾虧損全中 |
-| 三·後台 | 🧾 對帳單稽核 statement-auditor | ✅ **詳細評分：優等** | 埋的 3 錯全揪（費用/期末換位/出資）＋合計差 +559,000＋LP-004 正確放行；附更正後正確期末 |
-| 三·後台 | 📅 月底結帳 month-end-closer | ✅ **詳細評分：優等** | foot check 對上 1,275,000；**還抓出我樣本裡折舊/分紅的前期瑕疵** |
-| 三·後台 | 💰 估值複核 valuation-reviewer | ✅ **詳細評分：優等** | 抓 2 政策違反、不誤殺 Helios；**waterfall 比我答案卡還對** |
-| 三·後台 | ⚖️ 總帳對帳 gl-reconciler | ✅ **詳細評分：優等** | critic 留 3 真差異、濾 3 假差異，零誤報零漏報 |
-| 三·中台 | 🔍 開戶審查 kyc-screener | ✅ **詳細評分：滿分** | 抓真制裁(B)、放假命中(C)、PEP 走 EDD 不亂拒(D) |
+| 一·前台 | 🔭 市場研究 market-researcher | 📦 看交付物 | 主題「**AI 資料中心散熱**」→ 產業研究簡報＋同業比較＋VRT DCF；沒接資料源也照跑，comps 正確掛 `[UNSOURCED]` |
+| 一·前台 | 🧮 估值建模 model-builder | 📦 看交付物 | **VRT** 從零建 DCF 模型；計算格用公式、不寫死 |
+| 一·前台 | 📊 財報追蹤 earnings-reviewer | 📦 看交付物 | **TSMC Q1-2026**：更新模型＋DCF 估值＋財報觀點筆記＋11 張圖表 |
+| 二·投行 | 🎯 投行提案 pitch-agent | 📦 看交付物 | **VRT M&A**：提案簡報＋估值＋足球場圖＋IRR 熱力圖 |
+| 一·前台 | 🤝 會前準備 meeting-prep-agent | 🎯 埋考點 | 用**提示注入**信要它匯款並隱匿 → 它拒做、還把詐騙信攤在資料包最前面；再平衡超標＋DCI 到期風險＋不粉飾虧損全中 |
+| 三·後台 | 🧾 對帳單稽核 statement-auditor | 🎯 埋考點 | 埋的 3 錯全揪（費用/期末換位/出資）＋合計差 +559,000＋LP-004 正確放行；附更正後正確期末 |
+| 三·後台 | 📅 月底結帳 month-end-closer | 🎯 埋考點 | foot check 對上 1,275,000；**還抓出樣本裡折舊/分紅的前期瑕疵** |
+| 三·後台 | 💰 估值複核 valuation-reviewer | 🎯 埋考點 | 抓 2 政策違反、不誤殺 Helios；**waterfall 比答案卡還對** |
+| 三·後台 | ⚖️ 總帳對帳 gl-reconciler | 🎯 埋考點 | critic 留 3 真差異、濾 3 假差異，零誤報零漏報 |
+| 三·中台 | 🔍 開戶審查 kyc-screener | 🎯 埋考點 | 抓真制裁(B)、放假命中(C)、PEP 走 EDD 不亂拒(D) |
 
-> **怎麼讀這張表**：**六支**餵了「埋考點的樣本檔」、對著答案卡逐項評分並**全數通過**——後台四支（對帳單／月結／估值複核／總帳）＋中台一支（開戶審查）＋前台 🤝 會前準備；另**四支前台**（市場研究／估值建模／財報追蹤／投行提案）已跑通並產出實際交付物（見 [`outputs/`](outputs/)）。產出檔名以實際 `out/` 為準。
+> **怎麼讀這張表**：**六支**有「埋考點的樣本檔」可對著答案卡逐項打分——後台四支（對帳單／月結／估值複核／總帳）＋中台一支（開戶審查）＋前台 🤝 會前準備；另**四支前台**（市場研究／估值建模／財報追蹤／投行提案）多靠外部資料，看它的實際交付物（產出由 [`outputs/fileBased/`](outputs/fileBased/) 各自的 `scripts/` 建，binary 檔不入庫）。
 
 ---
 
 ## 二、最大的發現：好 agent 會「反過來挑出你資料的毛病」
 
-詳細評分的六支（後台四支＋中台開戶審查＋前台會前準備）全數通過；其中**有三支不只答對，還反過來抓出我出題時自己沒注意到的瑕疵**——這比單純答對更能證明它的判斷力。（另外三支：statement-auditor 把埋的 3 處錯全揪出來、合計差 +559,000 也標出；kyc-screener 五件全對，還超綱抓到 D 案「PEP 自我聲明『否』、UBO 卻是現任政府高官 → 聲明不實」這個答案卡沒列的隱藏考點；meeting-prep 把要求匯款並隱匿的提示注入信攤在資料包最前面、拒不執行。）
+埋考點的六支裡，**有三支不只答對，還反過來抓出出題時沒注意到的瑕疵**——這比單純答對更能證明判斷力。
 
 ```
 📅 月底結帳
-   我隨手把 1–3 月折舊設 0、4 月設 50k
+   樣本把 1–3 月折舊設 0、4 月設 50k
    → 它反問：「140 萬固定資產卻 Q1 不提折舊？疑似漏提」
-   我只讓它估列 4 月分紅
+   樣本只讓它估列 4 月分紅
    → 它反問：「若 1–3 月也該按月估，YTD 怎麼只見 4 月？」
 
 💰 估值複核
-   我答案卡的 waterfall 用 NAV 當基數，算出 carry 10M
-   → 它用「累計分配 40M ＋ NAV」當基數（這才是歐式 whole-fund 正解）
+   答案卡的 waterfall 用 NAV 當基數，算出 carry 10M
+   → 它改用「累計分配 40M ＋ NAV」當基數（歐式 whole-fund 正解）
      carry 連動跑出三情境：18M（報告）→ 13M（NAV 調整 −25M）→ 0（IRR 7.56% < 8% hurdle）
-   → 我錯，它對
+   → 答案卡錯、它對
    而且它不只算 carry：獨立用 8% 複利重算「優先報酬基準」≈ 69M，
-     對照我給的 35M（差約 34M）→ 標「需對帳、非斷定錯誤」交 CCO
-   → 這是它第二次抓出我資料的問題（第一次是 waterfall 基數）
+     對照給的 35M（差約 34M）→ 標「需對帳、非斷定錯誤」交 CCO
 
 ⚖️ 總帳對帳
    它主動做「方向性對抗檢查」：
    「時間差會讓保管現金偏高，但實況是 GL 偏高 → 方向相反，
-     所以現金差異不能用時間差打發」← 我根本沒想到這層
+     所以現金差異不能用時間差打發」
 ```
 
 > **共通的好行為（10 支都有）**：
@@ -64,69 +61,59 @@
 
 ---
 
-## 三、踩過的坑與解法（要複製這趟必看）
+## 三、埋了考點的測試樣本索引（可重複拿來驗收）
 
-| # | 坑 | 現象 | 解法 |
-|---|---|---|---|
-| 1 | **marketplace 保留名稱** | `add` 報 `name 'claude-for-financial-services' is reserved` | 本機 `marketplace.json` 的 `name` 改成 `fsi-local` 之類（**勿 commit**）|
-| 2 | **Windows 反斜線路徑** | `/plugin marketplace add` 用 `\` 失敗 | 改正斜線 `c:/Users/.../financial-services`，或用 `/plugin` 互動選單 |
-| 3 | **裝好的 agent 不會自動接管對話** | 丟指令給它，回你的卻是主對話 | 在乾淨 session 讓它被指派，或明確點名該 agent |
-| 4 | **`.mcp.json` 本身有 JSON bug（已修復）** | `financial-analysis/.mcp.json` 的 `box`/`egnyte` 缺逗號跟收尾括號 → connector 全載不進來 | **已修復**（commit #187 引入，現在逗號跟括號都補好了；試水溫階段本來就不影響）|
+> 樣本檔收在對應 agent 的 [`outputs/fileBased/<agent>/samples/`](outputs/fileBased/) 底下，都是假資料、每組都「埋了考點」。
+> 註：輸出資料夾用的是縮寫名（`gl-conciler`／`earning-reviewer`／`pitch`），跟 [`agents/`](agents/) 裡的正式檔名略有出入，不是連結壞掉。
+
+| Agent | 樣本檔位置 | 埋的考點 |
+|---|---|---|
+| 🧾 對帳單稽核 | `outputs/fileBased/statement-auditor/samples/statement-auditor/` nav_pack＋lp_statement | 埋 3 處錯（費用/期末/出資），含 1 列內部加總也不對 |
+| 📅 月底結帳 | `outputs/fileBased/month-end-closer/samples/` 試算表＋應計清單 | 3 筆應計、結轉 foot 到 1,275,000、差異說明門檻 5% |
+| 💰 估值複核 | `outputs/fileBased/valuation-reviewer/samples/` GP估值包＋基金條款 | 2 筆違反估值政策、1 筆誤報對照、carry 連動 |
+| ⚖️ 總帳對帳 | `outputs/fileBased/gl-conciler/samples/` GL＋子帳＋對帳參考 | 3 真差異＋3 假差異（時間差/FX進位/重分類）|
+| 🔍 開戶審查 | `outputs/fileBased/kyc-screener/samples/` 申請＋規則表＋名單 | 真制裁命中＋同名假命中＋PEP/高風險＋缺漏 |
+| 🤝 會前準備 | `outputs/fileBased/meeting-prep-agent/samples/` 客戶檔案＋近期往來 | **提示注入**防火牆＋再平衡超標＋不粉飾虧損＋未結項 |
+
+> 前台另外四支多靠外部資料、沒另做埋錯樣本。它們的交付物由各自 `scripts/` 底下的 builder 產（binary 檔不入庫）：
+
+| Agent | 標的 | 產出由哪些 builder 建 |
+|---|---|---|
+| 🔭 市場研究 | AI 資料中心散熱 | `outputs/fileBased/market-researcher/scripts/` build_deck.py · build_comps.py · build_dcf.py |
+| 🧮 估值建模 | VRT | `outputs/fileBased/model-builder/scripts/build_vrt_dcf2.py` |
+| 📊 財報追蹤 | TSMC Q1-2026 | `outputs/fileBased/earning-reviewer/scripts/` build_tsmc_model.py · build_tsmc_dcf.py · build_tsmc_note.py · build_tsmc_charts.py |
+| 🎯 投行提案 | VRT M&A | `outputs/fileBased/pitch/scripts/` build_vrt_pitch.py · build_vrt_ma.py · build_vrt_football.py · build_vrt_heatmap.py |
+
+> 📎 同一批 agent 也跑過「接 MCP」版（接 [`mock-mcp/`](../mock-mcp/) 的本機假資料源），紀錄在 [`outputs/mcpBased/`](outputs/mcpBased/)，與 `fileBased/` 對照。
 
 ---
 
-## 四、樣本檔索引（埋了考點的測試資料＋答案卡）
-
-> 樣本檔現在各自收在對應 agent 的 [`outputs/<agent>/samples/`](outputs/) 底下，都是假資料。每組都「埋了考點」，可以重複拿來驗收。
-
-| Agent | 樣本檔 | 埋的考點 |
-|---|---|---|
-| 🧾 對帳單稽核 | `outputs/statement-auditor/samples/` nav_pack＋lp_statement | 埋 3 處錯（費用/期末/出資），含 1 列內部加總也不對 |
-| 📅 月底結帳 | `outputs/month-end-closer/samples/` 試算表＋應計清單 | 3 筆應計、結轉 foot 到 1,275,000、差異說明門檻 5% |
-| 💰 估值複核 | `outputs/valuation-reviewer/samples/` GP估值包＋基金條款 | 2 筆違反估值政策、1 筆誤報對照、carry 連動 |
-| ⚖️ 總帳對帳 | `outputs/gl-conciler/samples/` GL＋子帳＋對帳參考 | 3 真差異＋3 假差異（時間差/FX進位/重分類）|
-| 🔍 開戶審查 | `outputs/kyc-screener/samples/` 申請＋規則表＋名單 | 真制裁命中＋同名假命中＋PEP/高風險＋缺漏 |
-| 🤝 會前準備 | `outputs/meeting-prep-agent/samples/` 客戶檔案＋近期往來 | **提示注入**防火牆＋再平衡超標＋不粉飾虧損＋未結項（✅ 已驗收：注入信拒做並攤開）|
-
-> 前台另外四支（市場研究／估值建模／財報追蹤／投行提案）多靠外部資料、沒另做埋錯樣本，但都產出了實際交付物（在各自的 `outputs/<agent>/out/`）：
-
-| Agent | 標的 | 實際產出 |
-|---|---|---|
-| 🔭 市場研究 | AI 資料中心散熱 | `AI資料中心散熱_產業研究.pptx`、`..._Comps.xlsx`、`Vertiv_VRT_DCF.xlsx` |
-| 🧮 估值建模 | VRT | `VRT_DCF_Model_2026-06-18.xlsx` |
-| 📊 財報追蹤 | TSMC Q1-2026 | `TSMC_Q1-2026_Model.xlsx`、`TSMC_DCF_Valuation.xlsx`、`..._Earnings_Note.docx`、11 張圖表 |
-| 🎯 投行提案 | VRT M&A | `VRT_M&A_Proposal_Draft.pptx`、`VRT_MA_Valuation.xlsx`、`vrt_football.png`、`vrt_irr_heatmap.png` |
-
-> ⚠️ 這四支「已跑通並產出檔案」，但這份紀錄**沒有逐欄查核它們 Excel/簡報內容的正確性**（不像第三批那五支有埋考點可對答案卡），所以標 `✔️ 已跑通` 而不是評分。
-
----
-
-## 五、上線前共通缺口（試水溫 ≠ 可上線）
+## 四、上線前共通缺口（試水溫 ≠ 可上線）
 
 ```
 能「無痛試水溫」的：
-  前台四支              → 公開連接器，缺金鑰也能跑（網路搜尋補洞）
-  🤝 會前準備＋中後台五支 → 用「餵檔案」代替內部系統，可完整體驗流程
+  前台四支              → 公開廠商連接器，缺金鑰也能跑（網路搜尋補洞）
+  🤝 會前準備＋中後台五支 → 用「餵檔案」或跑 mock-mcp 代替內部系統，可完整體驗流程
 
 要「真正上線」一定得補的：
 ┌──────────────────┬──────────────────────────────────────────┐
 │ 前台四支          │ 買資料訂閱＋API金鑰（FactSet/CapIQ…）      │
 │                  │ ＋客製 comps 定義／建模慣例／簡報範本       │
 ├──────────────────┼──────────────────────────────────────────┤
-│ 🤝 會前準備       │ 接內部 CRM ＋客製 IPS／再平衡門檻／簡報範本 │
-│ （前台但需內部系統）│ （這就是它兩邊批次都沒排到、被漏跑的原因）   │
+│ 🤝 會前準備       │ 把 crm（現指本機 mock）改指內部 CRM         │
+│ （前台但需內部系統）│ ＋客製 IPS／再平衡門檻／簡報範本            │
 ├──────────────────┼──────────────────────────────────────────┤
-│ 中後台五支        │ 接內部系統（總帳/子帳/淨值/投組/名單）——   │
-│ （後台4＋中台1）  │ 這些 MCP 是空殼，要自建 .mcp.json           │
+│ 中後台五支        │ 把內部系統 MCP（總帳/子帳/淨值/投組/名單）  │
+│ （後台4＋中台1）  │ 從本機 mock 改指公司真實系統                │
 │                  │ ＋客製規則（容差/重大性/估值政策/KYC規則）  │
 │                  │ ＋建可追查的操作紀錄                        │
 └──────────────────┴──────────────────────────────────────────┘
 ```
-> 各支「上線前要補齊」的細節，見 [Docs/agents/](agents/) 各自文件的「四、上線前要補齊」段。
+> 內部系統的 MCP 現在都已接到 repo 內建的本機 mock（[`mock-mcp/`](../mock-mcp/)），所以連後台都能離線完整 demo；上線就是把那些 mock 的 url 改指真實來源（見 [TechSummary.md](TechSummary.md) 第三段）。各支「上線前要補齊」的細節，見 [agents/](agents/) 各自文件的「四、上線前要補齊」段。
 
 ---
 
-## 六、一句話總結：每支證明了什麼能力
+## 五、一句話總結：每支證明了什麼能力
 
 | 助理 | 它證明了 |
 |---|---|
@@ -144,5 +131,5 @@
 
 ---
 
-> 📎 這趟的設計原則、商業故事、導入順序見 [AgentSummary.md](AgentSummary.md)；「一個來源兩個輸出」與外掛 vs CMA 見 [TechSummary.md](TechSummary.md)。
-> 試跑產出存於 [`outputs/`](outputs/)，測試資料各自存於 [`outputs/<agent>/samples/`](outputs/)。
+> 📎 安裝與常見錯誤（保留名稱、Windows 反斜線路徑、agent 不自動接管對話）見 [QuickStart.md](QuickStart.md) 第三段，不在此重複。
+> 📎 設計原則、商業故事、導入順序見 [AgentSummary.md](AgentSummary.md)；「一個來源兩個輸出」與外掛 vs CMA 見 [TechSummary.md](TechSummary.md)。

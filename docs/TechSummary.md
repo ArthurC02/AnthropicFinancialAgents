@@ -81,91 +81,79 @@ CMA：無人值守，沒有人可以攔。安全只能靠「結構」：
 
 ## 三、十個 Agent 各需要哪些 MCP
 
-每個 agent 在系統提示的 `tools:` 那行就宣告了它要接哪些 MCP。下表把十個整理在一起，並標明這個插座是**公開連接器（網路上現成、repo 已填好網址）**還是**placeholder（佔位）名稱（repo 沒定義，要你自己接公司內部系統）**。
+每個 agent 在系統提示的 `tools:` 那行就宣告了它要接哪些 MCP。**這些 MCP 現在全都已經在某個 vertical 的 `.mcp.json` 定義好了**，沒有一個是「repo 裡查無此名」。差別只在它**現在指到哪裡**：
 
-| Agent | 需要的 MCP | 性質 | 這個 MCP 必須能提供… |
+- **真實廠商網址**：`.mcp.json` 已填好供應商的正式網址（如 `factset`、`daloopa`），要你自己的訂閱金鑰才有資料。
+- **本機 mock**：`.mcp.json` 指到 repo 內建的本機假伺服器（[`mock-mcp/`](../mock-mcp/)，跑在 `127.0.0.1:800x`、餵假 CSV），零金鑰就能離線把 agent 跑一遍。
+
+| Agent | 需要的 MCP | 現在指到 | 這個 MCP 必須能提供… |
 |---|---|---|---|
-| 📊 earnings-reviewer | `factset`、`daloopa` | 🌐 公開 | 財報實際值、市場共識、10-Q/8-K、電話會議逐字稿 |
-| 🔭 market-researcher | `capiq`、`factset` | ⚠️ capiq placeholder（佔位）／factset 公開 | 同業倍數、產業數據、公司基本面 |
-| 🧮 model-builder | `capiq`、`daloopa` | ⚠️ capiq placeholder（佔位）／daloopa 公開 | 歷史財務、共識、申報文件（建模輸入） |
-| 🎯 pitch-agent | `capiq`（CMA 另加 `daloopa`） | ⚠️ placeholder（佔位） | 交易倍數、先例交易、標的最新申報文件 |
-| 🤝 meeting-prep-agent | `crm`、`capiq` | ⚠️ placeholder（佔位） | 客戶關係史/持倉/未結事項、相關市場事件 |
-| 🔍 kyc-screener | `screening` | ⚠️ placeholder（佔位） | 制裁/政治公眾人物（PEP）/負面新聞篩查 |
-| ⚖️ gl-reconciler | `internal-gl`、`subledger` | ⚠️ placeholder（佔位） | 總帳與子帳餘額、傳票（含過帳日/來源系統/批號/製單人） |
-| 📅 month-end-closer | `internal-gl` | ⚠️ placeholder（佔位） | 指定主體與期間的試算表 |
-| 🧾 statement-auditor | `nav` | ⚠️ placeholder（佔位） | 基金淨值（NAV）資料包，供逐欄核對 |
-| 💰 valuation-reviewer | `portfolio` | ⚠️ placeholder（佔位） | 投組公司估值、報酬、收益分配（waterfall）輸入 |
+| 📊 earnings-reviewer | `factset`、`daloopa` | 🌐 真實廠商 | 財報實際值、市場共識、10-Q/8-K、電話會議逐字稿 |
+| 🔭 market-researcher | `capiq`、`factset` | capiq 本機 mock／factset 真實廠商 | 同業倍數、產業數據、公司基本面 |
+| 🧮 model-builder | `capiq`、`daloopa` | capiq 本機 mock／daloopa 真實廠商 | 歷史財務、共識、申報文件（建模輸入） |
+| 🎯 pitch-agent | `capiq`（CMA 另加 `daloopa`） | capiq 本機 mock／daloopa 真實廠商 | 交易倍數、先例交易、標的最新申報文件 |
+| 🤝 meeting-prep-agent | `crm`、`capiq` | 🖥️ 本機 mock | 客戶關係史/持倉/未結事項、相關市場事件 |
+| 🔍 kyc-screener | `screening` | 🖥️ 本機 mock | 制裁/政治公眾人物（PEP）/負面新聞篩查 |
+| ⚖️ gl-reconciler | `internal-gl`、`subledger` | 🖥️ 本機 mock | 總帳與子帳餘額、傳票（含過帳日/來源系統/批號/製單人） |
+| 📅 month-end-closer | `internal-gl` | 🖥️ 本機 mock | 指定主體與期間的試算表 |
+| 🧾 statement-auditor | `nav` | 🖥️ 本機 mock | 基金淨值（NAV）資料包，供逐欄核對 |
+| 💰 valuation-reviewer | `portfolio` | 🖥️ 本機 mock | 投組公司估值、報酬、收益分配（waterfall）輸入 |
 
-**只有三個 vertical 帶 `.mcp.json`，其中兩個還是空的：**
+**七個 vertical，六個帶 `.mcp.json`（equity-research 沒帶；investment-banking 帶了但內容是空的）：**
 
 ```
-plugins/vertical-plugins/financial-analysis/.mcp.json  ← 唯一真正填了公開連接器
-   daloopa, morningstar, sp-global(kensho), factset, moodys,
-   mtnewswire, aiera, lseg, pitchbook, chronograph, egnyte, box
-plugins/vertical-plugins/investment-banking/.mcp.json  ← { "mcpServers": {} } 空
-plugins/vertical-plugins/private-equity/.mcp.json      ← { "mcpServers": {} } 空
-（operations / fund-admin / wealth-management 等其餘 vertical：根本沒有 .mcp.json）
+financial-analysis/.mcp.json   capiq（本機 mock）＋ 12 個真實廠商連接器
+                               (daloopa, morningstar, sp-global, factset, moodys,
+                                mtnewswire, aiera, lseg, pitchbook, chronograph, egnyte, box)
+fund-admin/.mcp.json           internal-gl, subledger, nav   （都指本機 mock）
+private-equity/.mcp.json       portfolio                     （本機 mock）
+operations/.mcp.json           screening                     （本機 mock）
+wealth-management/.mcp.json    crm                           （本機 mock）
+investment-banking/.mcp.json   { "mcpServers": {} }          （空的；IB 提案工作流的資料源借自 financial-analysis 的 capiq/daloopa）
+```
+> equity-research vertical 沒有 `.mcp.json`——用它的 earnings-reviewer 走 financial-analysis 的 `factset`／`daloopa`，所以不需要自帶。
+
+### 兩種插座、兩種上線做法
+
+agent 在 `tools:` 引用的名字，實際分兩種命運：
+
+| agent 引用的 server | 現在指到 | 要正式上線你要做的 |
+|---|---|---|
+| `factset`、`daloopa`（及 morningstar/sp-global/moodys…） | ✅ financial-analysis 已填**真實廠商網址** | 向供應商買訂閱＋API 金鑰（網址不用改） |
+| `capiq`、`crm`、`screening`、`internal-gl`、`subledger`、`nav`、`portfolio` | 🖥️ repo 內建**本機 mock**（`mock-mcp/`） | demo：跑 `python3 mock-mcp/run_all_http.py` 就離線跑得動；上線：把 `.mcp.json` 那把 url 從 `127.0.0.1:800x` 改指你公司真實系統／真實廠商 |
+
+```
+真實廠商（factset/daloopa…）→ 申請金鑰，網址照用
+本機 mock（capiq/internal-gl/…）→ 先跑 mock-mcp 就能 demo；上線改 url 指真實來源
+                          ★ 兩種都不需要去改 agent frontmatter 的 server 名稱 ★
 ```
 
-### 最容易誤會的點：「裝全部外掛」只救得到公開連接器
+> 結果是：**裝好外掛＋跑起 `mock-mcp/`，十支 agent（連後台那幾支 🔴）都能離線完整跑一遍**——repo 的 [`docs/outputs/mcpBased/`](outputs/mcpBased/) 就是十支跑 mock 的實跑紀錄。要**正式上線**才需要把對應的 mock 換成真實來源（後台那幾支因為要接內部系統、又牽涉法規與帳目正確性，工程量最大）。
 
-很直覺會以為「把所有外掛都裝上，financial-analysis 的 `.mcp.json` 就會啟動這些 server，別包的 agent 也順帶受惠」。**這對『公開連接器』完全正確，但救不到『placeholder（佔位）』**——因為佔位 server 在整個 repo 裡**沒有任何 `.mcp.json` 定義過**，沒有人提供，裝再多包也變不出來。
+### 指到本機 mock 的 7 個 MCP：上線要改指真實來源
 
-agent 在 `tools:` 引用的名字，實際分成三種命運：
+下表是「目前指到本機 mock、上線要你改指真實系統」的清單。`capiq` 跨多支 agent 共用，改一處就好。
 
-| agent 引用的 server | 誰定義了它？ | 裝好全部外掛後… | 你要做什麼 |
+| 本機 mock MCP | 哪些 agent 在用 | 定義在哪個 vertical `.mcp.json` | 對應的 CMA 環境變數 |
 |---|---|---|---|
-| `factset`、`daloopa` | ✅ financial-analysis 已填網址 | **可用** | 啥都不用做（裝上 financial-analysis 即可） |
-| `capiq` | ❌ 沒有人 | ⚠️ **還是沒有** | 自己補同名定義（它感覺像市場資料，但 repo 沒定義過） |
-| `crm`、`screening`、`internal-gl`、`subledger`、`nav`、`portfolio` | ❌ 沒有人 | ⚠️ **還是沒有** | 自己接公司內部系統 |
-
-```
-公開（factset/daloopa）→ 裝上 financial-analysis 即可，按名字共用，不碰 frontmatter
-佔位（capiq/crm/...）   → 你要「自己當提供方」，補一把同名鑰匙指到真實伺服器
-                          ★ 兩種情況都不需要去改 agent 的 frontmatter 名稱 ★
-```
-
-> 結果就是：earnings-reviewer 這種純市場資料的 agent，裝好就能動；後台那幾支 🔴 agent 因為全靠 placeholder（佔位）的內部 server，**裝好也照樣不能動**，要等你接上內部系統。
-
-> ⚠️ **兩個要注意的點**：
-> **(1) `capiq` 是 placeholder（佔位）名稱**——多個 agent 寫著要 `mcp__capiq__*`，但沒有任何 `.mcp.json` 定義過 `capiq`。要嘛接你公司的 CapIQ 來源、要嘛把它改成 `factset`/`sp-global` 這類已定義的連接器。
-> **(2) `.mcp.json` 的 JSON 語法錯誤（已修復）**：[financial-analysis/.mcp.json](../plugins/vertical-plugins/financial-analysis/.mcp.json) 之前 `egnyte` 區塊後缺逗號、`box` 區塊缺收尾大括號（commit #187 引入，會讓 `json.load` 失敗），**現已修好**。
-
-### 缺漏的 MCP ↔ 哪支 agent 在用 ↔ 概念上歸哪個 vertical
-
-下表是「裝好全部外掛仍然沒有、要你自己補」的清單。`capiq` 跨多支 agent 共用，補一份就好。
-
-| 佔位 MCP | 哪些 agent 在用 | 概念歸屬 vertical | 對應的 CMA 環境變數 |
-|---|---|---|---|
-| `capiq` | market-researcher、model-builder、pitch-agent、meeting-prep-agent | 跨領域（市場資料） | `${CAPIQ_MCP_URL}` |
+| `capiq` | market-researcher、model-builder、pitch-agent、meeting-prep-agent | financial-analysis | `${CAPIQ_MCP_URL}` |
 | `crm` | meeting-prep-agent | wealth-management | `${CRM_MCP_URL}` |
 | `screening` | kyc-screener | operations | `${SCREENING_MCP_URL}` |
 | `internal-gl` | gl-reconciler、month-end-closer | fund-admin | `${GL_MCP_URL}` |
 | `subledger` | gl-reconciler | fund-admin | `${SUBLEDGER_MCP_URL}` |
 | `nav` | statement-auditor | fund-admin | `${NAV_MCP_URL}` |
-| `portfolio` | valuation-reviewer | fund-admin | `${PORTFOLIO_MCP_URL}` |
+| `portfolio` | valuation-reviewer | private-equity | `${PORTFOLIO_MCP_URL}` |
 
-> 註：`fund-admin` / `operations` / `wealth-management` 這幾個 vertical 目前**根本沒有 `.mcp.json`**，走「選項 B」要先新建。
+### 上線時改哪裡
 
-### 要把這些補在哪個檔？三個選項（別亂塞 private-equity）
+MCP 是按**名字**在 session 範圍解析，這些名字都已經接到本機 mock；上線就是把同一把名字**改指真實來源**。
 
-MCP 是按**名字**在 session 範圍解析，放哪個檔在機制上都行，差別只在「語意合不合理」跟「安裝範圍」。
+| 殼 | 改哪裡 | 怎麼改 |
+|---|---|---|
+| **外掛（Plugin）** | 對應 vertical 的 `.mcp.json` | 把那把 server 的 `url` 從 `127.0.0.1:800x` 改成真實來源；或在專案根 `.mcp.json` / `claude mcp add` 用**同名** server 覆蓋掉（一次定義、整個 session 共享） |
+| **CMA（託管代理）** | 佈署時的環境變數 | `agent.yaml` 已用 `${..._MCP_URL}` 佔位（上表那欄），把環境變數指到真實來源即可。repo 附的 [`mock-mcp/mock.env`](../mock-mcp/mock.env) 把這些變數設成本機 mock，可當範本 |
 
-| 選項 | 路徑 | 適合 | 代價 |
-|---|---|---|---|
-| **A. agent 自己的包** | `plugins/agent-plugins/<slug>/.mcp.json`（新增） | 想讓每支 agent 自帶連接器、單獨安裝就能跑 | 共用的 `capiq` 要在多支包重複定義 |
-| **B. 對應 vertical 包** | `plugins/vertical-plugins/<vertical>/.mcp.json` | 想按業務領域歸類、領域內共用（如 `internal-gl`→fund-admin） | 得連那個 vertical 一起裝；多數 vertical 還沒這個檔，要新建 |
-| **C. 你的實際專案／使用者層級** | 專案根 `.mcp.json` 或 `claude mcp add` | **實際上線最省事**：一次定義，整個 session 全 agent 共享 | 不在 repo 裡，換機器要重設 |
-
-```
-外掛版（A/B/C 任一）：補一把「同名鑰匙」
-        { "<佔位名稱>": { "type": "http", "url": "<你的 MCP 網址>" } }
-CMA 版：agent.yaml 已寫好 url: ${GL_MCP_URL} 之類的環境變數佔位，
-        佈署時把上表那些環境變數指到你的內部 MCP 伺服器即可。
-```
-
-> ⚠️ **不要全丟進 `private-equity/.mcp.json`**——它只是剛好有這個檔，跟上面這些 agent 大多無關；名字雖然照樣解析得到，但語意錯亂，日後沒人懂「GL 對帳的 server 為什麼定義在私募股權底下」。要走選項 B 就放進**概念歸屬**那欄的 vertical。
-> 🔑 **三個選項都不要改 agent 的 frontmatter 名稱**——你是補同名鑰匙，不是換鎖。
+> 🔑 **不管走哪種，都不要改 agent frontmatter 的 server 名稱**——你是把同一把名字指到不同網址，不是換名字。
 
 ---
 
