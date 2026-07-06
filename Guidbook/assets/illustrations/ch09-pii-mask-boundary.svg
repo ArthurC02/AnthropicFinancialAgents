@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 360" role="img" aria-labelledby="title desc">
+  <title id="title">PII 遮罩責任邊界</title>
+  <desc id="desc">PII 應在銀行控制的 MCP server 層完成遮罩，再送入 Anthropic API context，而不是依賴模型提示詞遮罩。</desc>
+  <defs><style>.bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.thin{stroke-width:2}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:16px;font-weight:700}.small{font-size:13px;font-weight:500}.card{fill:#fbf5e7;stroke:#2e2c28}.green{fill:#e5efe5;stroke:#4c7a4c}.blue{fill:#e2eef4;stroke:#2c7a9e}.red{fill:#f7e3e1;stroke:#b3382f}.label{fill:#c15f3c}</style></defs>
+  <rect class="bg" width="880" height="360" rx="18"/>
+  <text class="txt label" x="42" y="38">PII 要在資料離開銀行邊界前處理</text>
+  <rect class="card" x="52" y="92" width="155" height="74" rx="14"/><text class="txt small" x="91" y="124">銀行資料源</text><text class="txt small" x="75" y="146">姓名 / ID / 帳號</text>
+  <path class="ink" d="M207 129 H285"/><path class="ink" d="M267 116 L285 129 L267 142"/>
+  <rect class="green" x="285" y="82" width="185" height="94" rx="14"/><text class="txt" x="330" y="115">MCP server</text><text class="txt small" x="321" y="142">mask / tokenize</text><text class="txt small" x="321" y="162">audit log</text>
+  <path class="ink" d="M470 129 H548"/><path class="ink" d="M530 116 L548 129 L530 142"/>
+  <rect class="blue" x="548" y="92" width="180" height="74" rx="14"/><text class="txt small" x="590" y="124">Anthropic API</text><text class="txt small" x="583" y="146">已脫敏 context</text>
+  <path class="ink thin" d="M80 248 H730"/><text class="txt small label" x="293" y="273">正確：server 端先遮罩，模型只看必要欄位</text>
+  <rect class="red" x="94" y="292" width="250" height="42" rx="10"/><text class="txt small" x="122" y="318">錯誤：原始 PII → prompt 要模型自行遮</text>
+  <path class="ink" d="M360 296 L413 331M413 296 L360 331"/>
+</svg>

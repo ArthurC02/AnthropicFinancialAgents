@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 360" role="img" aria-labelledby="title desc">
+  <title id="title">CMA 與銀行 AWS 邊界</title>
+  <desc id="desc">CMA 運算在 Anthropic Cloud，銀行 AWS 放工作流引擎、MCP servers、資料源與編排器。</desc>
+  <defs>
+    <style>
+      .bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.thin{stroke-width:2}.dash{stroke-dasharray:8 8}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:19px;font-weight:700}.small{font-size:14px;font-weight:500}.label{fill:#c15f3c}.blue{fill:#e2eef4;stroke:#2c7a9e}.green{fill:#e5efe5;stroke:#4c7a4c}.amber{fill:#f6ecd9;stroke:#a3712a}.cloud{fill:#fbf5e7;stroke:#2e2c28}
+    </style>
+  </defs>
+  <rect class="bg" width="880" height="360" rx="18"/>
+  <path class="ink" d="M430 34 C426 55 425 68 425 78"/>
+  <path class="ink" d="M426 112 C423 148 424 202 428 238"/>
+  <path class="ink" d="M430 280 C431 298 431 312 432 326"/>
+  <text class="txt label" x="88" y="38">銀行 AWS / 內網</text>
+  <text class="txt label" x="585" y="38">Anthropic Cloud</text>
+  <rect class="cloud" x="48" y="68" width="305" height="230" rx="18"/>
+  <rect class="blue" x="72" y="94" width="110" height="54" rx="10"/>
+  <text class="txt small" x="91" y="117">Workflow</text><text class="txt small" x="96" y="136">Engine</text>
+  <rect class="amber" x="210" y="94" width="112" height="54" rx="10"/>
+  <text class="txt small" x="230" y="117">orchestrate.py</text>
+  <rect class="green" x="72" y="182" width="112" height="54" rx="10"/>
+  <text class="txt small" x="96" y="205">MCP</text><text class="txt small" x="88" y="224">servers</text>
+  <rect class="green" x="210" y="182" width="112" height="54" rx="10"/>
+  <text class="txt small" x="236" y="205">核心</text><text class="txt small" x="236" y="224">資料源</text>
+  <path class="ink thin" d="M182 121 H210"/>
+  <path class="ink thin" d="M128 148 V182"/>
+  <path class="ink thin" d="M184 209 H210"/>
+  <rect class="cloud" x="536" y="82" width="286" height="190" rx="26"/>
+  <path class="ink thin" d="M570 132 C574 94 637 96 642 130 C662 104 717 113 716 147 C748 146 768 170 752 199 C737 226 597 229 572 204 C552 185 550 151 570 132Z"/>
+  <text class="txt" x="604" y="158">CMA runtime</text>
+  <text class="txt small" x="607" y="184">POST /v1/agents</text>
+  <text class="txt small" x="596" y="207">session / steering / tools</text>
+  <path class="ink" d="M354 122 C422 112 466 113 535 132"/>
+  <path class="ink" d="M516 120 L536 132 L514 139"/>
+  <text class="txt small label" x="405" y="101">API 呼叫</text>
+  <path class="ink thin dash" d="M536 216 C478 244 414 246 324 214"/>
+  <path class="ink thin" d="M344 206 L324 214 L342 226"/>
+  <text class="txt small label" x="396" y="266">MCP 讀資料，不搬 agent runtime</text>
+</svg>

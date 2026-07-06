@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 330" role="img" aria-labelledby="title desc">
+  <title id="title">output_schema 部署前驗證流程</title>
+  <desc id="desc">doc-reader 的 output_schema 只用於部署前包裝驗證，最終不進入 CMA API payload。</desc>
+  <defs><style>.bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:16px;font-weight:700}.small{font-size:13px;font-weight:500}.card{fill:#fbf5e7;stroke:#2e2c28}.blue{fill:#e2eef4;stroke:#2c7a9e}.green{fill:#e5efe5;stroke:#4c7a4c}.red{fill:#f7e3e1;stroke:#b3382f}.label{fill:#c15f3c}</style></defs>
+  <rect class="bg" width="880" height="330" rx="18"/>
+  <text class="txt label" x="42" y="38">output_schema 是本機部署護欄，不是 API 欄位</text>
+  <rect class="card" x="36" y="84" width="168" height="125" rx="14"/><text class="txt" x="66" y="118">doc-reader.yaml</text><text class="txt small" x="62" y="148">含 output_schema</text><text class="txt small" x="62" y="170">欄位 / 長度 / enum</text>
+  <path class="ink" d="M204 147 H270"/><path class="ink" d="M252 134 L270 147 L252 160"/>
+  <rect class="blue" x="270" y="84" width="168" height="125" rx="14"/><text class="txt" x="306" y="118">deploy script</text><text class="txt small" x="302" y="148">產生驗證 wrapper</text><text class="txt small" x="302" y="170">validate.py 先把關</text>
+  <path class="ink" d="M438 147 H504"/><path class="ink" d="M486 134 L504 147 L486 160"/>
+  <rect class="red" x="504" y="84" width="168" height="125" rx="14"/><text class="txt" x="548" y="118">API payload</text><text class="txt small" x="536" y="148">del(.output_schema)</text><text class="txt small" x="536" y="170">不送進 CMA API</text>
+  <path class="ink" d="M672 147 H738"/><path class="ink" d="M720 134 L738 147 L720 160"/>
+  <rect class="green" x="738" y="84" width="106" height="125" rx="14"/><text class="txt" x="762" y="118">runtime</text><text class="txt small" x="754" y="148">只讓受控</text><text class="txt small" x="754" y="170">JSON 下游</text>
+  <rect class="green" x="158" y="252" width="564" height="46" rx="14"/>
+  <text class="txt small label" x="190" y="281">共同目的：把自由文字收斂成可驗證結構，降低 prompt injection 傷害面</text>
+</svg>

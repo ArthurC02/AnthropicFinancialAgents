@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 7 章 — 部署：CMA 與 AWS 架構 | Financial Agents 開發指南</title>
+<link rel="stylesheet" href="../assets/book.css">
+</head>
+<body data-chapter="ch07">
+<main>
+  <h1><span class="ch-no">Chapter 7</span>部署：CMA 與 AWS 架構</h1>
+  <p class="lead">「把 agent 部署到 AWS」這句話在本書的脈絡下容易被誤讀。這一章要把邊界畫清楚：Claude Managed Agent（CMA）本體跑在 Anthropic 的雲端，銀行的 AWS 帳號裡放的是圍繞它的一圈周邊系統——呼叫端後端、MCP servers、編排器、資料源、密鑰管理。讀完本章，你應該能畫出這張邊界圖、看懂 <code>deploy-managed-agent.sh</code> 每一步在做什麼、並且知道銀行的平台團隊在 AWS 這一側要準備哪些元件與流程。</p>
+
+  <div class="toc"><div class="toc-title">本章內容</div>
+    <ol>
+      <li><a href="#s1">7.1 先破題：CMA 在哪裡跑，AWS 放什麼</a></li>
+      <li><a href="#s2">7.2 deploy-managed-agent.sh 逐段解析</a></li>
+      <li><a href="#s3">7.3 AWS 參考架構：周邊系統怎麼擺</a></li>
+      <li><a href="#s4">7.4 CI/CD：從 git push 到上線</a></li>
+      <li><a href="#s5">7.5 銀行落地注意事項</a></li>
+      <li><a href="#s6">7.6 本章重點與檢核清單</a></li>
+    </ol>
+  </div>
+
+  <h2 id="s1">7.1 先破題：CMA 在哪裡跑，AWS 放什麼</h2>
+
+  <p>Claude Managed Agent（CMA）是 Anthropic 的託管服務：你把 agent 的設定（system prompt、skills、工具、MCP server 清單、可委派的 subagents）用一個 JSON 物件描述好，<code>POST</code> 到 <code>https://api.anthropic.com/v1/agents</code>，這個請求需要帶 beta header <code>anthropic-beta: managed-agents-2026-04-01</code>（見 <code>scripts/deploy-managed-agent.sh</code> 第 35 行）。建立成功後，Anthropic 回傳一個 <code>agent.id</code> 與 <code>version</code>——之後所有的 session、steering event 都是打這個 <code>agent_id</code>，執行環境、對話狀態、模型呼叫全部在 Anthropic 的基礎設施裡完成。</p>
+
+  <p>所以「部署在 AWS」指的從來不是 agent 本身，而是<strong>圍繞它的周邊系統</strong>：</p>
+
+  <ul>
+    <li><strong>呼叫端後端</strong>——銀行內部觸發 agent session、接收結果的服務（例如授信審查系統呼叫 <code>gl-reconciler</code>）。</li>
+    <li><strong>MCP servers</strong>（MCP，Model Context Protocol，一套讓 agent 用標準方式存取外部工具／資料的協定）——agent 透過 <code>mcp_servers</code> 設定連到的資料介面，例如 <code>internal-gl</code>、<code>subledger</code>（見 <code>managed-agent-cookbooks/gl-reconciler/agent.yaml</code>），實體上是銀行機房或 <a href="https://aws.amazon.com/tw/vpc/" target="_blank" rel="noopener noreferrer">VPC</a> 裡的服務。</li>
+    <li><strong>編排器</strong>——<code>scripts/orchestrate.py</code> 這類監聽 session 事件、處理跨 agent handoff 的常駐程式。</li>
+    <li><strong>資料源</strong>——GL、subledger、CRM、NAV 系統本身，agent 從不直接連它們，永遠透過 MCP server 這層代理。</li>
+    <li><strong>密鑰管理</strong>——<code>ANTHROPIC_API_KEY</code>、各 MCP 的連線憑證。</li>
+  </ul>
+
+  <p>畫成一張圖，銀行 VPC（Virtual Private Cloud，銀行在 AWS 裡劃出的私有網路環境）與 Anthropic API 之間只有一條邊界：出站的 HTTPS 呼叫。</p>
+
+  <figure class="book-figure">
+    <img src="../assets/illustrations/ch07-aws-vpc-boundary.svg" alt="銀行 AWS VPC 內包含呼叫端後端、編排器、MCP servers、Secrets Manager 與資料源；唯一跨界流量是經 NAT Gateway 和 egress 白名單送往 Anthropic Cloud 的 HTTPS API 呼叫。">
+    <figcaption>銀行 AWS 端只承載周邊系統與資料入口；CMA agent runtime 的實際執行處在 Anthropic Cloud。</figcaption>
+  </figure>
+
+  <div class="callout warn"><span class="co-title">關鍵事實</span>圖中虛線以左（銀行 VPC）的每一格都是你要自己建、自己維運的 AWS 資源；虛線以右（Anthropic 雲端）不會出現在你的 AWS 帳單或 <a href="https://aws.amazon.com/tw/cloudtrail/" target="_blank" rel="noopener noreferrer">CloudTrail</a>（AWS 用來記錄「誰在什麼時候呼叫了哪個 API」的稽核紀錄服務）裡——那是 Anthropic 的基礎設施。搞混這兩邊，會讓你在做架構評審或資料出境評估時把「MCP server 的可用性」跟「Anthropic API 的資料處理條款」混為一談，這是兩個完全不同的責任邊界。</div>
+
+  <h2 id="s2">7.2 deploy-managed-agent.sh 逐段解析</h2>
+
+  <p><code>scripts/deploy-managed-agent.sh</code> 是把 <code>managed-agent-cookbooks/&lt;slug&gt;/agent.yaml</code> 轉成 <code>POST /v1/agents</code> 請求的唯一入口。用法很單純：</p>
+
+  <div class="code-title">終端機</div>
+  <pre><code>export ANTHROPIC_API_KEY=sk-ant-...
+export GL_MCP_URL=https://gl-mcp.internal.bank.example/mcp
+export SUBLEDGER_MCP_URL=https://subledger-mcp.internal.bank.example/mcp
+scripts/deploy-managed-agent.sh gl-reconciler</code></pre>
+
+  <p>腳本內部做四件事，順序很重要：</p>
+
+  <h3>1. YAML → JSON，並代換 <code>${..._MCP_URL}</code> 環境變數</h3>
+
+  <p><code>yaml2json()</code>（<code>scripts/deploy-managed-agent.sh</code> 第 42–58 行）用 Python + PyYAML 把 manifest 讀進來，再用正則 <code>\$\{([A-Z0-9_]+)\}</code> 找出所有 <code>${FOO}</code> 佔位符，從環境變數取值代換。這裡有一道容易被忽略但很重要的注入防護：</p>
+
+  <div class="code-title">scripts/deploy-managed-agent.sh</div>
+  <pre><code>SAFE = re.compile(r"^[A-Za-z0-9._/:@-]*$")
+def sub(m):
+    name = m.group(1)
+    v = os.environ.get(name)
+    if v is None:
+        return m.group(0)
+    if not SAFE.fullmatch(v):
+        sys.exit(f"refusing ${{{name}}}: value contains characters outside [A-Za-z0-9._/:@-]")
+    return v</code></pre>
+
+  <p>只要環境變數的值裡出現白名單以外的字元（例如引號、反斜線、換行），腳本會直接中止部署，而不是把值原封不動塞進 YAML 再解析——避免有人透過一個被污染的環境變數（例如 CI 系統裡被覆寫的 <code>GL_MCP_URL</code>）跳脫字串、改寫成別的 JSON 欄位。這對銀行工程師的意義是：<strong><a href="https://aws.amazon.com/tw/secrets-manager/" target="_blank" rel="noopener noreferrer">Secrets Manager</a> 裡存的 MCP URL、API Key 一旦格式跑掉（比如誤存成一段 JSON blob），部署會直接失敗而不是靜默注入錯誤設定</strong>，這是你在寫 CI pipeline 時可以依賴的安全邊界。</p>
+
+  <h3>2. Skill 上傳與快取</h3>
+
+  <p><code>upload_skill()</code>（第 62–92 行）把 <code>skills/</code> 目錄打包成 zip，<code>POST</code> 到 <code>/v1/skills</code>（注意這條路徑用的是另一組 beta header <code>skills-2025-10-02</code>，跟 <code>/v1/agents</code> 的 <code>managed-agents-2026-04-01</code> 不同，且是 multipart 而非 JSON）。同一次部署裡，同名 skill 只會上傳一次——<code>SKILL_CACHE_FILE</code> 是個暫存檔，用 <code>key=value</code> 的方式記錄「這個資料夾名字已經上傳過，skill_id 是什麼」，遞迴呼叫多個 subagent 共用同一份 skill 時不會重複上傳。</p>
+
+  <h3>3. 遞迴：先建 subagents，再建 orchestrator</h3>
+
+  <p><code>create_agent()</code>（第 138–178 行）是遞迴函式。看第 152–160 行：</p>
+
+  <div class="code-title">scripts/deploy-managed-agent.sh（節錄）</div>
+  <pre><code>sub_ids="[]"
+while IFS= read -r m; do
+  [[ -z "$m" ]] && continue
+  local out sid sver
+  out=$(create_agent "$base/$m")
+  sid=${out%% *}; sver=${out##* }
+  sub_ids=$(jq --arg i "$sid" --argjson v "$sver" '. + [{type:"agent", id:$i, version:$v}]' <<<"$sub_ids")
+done < <(jq -r '.callable_agents[]?.manifest // empty' <<<"$json")</code></pre>
+
+  <p>對每一個 <code>callable_agents[].manifest</code>（例如 <code>gl-reconciler</code> 的 <code>subagents/reader.yaml</code>、<code>critic.yaml</code>、<code>resolver.yaml</code>），先遞迴呼叫 <code>create_agent</code> 把它建出來、拿到 <code>agent_id</code> 與 <code>version</code>，才能把 <code>{type: agent, id, version}</code> 塞進 orchestrator 的 <code>callable_agents</code> 欄位再建 orchestrator 本體。所以一次 <code>gl-reconciler</code> 部署背後其實是 4 次 <code>POST /v1/agents</code>：3 個 leaf worker + 1 個 orchestrator，順序固定是「worker 先、orchestrator 後」，因為 orchestrator 的請求體需要引用 worker 已經拿到的 id。（補充一個 bash 語法：上面第 4 行的 <code>${out%% *}</code> 與 <code>${out##* }</code> 是參數展開，分別取「第一個空格之前」與「最後一個空格之後」的片段——把 <code>create_agent</code> 回傳的 <code>"id 版本"</code> 字串拆成兩個變數。）</p>
+
+  <figure class="book-figure">
+    <img src="../assets/illustrations/ch07-deploy-sequence.svg" alt="部署腳本先建立三個 leaf workers 並取得 id/version，再建立引用它們的 orchestrator。">
+    <figcaption>部署順序不能顛倒：orchestrator 的 <code>callable_agents</code> 需要先拿到 leaf worker 的 <code>id/version</code>。</figcaption>
+  </figure>
+
+  <p>這正好對應第 8 章會展開的規則：<code>callable_agents</code> 目前只支援一層委派，worker 不能再委派 worker——腳本的遞迴實作上完全可以支援多層，但 API 本身不允許 worker 的 manifest 裡再帶 <code>callable_agents</code>。</p>
+
+  <h3>4. <code>--dry-run</code>：不打 API，先看 payload</h3>
+
+  <p>加第二個參數 <code>--dry-run</code>（第 180–187 行）時，腳本會走完整個 YAML 解析、skill 快取、遞迴建構流程，但不呼叫真正的 <code>POST</code>，而是把每一個「本來要送出的」JSON body 收集到暫存檔，最後印成一個陣列。這一步不需要 <code>ANTHROPIC_API_KEY</code>（第 22 行 <code>[[ $DRY_RUN -eq 1 ]] || : "${ANTHROPIC_API_KEY:?...}"</code>），非常適合放進 CI（Continuous Integration，持續整合流程，程式一合併就自動跑檢查）當作「這個 manifest 能不能正確解析」的檢查，不必消耗真正的 API 額度，也不必在 CI 裡放正式金鑰。</p>
+
+  <div class="callout tip"><span class="co-title">部署輸出要存起來</span>腳本最後印出 <code>agent id</code>、<code>cookbook</code> 標籤、console 連結（第 189–194 行）。這個 <code>agent_id</code> 是後續所有 session 呼叫、<code>orchestrate.py</code> 裡 <code>agent_ids</code> 對照表（第 64 行 <code>agent_ids: dict[str, str]</code>，slug 對應到已部署的 <code>agent_id</code>）的唯一鑰匙——沒存下來，下次只能用 console 手動查，或者重新部署產生新的 agent（版本號會往上跳，但 id 不變是同一個 agent 的新版本，重新整個建立則是全新的 id）。</div>
+
+  <h2 id="s3">7.3 AWS 參考架構：周邊系統怎麼擺</h2>
+
+  <p>延續 7.1 的邊界圖，把銀行 VPC 內每一格拆開看選型與理由。</p>
+
+  <h3>MCP servers：ECS Fargate 或 Lambda，放私有子網</h3>
+
+  <p>MCP server 是 agent 唯一能碰到銀行資料的窗口（<code>mock-mcp/mock.env</code> 裡列出的 <code>GL_MCP_URL</code>、<code>SUBLEDGER_MCP_URL</code>、<code>PORTFOLIO_MCP_URL</code>、<code>NAV_MCP_URL</code>、<code>CRM_MCP_URL</code>、<code>SCREENING_MCP_URL</code>、<code>CAPIQ_MCP_URL</code> 等，本機測試時全部指向 <code>127.0.0.1:800x</code>）。上線時只改這些 URL 指向真實系統，<strong>不改 agent.yaml 裡的 server 名稱</strong>（<code>internal-gl</code>、<code>subledger</code> 這些名字是 agent 設定裡固定引用的 key）。實作上：</p>
+
+  <ul>
+    <li>常駐、有狀態連線（例如維持一個資料庫連線池）的 MCP server 用 <strong><a href="https://aws.amazon.com/tw/fargate/" target="_blank" rel="noopener noreferrer">ECS Fargate</a></strong>（AWS 代管的容器執行環境，不用自己顧伺服器），掛 <strong><a href="https://docs.aws.amazon.com/zh_tw/elasticloadbalancing/latest/application/introduction.html" target="_blank" rel="noopener noreferrer">Application Load Balancer</a></strong>（對內做負載平衡的服務）或用 <strong><a href="https://aws.amazon.com/tw/api-gateway/" target="_blank" rel="noopener noreferrer">API Gateway</a>（私有整合，只給 VPC 內部呼叫，不經過公網）</strong>暴露。</li>
+    <li>無狀態、呼叫頻率低的（例如包一層唯讀查詢的 screening MCP）可以用 <strong><a href="https://aws.amazon.com/tw/lambda/" target="_blank" rel="noopener noreferrer">Lambda</a></strong>（免管理伺服器、按呼叫次數計費的無伺服器運算服務）<strong>+ API Gateway</strong>，省掉常駐運算成本。</li>
+    <li>兩種都放在<strong>私有子網</strong>，不給公網 IP——MCP server 只需要被銀行 <a href="https://aws.amazon.com/tw/vpc/" target="_blank" rel="noopener noreferrer">VPC</a> 內的 agent 呼叫端／編排器打得到，不需要對公網開放。</li>
+  </ul>
+
+  <h3>出站到 <code>api.anthropic.com</code>：NAT Gateway + egress 白名單</h3>
+
+  <p>私有子網裡的服務（編排器、批次觸發 agent session 的後端）要能連到 Anthropic API，走 <strong><a href="https://docs.aws.amazon.com/zh_tw/vpc/latest/userguide/vpc-nat-gateway.html" target="_blank" rel="noopener noreferrer">NAT Gateway</a></strong>（讓私有子網裡的服務能對外連線、但外部無法主動連進來的閘道）出去；在 NAT 前面或用 <strong>egress 防火牆（AWS Network Firewall / 出站 proxy）</strong>限制只能連 <code>api.anthropic.com</code>（以及 skills 上傳用到的同網域），其餘出站一律擋掉。這是銀行網路安全評審最常問的一題：agent 呼叫端能不能被限制成「只能講到 Anthropic，講不到任何其他外部網域」。</p>
+
+  <h3>密鑰：Secrets Manager</h3>
+
+  <p><code>ANTHROPIC_API_KEY</code> 與各 <code>${..._MCP_URL}</code> 對應的憑證（如果 MCP server 本身需要 mTLS（雙向 TLS，伺服器與呼叫端互相驗證憑證）憑證或內部 API key）都放 <strong>AWS <a href="https://aws.amazon.com/tw/secrets-manager/" target="_blank" rel="noopener noreferrer">Secrets Manager</a></strong>（AWS 代管的密鑰儲存與自動輪替服務），部署流程（見 7.4）在執行 <code>deploy-managed-agent.sh</code> 前用 <code>aws secretsmanager get-secret-value</code> 撈出來、<code>export</code> 成環境變數，絕不寫死在 <code>agent.yaml</code> 或 CI 設定檔裡——這也呼應 7.2 提到的字元白名單防護：Secrets Manager 存的值本身就該是乾淨的 URL / token 格式，不會踩到那道防線。</p>
+
+  <h3>編排器 <code>orchestrate.py</code> 的落點</h3>
+
+  <p><code>scripts/orchestrate.py</code> 的檔頭寫得很清楚：這是「參考實作」，正式環境要換成銀行自己的工作流引擎（Temporal、Airflow、Guidewire event bus，見第 4 行註解）。它做的事是訂閱某個 agent session 的 SSE（Server-Sent Events，伺服器單向持續推送訊息的串流協定）串流（<code>client.beta.agents.sessions.stream(...)</code>），從輸出文字裡抓 <code>handoff_request</code> JSON blob，驗證 <code>target_agent</code> 在允許清單 <code>ALLOWED_TARGETS</code> 內、payload 通過 <code>HANDOFF_PAYLOAD_SCHEMA</code>（用 <code>jsonschema.validate</code>），才呼叫 <code>sessions.steer()</code> 把事件轉給目標 agent。落地方式看觸發模式：</p>
+
+  <ul>
+    <li>需要長時間掛著監聽串流（session 持續開著）→ <strong>ECS 常駐服務</strong>，一個 task 對應一組正在跑的 session。</li>
+    <li>事件驅動、批次觸發（例如每天月結跑一次）→ <strong><a href="https://aws.amazon.com/tw/step-functions/" target="_blank" rel="noopener noreferrer">Step Functions</a></strong>（用狀態機描述多步驟流程的工作流服務）<strong>+ <a href="https://aws.amazon.com/tw/eventbridge/" target="_blank" rel="noopener noreferrer">EventBridge</a></strong>（事件路由／排程服務），用排程或上游事件觸發一次性的 Lambda/ECS task 執行完就結束。</li>
+  </ul>
+
+  <p>不論哪種，<code>orchestrate.py</code> 檔頭的威脅模型都要照抄：<code>handoff_request</code> 是從「已經處理過不受信任文件」的 agent 輸出裡解析出來的，攻擊者若能在文件裡塞一段偽造的 <code>handoff_request</code> JSON，理論上能誘導路由——腳本用「目標 agent 寫死允許清單」+「payload schema 驗證」兩道防線擋，正式環境如果能改成專用的 tool call 或型別化的 SSE 事件（模型單靠引用文件文字做不出來的形式）會更穩，這點檔頭註解（第 13–14 行）也直說了。</p>
+
+  <h3>環境分離：dev / staging / prod</h3>
+
+  <p>CMA 沒有「環境」概念——每一次 <code>POST /v1/agents</code> 就是建一個獨立的 agent 資源。環境分離要靠銀行自己維護：</p>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>環境</th><th>agent_id 存放位置</th><th>MCP URL 指向</th></tr>
+    <tr><td>dev</td><td>開發者本機 <code>.env</code> 或個人 Secrets Manager 路徑</td><td><code>mock-mcp</code> 本機 mock server（<code>127.0.0.1:800x</code>）</td></tr>
+    <tr><td>staging</td><td><code>/bank/staging/agents/&lt;slug&gt;_id</code>（Secrets Manager 或 SSM <a href="https://aws.amazon.com/tw/systems-manager/" target="_blank" rel="noopener noreferrer">Parameter Store</a>）</td><td>UAT 環境的 GL/subledger/CRM 系統</td></tr>
+    <tr><td>prod</td><td><code>/bank/prod/agents/&lt;slug&gt;_id</code></td><td>正式 GL/subledger/CRM 系統</td></tr>
+  </table>
+  </div>
+
+  <p>三個環境各自跑一次 <code>deploy-managed-agent.sh</code>，拿到三個不同的 <code>agent_id</code>，靠 CI/CD 管線（下一節）把對應的 id 寫進對應環境的設定裡，呼叫端後端依環境查對應的 id。</p>
+
+  <h2 id="s4">7.4 CI/CD：從 git push 到上線</h2>
+
+  <p>這個 repo 目前的 CI 慣例是 <code>.github/workflows/</code> 下的三支 workflow：<code>plugin-validate.yml</code>（跑官方 plugin linter）、<code>secret-scan.yml</code>、<code>version-bump.yml</code>（PR 檢查 plugin 版本是否已 bump，對照 <code>scripts/version_bump.py --check</code>）。部署 managed agent 目前沒有現成的 workflow，但可以照同樣的風格（GitHub Actions、<code>ubuntu-latest</code>、<code>actions/checkout@v4</code>）加一支，串起 <code>scripts/check.py</code> → dry-run → 正式部署：</p>
+
+  <div class="code-title">.github/workflows/deploy-managed-agent.yml（建議新增，非 repo 現有檔案）</div>
+  <pre><code>on:
+  push:
+    branches: [main]
+    paths: ['managed-agent-cookbooks/**']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check.py                      # manifest/skill 一致性
+      - run: scripts/deploy-managed-agent.sh gl-reconciler --dry-run
+      - name: deploy
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_PROD }}
+          GL_MCP_URL: ${{ secrets.PROD_GL_MCP_URL }}
+        run: |
+          scripts/deploy-managed-agent.sh gl-reconciler | tee deploy.log
+          # 把 "agent id: xxx" 這行存進 SSM，供呼叫端後端讀取</code></pre>
+
+  <p><code>python3 scripts/check.py</code> 是這條管線的第一道閘門：它會 lint 每個 manifest、確認 <code>system.file</code>／<code>skills.path</code>／<code>callable_agents.manifest</code> 引用的檔案都存在，並且檢查 <code>plugins/agent-plugins/&lt;slug&gt;/skills/</code> 底下的副本是否跟 <code>plugins/vertical-plugins/</code> 的真本一致（漂移就會失敗）——這一步失敗代表連 dry-run 都不用跑了。第二道閘門是 <code>--dry-run</code>，確認 YAML 能正確解析成合法的 <code>POST /v1/agents</code> body。只有前兩關都過，才用正式金鑰打真正的 <code>deploy-managed-agent.sh gl-reconciler</code>，並把輸出的 <code>agent id</code> 這行存下來。</p>
+
+  <div class="flow" data-animate>
+    <div class="step"><span class="n">1</span><strong>git push</strong><br>manifest 或 skill 變更合併到 main</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">2</span><strong>scripts/check.py</strong><br>manifest 引用 + skill 副本一致性檢查</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">3</span><strong>--dry-run</strong><br>解析 YAML，印出將送出的 POST body，不打 API</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">4</span><strong>POST /v1/agents</strong><br>正式金鑰，先建 subagents 再建 orchestrator</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">5</span><strong>記錄 agent id</strong><br>寫入 SSM/Secrets Manager，供呼叫端查詢</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">6</span><strong>切流量</strong><br>呼叫端後端改讀新 agent_id，舊版本保留供回退</div>
+  </div>
+
+  <div class="callout info"><span class="co-title">version 不等於環境</span><code>POST /v1/agents</code> 每次都可能回傳同一個 <code>id</code> 但遞增的 <code>version</code>（視 API 行為而定），也可能是全新 <code>id</code>——實作 CI 時要決定「更新既有 agent 設定」還是「每次都建新 agent、呼叫端切換 id」，兩種策略都合理，但要在 runbook 裡寫死一種，別讓兩種混用。</div>
+
+  <h2 id="s5">7.5 銀行落地注意事項</h2>
+
+  <div class="tabs">
+    <div class="tab-bar"><button>資料出境評估</button><button>私網存取</button><button>金鑰輪替</button></div>
+    <div class="tab-panel">
+      <p>每一次 agent 呼叫，system prompt、skill 內容、對話歷史、以及 MCP server 回傳給 agent 的資料都會送到 Anthropic API 處理——這是合規團隊做資料出境（cross-border data transfer）評估時要盤點的範圍。實務上要先回答三個問題：</p>
+      <ul>
+        <li>MCP server 回給 agent 的欄位有沒有做過濾／遮罩？（例如 <code>gl-reconciler</code> 的 <code>reader</code> 只回傳 schema 驗證過的、長度受限的 JSON，見 <code>managed-agent-cookbooks/gl-reconciler/README.md</code> 的安全分層說明）</li>
+        <li>哪些欄位屬於個資或客戶敏感資訊（KYC 文件、客戶持倉），是否有替代識別碼可用？</li>
+        <li>Anthropic 對 API 輸入資料的保留與訓練使用政策是否符合銀行的資料治理政策？（這屬於供應商合約與服務條款層次，需與法務/合規確認，不是架構層面能單方面解決的問題。）</li>
+      </ul>
+    </div>
+    <div class="tab-panel">
+      <p>MCP server 放在私有子網後，唯一能碰到它的路徑應該只有：編排器、agent 呼叫端後端、以及維運用的 bastion。<strong>不要</strong>因為要「讓 Anthropic API 連得到 MCP server」就把 MCP server 開公網——方向永遠是反過來的：agent 在 Anthropic 雲端執行時，是 Anthropic 的基礎設施代表 agent 呼叫銀行暴露出來的 MCP endpoint（如果用 <code>type: url</code> 的 remote MCP），所以 MCP server 的入站規則要放行的來源是 Anthropic 的出站 IP range（需查閱 Anthropic 對 MCP 連線的最新文件），而不是任意公網來源；能用 VPN/<a href="https://aws.amazon.com/tw/privatelink/" target="_blank" rel="noopener noreferrer">PrivateLink</a>（不經公網、在 AWS 內部直接建私有連線的服務）之類的私有連線方案時優先用私有連線。</p>
+    </div>
+    <div class="tab-panel">
+      <p><code>ANTHROPIC_API_KEY</code> 與各 MCP 憑證都放 Secrets Manager，啟用自動輪替（<code>rotation-lambda</code>）。輪替後要留意兩件事：正在跑的 <code>orchestrate.py</code> 常駐程序如果把 key 快取在記憶體裡，需要有機制重新讀取（重啟或熱重載）；CI 部署管線每次執行都是重新 <code>export</code>，天然吃到最新版本，不需要額外處理。</p>
+    </div>
+  </div>
+
+  <h2 id="s6">7.6 本章重點與檢核清單</h2>
+
+  <div class="callout tip"><span class="co-title">本章重點</span>
+    <ul>
+      <li>CMA 本體（system prompt、skills、模型推論、session 狀態）跑在 Anthropic 雲端，<code>POST /v1/agents</code> 是唯一的建立入口。</li>
+      <li>「部署在 AWS」= 呼叫端後端 + MCP servers + 編排器 + 資料源 + 密鑰管理，全部在銀行自己的 VPC 裡。</li>
+      <li><code>deploy-managed-agent.sh</code> 的核心邏輯：環境變數白名單代換防注入、skill 上傳快取、subagents 先建再建 orchestrator、<code>--dry-run</code> 免金鑰驗證 payload。</li>
+      <li>MCP URL 從 mock（<code>127.0.0.1:800x</code>）換成真實系統時，只改 URL，不改 agent.yaml 裡的 server 名稱。</li>
+      <li>部署輸出的 <code>agent id</code> 是後續呼叫、handoff 路由的唯一鑰匙，一定要存進 Secrets Manager/SSM。</li>
+    </ul>
+  </div>
+
+  <ul class="checklist">
+    <li>已確認 <code>ANTHROPIC_API_KEY</code> 與各 <code>${..._MCP_URL}</code> 憑證存在 Secrets Manager，未寫死在任何 YAML 或 CI 設定檔</li>
+    <li>MCP servers 部署在私有子網，未開放公網入站</li>
+    <li>NAT Gateway 前的 egress 規則已限制只能連 <code>api.anthropic.com</code>（及 skills 上傳用網域）</li>
+    <li>CI 管線已串接 <code>scripts/check.py</code> → <code>--dry-run</code> → 正式部署，且 dry-run 階段不使用正式金鑰</li>
+    <li>dev/staging/prod 三個環境的 <code>agent_id</code> 分開記錄，呼叫端依環境查詢對應 id</li>
+    <li><code>orchestrate.py</code>（或銀行自建的等價編排器）已落地為 ECS 常駐服務或 Step Functions/EventBridge 觸發，且 <code>ALLOWED_TARGETS</code> 允許清單已對照實際部署的 agent slug 清單</li>
+    <li>已與合規/法務確認送往 Anthropic API 的資料範圍，完成資料出境評估</li>
+    <li>密鑰輪替流程已測試，確認常駐編排器能取得輪替後的新憑證</li>
+  </ul>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">Q：以下關於「部署 managed agent 到 AWS」的敘述，何者正確？</div>
+    <label>Agent 的模型推論與 system prompt 執行都發生在銀行自己的 AWS 帳號內，Anthropic 只負責驗證 API Key</label>
+    <label><code>deploy-managed-agent.sh</code> 會把 agent 打包成一個 Docker image 部署到 ECS Fargate</label>
+    <label>Agent 本體（推論、session 狀態）跑在 Anthropic 雲端；AWS 帳號裡放的是 MCP servers、編排器、呼叫端後端與密鑰管理等周邊系統</label>
+    <label>MCP server 的 URL 一旦寫進 <code>agent.yaml</code> 就不能再變更，上線前必須重新設計 agent 名稱</label>
+    <div class="explain">正解是第三項。<code>POST /v1/agents</code> 建立的 agent 由 Anthropic 託管執行，銀行只需要自己維運 MCP servers（資料介面）、編排器（<code>orchestrate.py</code> 或等價工作流引擎）、呼叫端後端與 Secrets Manager 這些周邊系統；MCP URL 是透過 <code>${..._MCP_URL}</code> 環境變數佔位，換到正式環境時只改環境變數值，不需要改 agent.yaml 裡的 server 名稱或重新設計。</div>
+  </div>
+
+</main>
+<script src="../assets/book.js"></script>
+</body>
+</html>

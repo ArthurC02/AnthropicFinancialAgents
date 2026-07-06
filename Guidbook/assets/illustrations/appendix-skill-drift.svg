@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 330" role="img" aria-labelledby="title desc">
+  <title id="title">修復 skill drift 的正確順序</title>
+  <desc id="desc">修復 skill drift 的正確順序是修改 vertical-plugins 真本、同步 agent-plugins 副本、再執行 check.py。</desc>
+  <defs><style>.bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:16px;font-weight:700}.small{font-size:13px;font-weight:500}.card{fill:#fbf5e7;stroke:#2e2c28}.green{fill:#e5efe5;stroke:#4c7a4c}.blue{fill:#e2eef4;stroke:#2c7a9e}.red{fill:#f7e3e1;stroke:#b3382f}.label{fill:#c15f3c}</style></defs>
+  <rect class="bg" width="880" height="330" rx="18"/>
+  <text class="txt label" x="42" y="38">skill drift：改真本，跑同步，再檢查</text>
+  <rect class="green" x="42" y="92" width="178" height="82" rx="14"/><text class="txt small" x="68" y="123">vertical-plugins</text><text class="txt small" x="79" y="146">SKILL.md 真本</text>
+  <path class="ink" d="M220 133 H296"/><path class="ink" d="M278 120 L296 133 L278 146"/>
+  <rect class="blue" x="296" y="92" width="190" height="82" rx="14"/><text class="txt small" x="334" y="123">sync-agent-skills.py</text><text class="txt small" x="343" y="146">重建副本</text>
+  <path class="ink" d="M486 133 H562"/><path class="ink" d="M544 120 L562 133 L544 146"/>
+  <rect class="green" x="562" y="92" width="142" height="82" rx="14"/><text class="txt small" x="586" y="123">agent-plugins</text><text class="txt small" x="596" y="146">skills 副本</text>
+  <path class="ink" d="M704 133 H770"/><path class="ink" d="M752 120 L770 133 L752 146"/>
+  <rect class="blue" x="770" y="92" width="78" height="82" rx="14"/><text class="txt small" x="786" y="123">check.py</text><text class="txt small" x="790" y="146">commit</text>
+  <rect class="red" x="94" y="226" width="290" height="48" rx="12"/><text class="txt small" x="123" y="256">錯誤：直接改 agent-plugins 副本</text>
+  <path class="ink" d="M405 225 L455 275M455 225 L405 275"/>
+  <text class="txt small label" x="497" y="256">下一次 check.py 會擋下 drift</text>
+</svg>

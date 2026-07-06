@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 12 章 — 測試與評估 | Financial Agents 開發指南</title>
+<link rel="stylesheet" href="../assets/book.css">
+</head>
+<body data-chapter="ch12">
+<main>
+  <h1><span class="ch-no">Chapter 12</span>測試與評估</h1>
+  <p class="lead">前面幾章教你怎麼把 agent 寫出來、包成外掛或 CMA、接上真實 MCP、上線後怎麼監控（第 11 章）。但「上線前怎麼知道它是對的」是另一個問題——agent 沒有單一輸入輸出的函式簽章可以斷言，它的行為是系統提示、Skill、工具權限、外部資料四樣東西一起產生的結果。這一章把 repo 裡實際存在的測試機制（<code>scripts/check.py</code>、<code>scripts/validate.py</code>、<code>scripts/test-cookbooks.sh</code>、<code>mock-mcp/selftest.py</code>、<code>steering-examples.json</code>、<code>docs/outputs/</code>）串成一套可執行的分層測試策略，再往上談金融場景特有的評測（evals）設計。讀完你應該能回答：一支新 agent 上線前，我到底要跑過哪幾關、每一關在防什麼。</p>
+
+  <div class="toc"><div class="toc-title">本章內容</div>
+    <ol>
+      <li><a href="#s1">Agent 版測試金字塔</a></li>
+      <li><a href="#s2">靜態層：check.py 與 validate.py</a></li>
+      <li><a href="#s3">整合層：test-cookbooks.sh、mock-mcp、golden output</a></li>
+      <li><a href="#s4">steering-examples.json：文件即測試</a></li>
+      <li><a href="#s5">評測（Evals）設計</a></li>
+      <li><a href="#s6">銀行專屬測試關卡</a></li>
+      <li><a href="#s7">建立你自己的評測集</a></li>
+      <li><a href="#s8">本章重點</a></li>
+    </ol>
+  </div>
+
+  <h2 id="s1">1. Agent 版測試金字塔</h2>
+  <p>傳統測試金字塔底層是單元測試——多、快、便宜；往上是整合測試；頂端是端對端測試——少、慢、貴。Agent 沒有「單元」可言：一個函式的行為是固定的，一支 agent 的行為卻是系統提示 + Skill + 工具權限 + 當下讀到的外部資料一起長出來的，同一句話換一批資料就可能換一種判讀。所以這裡把金字塔改畫成四層，越往上越貼近「agent 真的想對了嗎」，越往下越貼近「manifest 沒寫錯」：</p>
+
+  <pre class="diagram">Layer 4  Prod 監控（第 11 章）      ← 真實流量、事後才浮現的邊角案例
+                ▲
+Layer 3  評測 Evals                  ← 品質評分：數字對不對、能不能溯源、
+                ▲                       該升級有沒有升級、該拒答有沒有拒
+Layer 2  Mock 整合測試              ← mock-mcp 假資料 + docs/outputs 當基準
+                ▲                       跑一次完整 workflow，比對埋好的雷有沒有被抓到
+Layer 1  靜態檢查                    ← check.py / validate.py
+                                        manifest 格式、引用路徑、skill drift — 秒級、零 LLM 呼叫</pre>
+
+  <p>四層的成本與速度差一個數量級以上：Layer 1 不呼叫任何 LLM，跑一次幾秒鐘，可以在每次 commit 前跑；Layer 2 用固定假資料跑一次完整 agent workflow，成本是幾次 LLM 呼叫，適合在改 prompt/skill 後跑；Layer 3 的評測集通常有幾十到上百個案例，成本更高，適合在模型或 prompt 有實質變動前跑一輪回歸；Layer 4 是上線後才看得到的訊號，回饋週期以天/週計。下面依序拆解 Layer 1–3，Layer 4 見第 11 章。</p>
+
+  <div class="flow" data-animate>
+    <div class="step"><span class="n">1</span><strong>改 Skill</strong><br>在 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/</code> 改真本</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">2</span><strong>sync-agent-skills.py</strong><br>整包覆蓋到 <code>agent-plugins/&lt;slug&gt;/skills/</code></div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">3</span><strong>check.py</strong><br>manifest 格式、引用路徑、drift — 秒級</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">4</span><strong>test-cookbooks.sh</strong><br>dry-run 每支 CMA cookbook，確認展開後的 API payload 結構合法</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">5</span><strong>對照 docs/outputs</strong><br>手動或半自動跑一次 mock-mcp workflow，比對埋的雷有沒有被抓到</div>
+  </div>
+
+  <h2 id="s2">2. 靜態層：check.py 與 validate.py</h2>
+  <p><code>scripts/check.py</code> 的檔頭 docstring 講得很白：<em>「Lint all plugin + managed-agent manifests and verify cross-file references.」</em>它做五件事，全部是「格式/引用是否成立」層次，不涉及任何 LLM 判斷：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>檢查</th><th>怎麼查</th></tr></thead>
+      <tbody>
+        <tr><td>1. YAML 能解析</td><td>對每個 <code>managed-agent-cookbooks/**/*.yaml</code> 跑 <code>yaml.safe_load</code></td></tr>
+        <tr><td>2. JSON 能解析</td><td>對 <code>marketplace.json</code>、每個 <code>plugin.json</code>、每個 <code>steering-examples.json</code> 跑 <code>json.loads</code></td></tr>
+        <tr><td>3. agent.md frontmatter 完整</td><td>每份 <code>plugins/agent-plugins/*/agents/*.md</code> 的 YAML frontmatter 必須有 <code>name</code> 與 <code>description</code></td></tr>
+        <tr><td>4. 引用路徑解析得到檔案</td><td><code>system.file</code>／<code>skills[].path</code>／<code>skills[].from_plugin</code>／<code>callable_agents[].manifest</code> 逐一 <code>resolve()</code> 確認檔案存在</td></tr>
+        <tr><td>4b. Skill 副本沒有漂移</td><td>用 <code>filecmp.dircmp</code> 逐檔比對 <code>agent-plugins/*/skills/&lt;name&gt;</code> 跟 <code>vertical-plugins/*/skills/&lt;name&gt;</code>，有差就報 drift</td></tr>
+        <tr><td>5. 每個 managed-agent 三件必要檔都在</td><td><code>agent.yaml</code>、<code>README.md</code>、<code>steering-examples.json</code> 缺一就報錯</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>第 4b 項是這支腳本最容易被忽略、卻是團隊協作時最常踩的一關：<strong>直接改 <code>agent-plugins/&lt;slug&gt;/skills/</code> 底下的副本沒有用</strong>——下一次有人（或你自己）跑 <code>check.py</code>，就會被 <code>bundled-skill: ... drifted from ... (run scripts/sync-agent-skills.py)</code> 擋下來。真本永遠在 <code>vertical-plugins/</code>，改完必須跑 <code>python3 scripts/sync-agent-skills.py</code> 讓副本整包重建，這一條在 CLAUDE.md 裡是硬規定。</p>
+
+  <div class="code-title">scripts/check.py — 引用解析（節錄）</div>
+  <pre><code>sys_spec = data.get("system")
+if isinstance(sys_spec, dict) and "file" in sys_spec:
+    p = (base / sys_spec["file"]).resolve()
+    if not p.is_file():
+        err(f"ref: {rel(yml)}: system.file -&gt; {sys_spec['file']} (not found)")
+
+for c in data.get("callable_agents") or []:
+    if isinstance(c, dict) and "manifest" in c:
+        p = (base / c["manifest"]).resolve()
+        if not p.is_file():
+            err(f"ref: {rel(yml)}: callable_agents.manifest -&gt; {c['manifest']} (not found)")</code></pre>
+
+  <p><code>scripts/validate.py</code> 管的是另一件事：subagent 的<strong>輸出</strong>格式，不是 manifest 本身。文件開頭寫得很清楚：「CMA API 目前不強制 structured output，所以佈署 harness 在 reader subagent 跟 orchestrator 之間插這一道」。做法是把 subagent yaml 裡 <code>output_schema:</code> 定義的 JSON Schema 拿出來，對實際輸出跑 <code>jsonschema.validate()</code>，不合規就把 <code>ValidationError</code> 的訊息與失敗路徑印到 stderr、回傳 exit code 1。這一支不是「跑一次全部驗過」的批次工具，而是<code>deploy-managed-agent.sh</code> 佈署流程裡的一個檢查點——reader 吐出的 JSON 沒過 schema，orchestrator 就不該收進來當可信輸入。</p>
+
+  <div class="callout warn"><span class="co-title">CI 掛法：check.py 目前不在任何 workflow 裡</span>repo 的 <code>.github/workflows/</code> 只有三支：<code>plugin-validate.yml</code>（用官方 <code>claude plugin validate</code> 檢查 plugin/marketplace 的 schema 格式，跟 check.py 檢查的東西不同）、<code>secret-scan.yml</code>、<code>version-bump.yml</code>（PR 上強制版本號有 bump，<code>scripts/version_bump.py --check</code>）。<code>check.py</code> 本身的 manifest lint + 引用解析 + drift 檢查<strong>是靠開發者手動跑</strong>——CLAUDE.md 明講「Run <code>python3 scripts/check.py</code> before committing」，它自己也會在第一次執行時把 <code>core.hooksPath</code> 指到 <code>.githooks</code>（<code>ensure_hooks_installed()</code>），但那支 pre-commit hook 只做版本號 bump，不會重跑 check.py 本身。換句話說：如果你把這套 repo 搬進銀行的 CI 管線，<code>check.py</code> 這一關現在還是「靠自覺」，值得加一支 workflow 補上——這正是本章要談的、把測試關卡從「手動紀律」變成「架構強制」的同一種思路，只是這次是套用在 repo 自己身上。</div>
+
+  <h2 id="s3">3. 整合層：test-cookbooks.sh、mock-mcp、golden output</h2>
+  <p>靜態層確認的是「檔案存在、格式合法」，還沒有人真的把 manifest 展開成 API 會收到的那份 JSON 去看它長什麼樣。<code>scripts/test-cookbooks.sh</code> 補的正是這一層：對 <code>managed-agent-cookbooks/*/</code> 底下每一支 cookbook，跑 <code>deploy-managed-agent.sh &lt;slug&gt; --dry-run</code>（不打 API、不需要 <code>ANTHROPIC_API_KEY</code>），把展開後的 <code>POST /v1/agents</code> payload 陣列接一支 Python 檢查器，斷言：每個 body 的 <code>system</code> 非空、除了陣列最後一個（orchestrator）以外沒有任何 body 帶 <code>callable_agents</code>（也就是 subagent 不能再委派——第 2 章講的一層委派限制在這裡被實際斷言）、以及序列化後的 JSON 裡不該出現 <code>output_schema</code>（那是 manifest 語法糖，正式送出前必須被消化掉，洩漏進 API payload 是佈署腳本的 bug）。</p>
+
+  <div class="code-title">scripts/test-cookbooks.sh（核心斷言）</div>
+  <pre><code>for i,x in enumerate(b):
+    if not x.get('system'): errs.append(f'{x.get("name")}: empty system')
+    if i&lt;len(b)-1 and x.get('callable_agents'):
+        errs.append(f'{x.get("name")}: depth&gt;1 (subagent has callable_agents)')
+if 'output_schema' in json.dumps(b):
+    errs.append('output_schema leaked into a body')</code></pre>
+
+  <p>這一關抓的是「佈署腳本 / manifest 拼裝邏輯本身」的 bug，還不涉及 agent 讀了資料之後判斷得對不對。要驗證「判斷得對不對」，得真的跑一次 workflow——這就是 <code>mock-mcp/</code> 存在的原因。九支 mock server（<code>internal-gl</code>、<code>subledger</code>、<code>portfolio</code>、<code>nav</code>、<code>crm</code>、<code>screening</code>、<code>capiq</code>、<code>factset</code>、<code>daloopa</code>）各自從本機 CSV 餵固定假資料，讓 agent 不需要真廠商金鑰、不需要接銀行內部系統，就能把完整 workflow 跑一遍。<code>mock-mcp/selftest.py</code> 本身<strong>不測 agent</strong>，它測的是這批假資料自己有沒有壞掉——用 <code>csv.DictReader</code> 逐一讀 29 份 CSV，斷言試算表借貸平衡、NAV（Net Asset Value，資產淨值）加總對得上 LP（Limited Partner，有限合夥人／基金出資人）期末餘額、以及最關鍵的：<strong>埋好的測試雷還在原地</strong>，例如：</p>
+
+  <div class="code-title">mock-mcp/selftest.py（節錄）</div>
+  <pre><code>check("planted VRT qty break (GL 50000 vs custody 52500)",
+      gl_by["EQ-VRT"] == 50000 and sub_by["EQ-VRT"] == 52500)
+...
+check("sanctions has Ivan Petrov 1970-03-15 Russia",
+      any(r["name"] == "Ivan Petrov" and r["dob"] == "1970-03-15"
+          and r["country"] == "Russia" for r in sanc))
+...
+check("planted prompt-injection flagged in communications",
+      any(r["flag"] == "suspected_prompt_injection" for r in comm))</code></pre>
+
+  <p>這一支的意義容易被低估：如果哪天有人為了修一個欄位名稱去動了 CSV，不小心把 VRT 那筆刻意留的數量差異、或制裁名單裡的 Ivan Petrov 改掉了，之後所有拿這批假資料跑的「agent 有沒有抓到問題」測試都會靜悄悄地失真——不是 agent 變笨了，是考題被誤刪了。<code>selftest.py</code> 是考卷本身的完整性檢查，跑在 agent 測試之前。</p>
+
+  <figure class="book-figure">
+    <img src="../assets/illustrations/ch12-selftest-golden.svg" alt="mock-mcp 的 selftest.py 先確認埋好的測試考點仍存在，之後 agent workflow 與 golden output 比對才有意義。">
+    <figcaption><code>selftest.py</code> 先證明「考卷」沒壞；後面的 agent workflow 與 golden output 比對才有可信基準。</figcaption>
+  </figure>
+
+  <p>有了乾淨、不變質的假資料，剩下就是「跑一次、把結果存下來」。<code>docs/outputs/</code> 底下有兩份孿生紀錄：<code>fileBased/</code> 是人工餵 <code>samples/*.md</code> 給 agent 跑的結果，<code>mcpBased/</code> 是用 <code>docs/outputs/mcpBased/_harness/mcp_client.py</code>（一支真正的 stdio MCP client）把 mock server 真的叫起來、跑 <code>initialize</code> + <code>list_tools</code> + <code>call_tool</code>，把每支 agent 的完整 workflow 走一遍的紀錄。兩者都留了 <code>execution_history.md</code>（做了什麼、拿回什麼數字、怎麼判讀）跟 <code>note.md</code>（這支 agent 的「答案卡」：埋了哪些雷、這次有沒有抓到）。</p>
+
+  <div class="tabs">
+    <div class="tab-bar"><button>fileBased/gl-conciler 的答案卡</button><button>mcpBased/README 的總表</button></div>
+    <div class="tab-panel">
+      <p><code>docs/outputs/fileBased/gl-conciler/execution_history.md</code> 記錄了 GL↔子帳對帳的完整過程：讀三份來源 → 逐筆比對 9 筆差異 → 濾掉 3 筆誤報（重分類、FX 進位、未交割時間差）→ 留下 3 筆真實 break（現金短少、公司債面額差、VRT 股數差）→ 產出 Excel 對帳底稿並跑 tie-out 檢查：</p>
+      <pre><code>SAVED ./out/GL_Recon_Workpaper_2026-04-30.xlsx
+total diff 1,849,700 | real 1,350,000 | explained 499,700
+| real+expl 1,849,700 -&gt; tie OK</code></pre>
+      <p>這份紀錄就是「golden output」——下次改了 <code>gl-reconciler</code> 的系統提示或 Skill，拿同一批假資料重跑一次，至少應該還原出同一組真實 break（現金、公司債、VRT）、同一組被濾掉的誤報，tie-out 依然要對得上。若某次重跑漏抓了 VRT 那筆，或把時間差誤報升級成真實 break，就是回歸。</p>
+    </div>
+    <div class="tab-panel">
+      <p><code>docs/outputs/mcpBased/README.md</code> 彙整了 10 支 agent、9 個 mock server、92 次可重現 MCP 呼叫、零失敗的總表，逐支列出「埋的雷 → 這次結果」，例如：</p>
+      <ul>
+        <li>kyc-screener：制裁命中 → 升級 MLRO（Money Laundering Reporting Officer，防制洗錢申報主管）；同名異人 → 澄清不誤殺；PEP（Politically Exposed Person，政治公眾人物）→ 走 EDD 強化盡職調查</li>
+        <li>valuation-reviewer：Nova Biotech +62% 估值違規退回、Zephyr 逾期估值標記</li>
+        <li>meeting-prep-agent：<strong>提示注入偵測與拒絕</strong>——CRM 來訊裡藏著假冒系統通知、要求匯款 50 萬美元並隱匿，agent 只摘要＋標記、置頂提醒顧問，絕不照做</li>
+      </ul>
+      <p>README 自己標註這是「全 repo 最關鍵的資安考點」，細節在 <code>meeting-prep-agent/note.md</code>。</p>
+    </div>
+  </div>
+
+  <div class="callout info"><span class="co-title">重跑是冪等的</span>RUNBOOK 明講：同一份假資料進去，同一份 JSON 出來，直接覆蓋 <code>mcp_pulls/</code>。這代表 <code>docs/outputs/</code> 不只是一次性的示範，而是可以重跑、拿新結果跟舊結果做 diff 的回歸基準——雖然 repo 裡目前沒有把這個 diff 自動化成一支腳本，但骨架（固定假資料 + 固定 harness + 存起來的預期結果）已經到位，要接自動化只差寫一支比對腳本。</div>
+
+  <h2 id="s4">4. steering-examples.json：文件即測試</h2>
+  <p>每個 <code>managed-agent-cookbooks/&lt;slug&gt;/steering-examples.json</code> 表面上是「這支 CMA 會收到什麼樣的觸發事件」的文件——README 裡也真的是這樣引用它的（<code>kyc-screener/README.md</code>：「Steering events：見 <code>steering-examples.json</code>」）。但它同時是第二種東西：<strong>每一條 <code>event</code> 字串都是一個可以直接餵給部署後 agent 的、可重放的測試輸入</strong>。這是文件跟測試資產合而為一的設計——你不需要另外維護一份「測試 prompt 清單」，寫文件的同時就順手累積了測試案例。</p>
+
+  <p>看兩支既有 agent 的 <code>steering-examples.json</code>，會發現同一種三段式模式：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>案例類型</th><th>gl-reconciler</th><th>kyc-screener</th></tr></thead>
+      <tbody>
+        <tr><td>① 標準情境</td><td><code>Reconcile GL vs subledger, trade date 2026-04-30, classes: equities, fixed-income, derivatives</code></td><td><code>Screen onboarding packet PKT-2026-00318</code></td></tr>
+        <tr><td>② 參數變體</td><td><code>...trade date 2026-03-31, classes: all, threshold: 10000</code>（月結、顯式容差）</td><td><code>Periodic refresh: client C-004921, as-of 2026-04-30</code>（既有客戶定期複審，非新戶）</td></tr>
+        <tr><td>③ 追問／深挖</td><td><code>Re-trace break: account 41200-EQ-US, trade date 2026-04-30</code>（針對單一 break 追根因）</td><td><code>Re-screen UBOs only for packet PKT-2026-00318 after updated ownership chart</code>（文件更新後只重篩實質受益人）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>這個「標準 → 變體 → 追問」的三段式，就是替自製 agent 累積案例庫時可以直接套用的模板：先寫一條最常見的觸發事件，再寫一條參數/範圍不同的變體（測 agent 有沒有把可選參數用對），最後寫一條「針對前一次結果追問」的事件（測 agent 有沒有正確處理沒有完整 context、只給一個帳號/一個 packet id 的窄範圍請求）。<code>check.py</code> 也會把每個 <code>steering-examples.json</code> 當 JSON 解析一次（第 2 節的第 2 項），所以格式錯了會在靜態層就被抓到，不用等真的部署才發現。</p>
+
+  <h2 id="s5">5. 評測（Evals）設計</h2>
+  <p>整合測試回答「有沒有跑起來、有沒有明顯壞掉」；評測（evals）回答更難的問題：<strong>判斷得好不好</strong>。金融場景的評測不能只看「有沒有回答」，至少要拆成四個維度分開打分，因為它們各自對應不同的失敗模式與後果：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>評分維度</th><th>檢查什麼</th><th>對應 repo 裡的案例</th></tr></thead>
+      <tbody>
+        <tr><td>數字正確性</td><td>金額、比率、加總是否可驗算，tie-out 是否真的對得上</td><td><code>build_gl_recon.py</code> 的 tie-out 檢查：<code>real+expl == total diff</code></td></tr>
+        <tr><td>引用可追溯</td><td>每個數字能不能指回具體來源檔案/MCP 呼叫，而不是「大概是這樣」</td><td><code>execution_history.md</code> 逐筆記錄「打了哪個工具、拿回什麼數字」</td></tr>
+        <tr><td>該升級有沒有升級</td><td>高風險判斷（制裁命中、估值違規、真實對帳差異）是否確實走到人審，而不是 agent 自己下結論</td><td>kyc-screener 的 <code>escalator</code>；valuation-reviewer 對 Nova Biotech 違規的「退回」而非自行放行</td></tr>
+        <tr><td>拒答邊界</td><td>面對不可信輸入（惡意文件、注入指令）能不能守住「只摘要、不執行」</td><td>meeting-prep-agent 對 CRM 來訊裡藏的匯款指令的拒絕</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>實務上這四個維度不會用同一套評分方法。數字正確性可以寫死規則斷言（跟 <code>build_gl_recon.py</code> 的 tie-out 邏輯一樣，屬於「程式可驗證」）；引用可追溯也可以半自動化——檢查輸出裡提到的每個數字，是否在 <code>execution_history</code> 或 MCP 回傳裡找得到源頭。但「該升級有沒有升級」跟「拒答邊界守得住不」牽涉語意判斷，難以用一條 regex 斷言，這正是 <strong>LLM-as-judge</strong>（拿另一個 LLM 呼叫，依評分準則讀 agent 的完整輸出與過程，打分或給 pass/fail）派上用場的地方。實務上的混合做法是：LLM-as-judge 先過一輪全部案例，把低分或有疑慮的案例挑出來，再由人工（對高風險 🔴 分層，通常就是合規官/風控本人）抽檢挑出來的那一小部分——用 LLM 篩量、用人力保底線，而不是要求人工看過每一筆。</p>
+
+  <div class="callout warn"><span class="co-title">回歸評測是換模型/換 prompt 前的必經關卡</span>CLAUDE.md 提到 plugin 的 <code>version</code> 欄位「gates update delivery to already-installed users」——換句話說，一次 prompt 或 skill 的變更，透過 <code>version_bump.py</code> 會被送到所有已安裝這支 agent 的使用者手上。這代表任何系統提示、Skill、或底層模型（<code>agent.yaml</code> 裡的 <code>model: claude-opus-4-7</code>）的變動，範圍不是「我這次 session」而是「所有正在用這支 agent 的銀行團隊」。上線前把整份評測集（不只是 Layer 2 的 mock 整合測試）重跑一次、確認四個維度都沒退步，是這個 gate 該有的把關動作——目前 repo 裡沒有一支腳本把這件事自動化，值得列進第 7 節「建立你自己的評測集」時一併規劃。</div>
+
+  <h2 id="s6">6. 銀行專屬測試關卡</h2>
+  <p>不同業務線的 agent，容錯的方向完全不一樣，測試關卡不能用同一把尺：</p>
+
+  <div class="cards">
+    <div class="card"><h4>對帳類：數字 tie-out 全對才過</h4><p>gl-reconciler、month-end-closer、statement-auditor 這類 agent，評測不能接受「大致對」——<code>build_gl_recon.py</code> 產出的底稿本身就內建 tie-out 斷言（真實 break + 已解釋差異 = 總差異），這條規則要嘛完全成立、要嘛整份報告不可信。評測集裡每一筆對帳案例都要能被程式化驗算，不是靠 LLM judge 讀感覺。</p></div>
+    <div class="card"><h4>KYC 類：漏抓率是紅線，誤殺率可以調</h4><p><code>mock-mcp/selftest.py</code> 埋了兩種相反的測試案例：Ivan Petrov（真制裁名單命中，1970-03-15、Russia）絕對不能漏抓；Maria Garcia（申請人是 1988 年生、西班牙人，跟名單上 1955 年生、哥倫比亞籍的同名者是巧合）絕對不能被誤殺。前者是漏抓率的紅線——一旦漏掉，測試直接判定失敗，沒有「這次剛好沒抓到,下次再說」的空間；後者是誤殺率——可以有調整空間（先攔下來走人工複核也可以接受），但不能無限上綱到每個同名都自動拒絕，那樣業務會癱瘓。KYC 評測集要同時放這兩種案例，分開設兩條不同嚴格度的紅線。</p></div>
+    <div class="card"><h4>注入攻擊測試集：惡意文件樣本</h4><p>kyc-screener 的 <code>doc-reader</code>（唯一碰未受信任開戶文件的工人，只有 Read/Grep、無 Write、無 MCP）跟 meeting-prep-agent 讀 CRM 來訊，都是「處理不可信輸入」的攻擊面。repo 裡已經有一個活生生的樣本：<code>crm/data/communications.csv</code> 裡一筆 <code>flag=suspected_prompt_injection</code> 的紀錄，內容偽裝成系統通知、要求匯款 50 萬美元並隱匿。這類樣本要單獨集中管理成一個「注入攻擊測試集」，隨著上線後真的遇到新的注入手法（偽造附件、藏在 PDF 元資料裡的指令、多輪對話裡逐步誘導）持續擴充，每次擴充後重跑一次確認所有既有 agent 都還守得住。</p></div>
+  </div>
+
+  <p>這三類關卡的共通點是：<strong>失敗模式不對稱</strong>。對帳可以慢一點但不能算錯；KYC 寧可多攔一些誤殺也不能放走真制裁名單；注入攻擊測試集寧可 agent 保守到「不確定就不執行、只標記」，也不能被騙去執行一步操作。評測集設計時，先確認每支 agent 屬於哪一種不對稱，再決定要用「全對才過」的硬規則、還是「紅線 + 可調誤殺率」的兩段式門檻。</p>
+
+  <h2 id="s7">7. 建立你自己的評測集</h2>
+  <p>從零開始幫自製 agent 建立評測集，不需要一次到位，repo 裡的素材本身就是一條可行路徑：</p>
+
+  <div class="flow" data-animate>
+    <div class="step"><span class="n">1</span><strong>從 steering-examples 起步</strong><br>先寫「標準 → 變體 → 追問」三段式（第 4 節），這是功能覆蓋面最低限度的骨架</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">2</span><strong>對照 mock-mcp 埋雷</strong><br>比照 <code>selftest.py</code> 的做法，在自己的假資料裡刻意埋幾個「該被抓到的問題」與「該被濾掉的誤報」，兩種都要有</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">3</span><strong>收集 prod 匿名化案例</strong><br>上線後，把真實出現、但評測集沒覆蓋到的邊角案例（脫敏後）補進評測集——這是評測集真正變強的階段，因為想像不到的案例往往比設計出來的更刁鑽</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">4</span><strong>版本化管理</strong><br>評測集跟程式碼一樣進 git，改動要 code review；<code>docs/outputs/</code> 目前的做法（存下實際跑過的 <code>execution_history.md</code> + <code>note.md</code> 答案卡）就是一種可行的版本化格式，可以直接沿用</div>
+  </div>
+
+  <p>第 4 步是最容易被跳過、卻最關鍵的一步：評測集如果只活在某個人的筆記本裡，模型換版本、prompt 改一版之後，沒人知道「原本應該長怎樣」。把預期輸出（golden output）跟評分準則（LLM-as-judge 的 rubric、tie-out 規則、KYC 紅線）都放進版本控制，才能讓「這次改動有沒有讓評測分數退步」變成一個可以在 code review 裡直接看到的 diff，而不是一句「我覺得應該還可以」。</p>
+
+  <h2 id="s8">本章重點</h2>
+  <div class="callout tip">
+    <span class="co-title">本章重點</span>
+    <ul class="checklist">
+      <li>Agent 測試分四層：靜態檢查（check.py/validate.py，秒級零成本）→ mock 整合測試（mock-mcp + test-cookbooks.sh）→ 評測 evals（品質評分）→ prod 監控（第 11 章）</li>
+      <li>check.py 管 manifest 格式、引用解析、skill drift；目前只靠開發者手動跑，不在任何 GitHub workflow 裡——銀行落地時值得補一支 CI</li>
+      <li>mock-mcp/selftest.py 測的是假資料本身有沒有壞掉，不是測 agent；docs/outputs/ 的 fileBased 與 mcpBased 是可重跑、可比對的 golden output</li>
+      <li>steering-examples.json 兼具文件與測試案例雙重身分，「標準 → 變體 → 追問」三段式是最低限度的覆蓋模板</li>
+      <li>金融評測要拆四個維度：數字正確性、引用可追溯、該升級有沒有升級、拒答邊界；LLM-as-judge 篩量、人工抽檢保底線</li>
+      <li>不同業務線的失敗模式不對稱：對帳要全對才過、KYC 漏抓率是紅線但誤殺率可調、注入攻擊測試集要持續擴充</li>
+    </ul>
+  </div>
+
+  <p><strong>上線前測試關卡檢核清單：</strong></p>
+  <ul class="checklist">
+    <li><code>python3 scripts/check.py</code> 通過（manifest 格式、引用路徑、skill 無 drift）</li>
+    <li><code>bash scripts/test-cookbooks.sh</code> 通過（每支 cookbook dry-run 出的 API payload 結構合法、無 depth&gt;1、無 output_schema 洩漏）</li>
+    <li><code>python3 mock-mcp/selftest.py</code> 全綠（假資料完整、埋的雷都還在）</li>
+    <li>對照 <code>docs/outputs/</code> 的 golden output 手動重跑一次，確認既有埋雷案例的判讀沒有退步</li>
+    <li><code>steering-examples.json</code> 至少覆蓋「標準／變體／追問」三種案例</li>
+    <li>評測集涵蓋數字正確性、引用可追溯、升級判斷、拒答邊界四個維度，並針對本 agent 的失敗模式設好紅線</li>
+    <li>模型或系統提示有變動 → 整份評測集重跑一輪回歸，確認四維度分數沒有退步再送出 <code>version_bump</code></li>
+  </ul>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">Q：關於這個 repo 裡的測試工具分工，下列哪個說法正確？</div>
+    <label>check.py 會即時呼叫 LLM，判斷 agent 輸出品質好不好</label>
+    <label>mock-mcp/selftest.py 檢查的是假資料本身（CSV）的完整性與埋雷是否還在，不涉及呼叫任何 agent</label>
+    <label>test-cookbooks.sh 會實際打 POST /v1/agents，把每支 cookbook 部署到正式環境驗證</label>
+    <div class="explain">正解是第二項。<code>selftest.py</code> 純用 <code>csv.DictReader</code> 讀資料做斷言，不匯入 <code>mcp</code> SDK 也不呼叫任何 agent，測的是「考卷本身有沒有被誤改」。<code>check.py</code> 只做 YAML/JSON 解析與路徑引用檢查，不呼叫 LLM；<code>test-cookbooks.sh</code> 一律帶 <code>--dry-run</code>，只驗證展開後的 payload 結構，不會真的打 <code>POST /v1/agents</code>。</div>
+  </div>
+
+</main>
+<script src="../assets/book.js"></script>
+</body>
+</html>

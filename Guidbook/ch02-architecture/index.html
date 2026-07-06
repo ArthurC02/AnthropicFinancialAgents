@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>第 2 章 — 核心概念與 CMA 架構 | Financial Agents 開發指南</title>
+  <link rel="stylesheet" href="../assets/book.css">
+</head>
+
+<body data-chapter="ch02">
+  <main>
+    <h1><span class="ch-no">Chapter 2</span>核心概念與 CMA 架構</h1>
+    <p class="lead">第 1 章看到「一份系統提示、兩種交付」的大圖。這一章拆到欄位層級：代理(Agent) 到底由哪四塊組成、repo 資料夾怎麼分工、<code>agent.yaml</code>
+      每一欄實際解析成什麼、委派怎麼限一層、以及安全分層背後「人把關 vs 架構把關」的設計哲學。讀完你應該能對著任何一支 代理(Agent) 的 <code>agent.yaml</code>，指出每一欄在正式 API
+      呼叫裡變成什麼。
+    </p>
+
+    <div class="toc">
+      <div class="toc-title">本章內容</div>
+      <ol>
+        <li><a href="#s1">Agent 的四個組成</a></li>
+        <li><a href="#s2">Repo 目錄結構解剖</a></li>
+        <li><a href="#s3">agent.yaml 逐欄解說</a></li>
+        <li><a href="#s4">callable_agents：一層委派的執行流</a></li>
+        <li><a href="#s5">安全分層與把關哲學</a></li>
+        <li><a href="#s6">Manifest 語法 vs API 載荷</a></li>
+        <li><a href="#s7">本章重點</a></li>
+      </ol>
+    </div>
+
+    <h2 id="s1">1. Agent 的四個組成</h2>
+    <p>不論是 <strong>外掛</strong>（Plugin）還是 <strong>CMA</strong>（Claude Managed Agents，Claude 託管代理），一個 具名代理(Name Agent)
+      都由同樣四塊拼起來：系統提示決定「怎麼想」，Skill
+      決定「特定事怎麼做」，工具（Tools）決定「能動什麼」，MCP（Model Context Protocol，模型情境協定）決定「能讀什麼外部資料」。銀行工程師可以把它想成：系統提示是新人的職務說明書，Skill 是部門
+      SOP，工具是他桌上能用的軟體權限，MCP 是他能連到的核心系統帳號。</p>
+
+    <div class="cards">
+      <div class="card">
+        <h4>系統提示（System Prompt）</h4>
+        <p>唯一來源在 <code>plugins/agent-plugins/&lt;slug&gt;/agents/&lt;slug&gt;.md</code>。定義角色、工作流程、紀律與子代理規則。外掛直接讀這份檔案；CMA
+          透過 <code>agent.yaml</code> 的 <code>system.file</code> 把同一份檔案內嵌進 API 載荷。</p>
+      </div>
+      <div class="card">
+        <h4>Skill</h4>
+        <p>特定任務的知識包（例如「怎麼寫一份 xlsx 稽核報告」）。真本放在 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/</code>，同步後變成
+          <code>plugins/agent-plugins/&lt;slug&gt;/skills/</code> 的副本。CMA 用 <code>skills.from_plugin</code> 整包上傳。
+        </p>
+      </div>
+      <div class="card">
+        <h4>Tools</h4>
+        <p>agent 能執行的動作，例如 Read／Grep／Glob／Write／Edit。CMA 用 <code>agent_toolset_20260401</code> 這個 type，逐一在
+          <code>configs</code> 裡開關；預設全關（<code>default_config: enabled: false</code>），只開白名單上的幾個，這是最小權限原則的第一道閘。
+        </p>
+      </div>
+      <div class="card">
+        <h4>MCP</h4>
+        <p>接外部資料源的標準插座——總帳、CRM、行情、制裁名單庫。agent 只認 server「名字」，同一個名字現在指本機 mock（<code>127.0.0.1:800x</code>），上線時改指真實系統即可，不改
+          agent 裡的名稱。</p>
+      </div>
+    </div>
+
+    <h2 id="s2">2. Repo 目錄結構解剖</h2>
+    <p>三個資料夾各司其職：<code>plugins/vertical-plugins/</code> 放各個垂直領域的技能真本、指令與
+      <code>.mcp.json</code>；<code>plugins/agent-plugins/</code> 是十支具名代理（Named Agent）各自的外掛封裝，裡面的系統提示是唯一來源，skills 資料夾則是從
+      vertical 同步過來的副本；<code>managed-agent-cookbooks/</code> 是同一支 agent 的 CMA 食譜，靠相對路徑引用 <code>agent-plugins/</code>
+      裡的系統提示與 skills，不重複內容。
+    </p>
+
+    <figure class="book-figure">
+      <img src="../assets/illustrations/ch02-repo-structure.svg"
+        alt="vertical-plugins 存放 skill 真本與 MCP 定義，agent-plugins 存放 named agent 封裝與 skill 副本，managed-agent-cookbooks 存放 CMA agent.yaml、subagents、steering examples 與 README；skill 同步只能由 vertical-plugins 流向 agent-plugins。">
+      <figcaption>三個資料夾不是三份重複內容：vertical 放真本，agent-plugins 放封裝與副本，cookbooks 放 CMA 部署食譜。</figcaption>
+    </figure>
+
+    <p>這個分工帶來一條硬紀律：<strong>Skill 一律改 <code>vertical-plugins/</code> 的真本</strong>，改完跑
+      <code>python3 scripts/sync-agent-skills.py</code> 把副本整包重建，再跑 <code>python3 scripts/check.py</code>
+      驗證。<code>check.py</code> 會做三件事：檢查每份 manifest（<code>plugin.json</code>／<code>agent.yaml</code>）格式、確認
+      <code>system.file</code>／<code>skills.path</code>／<code>callable_agents.manifest</code> 這些相對路徑都真的解析得到檔案、以及比對
+      <code>agent-plugins/&lt;slug&gt;/skills/</code> 跟其 <code>vertical-plugins/</code>
+      來源有沒有「漂移」（drift）——兩者內容只要不一致，commit 就會被擋下來。這也是為什麼直接手改 agent 包裡的 skills 副本沒有用：下一次 <code>check.py</code> 就會抓到不一致。
+    </p>
+
+    <h2 id="s3">3. agent.yaml 逐欄解說</h2>
+    <p>以 <code>kyc-screener</code>（開戶審查）為例，這是它完整的 <code>managed-agent-cookbooks/kyc-screener/agent.yaml</code>：</p>
+
+    <div class="code-title">managed-agent-cookbooks/kyc-screener/agent.yaml</div>
+    <pre><code># KYC Screener — managed-agent cookbook
+
+name: kyc-screener
+model: claude-opus-4-7
+
+system:
+  file: ../../plugins/agent-plugins/kyc-screener/agents/kyc-screener.md
+  append: "You are running headless. Produce files in ./out/; do not assume an open Office document."
+
+tools:
+  - type: agent_toolset_20260401
+    default_config: { enabled: false }
+    configs:
+      - { name: read,  enabled: true }
+      - { name: grep,  enabled: true }
+      - { name: glob,  enabled: true }
+  - { type: mcp_toolset, mcp_server_name: screening, default_config: { enabled: true } }
+
+mcp_servers:
+  - { type: url, name: screening, url: "${SCREENING_MCP_URL}" }
+
+skills:
+  - { from_plugin: ../../plugins/agent-plugins/kyc-screener }
+
+callable_agents:
+  - { manifest: ./subagents/doc-reader.yaml }
+  - { manifest: ./subagents/rules-engine.yaml }
+  - { manifest: ./subagents/escalator.yaml }   # only leaf with Write</code></pre>
+
+    <p>逐欄拆解：</p>
+    <ul>
+      <li><strong><code>system.file</code> / <code>append</code></strong>：指回外掛那份唯一來源系統提示，不重寫一次；<code>append</code> 是 CMA
+        專屬的補充句——因為無人值守，要提醒 agent「這裡沒有開著的 Office 文件，產出要落地成 <code>./out/</code> 底下的檔案」。這是系統提示「同源、加殼」的具體實作。</li>
+      <li><strong><code>tools</code> 的
+          <code>agent_toolset_20260401</code></strong>：<code>default_config: { enabled: false }</code>
+        代表沒列出來的工具一律關閉，<code>configs</code> 只白名單開 <code>read</code>／<code>grep</code>／<code>glob</code>——主 orchestrator
+        本身沒有 <code>write</code>，寫檔這件事完全交給葉子工人。另一條是 <code>mcp_toolset</code>，把 MCP 包成一種工具類型掛上來。</li>
+      <li><strong><code>mcp_servers</code> 的 <code>${SCREENING_MCP_URL}</code></strong>：CMA 用環境變數佔位，佈署腳本
+        <code>deploy-managed-agent.sh</code> 在 <code>POST /v1/agents</code> 前把它代換成真正網址；環境變數代換值只允許
+        <code>[A-Za-z0-9._/:@-]</code> 白名單字元，避免注入奇怪內容。名字 <code>screening</code> 不管指本機 mock 還是真實廠商都不變，改的只有這把環境變數的值。
+      </li>
+      <li><strong><code>skills.from_plugin</code></strong>：不是列單一 skill 路徑，而是整個 <code>agent-plugins/kyc-screener</code>
+        目錄下的 <code>skills/*</code> 全部上傳，各自換成 <code>skill_id</code>。</li>
+      <li><strong><code>callable_agents.manifest</code></strong>：靜態宣告三個葉子工人的 yaml 路徑，佈署時逐一先建立子代理、拿到 id，再引用回主
+        agent——見下一節。</li>
+    </ul>
+
+    <h2 id="s4">4. callable_agents：一層委派的執行流</h2>
+    <p><code>callable_agents</code>（可呼叫子代理，即多代理委派）目前是研究預覽功能，且<strong>只支援一層委派</strong>：orchestrator（主代理）可以呼叫
+      worker（葉子工人），但 worker 不能再呼叫其他子代理。這條限制在 <code>kyc-screener</code> 身上具體長這樣：orchestrator 本身沒有 <code>write</code>
+      權限，只把工作分派給三個葉子工人——<code>doc-reader</code>（讀未受信任的開戶文件）、<code>rules-engine</code>（套 KYC/AML 規則、跑制裁與政治公眾人物 PEP
+      篩查）、<code>escalator</code>（唯一有 Write 的工人，寫出 <code>./out/escalation-&lt;packet&gt;.xlsx</code> 給合規官簽核）。三支子代理各自的
+      <code>agent.yaml</code> 都在 <code>managed-agent-cookbooks/kyc-screener/subagents/</code>
+      底下，權限彼此隔離：<code>doc-reader</code> 只有 <code>read</code>／<code>grep</code>，沒有任何 MCP；<code>rules-engine</code> 多了
+      <code>screening</code> MCP 但仍然唯讀；只有 <code>escalator</code> 開了 <code>write</code>／<code>edit</code>，卻完全不碰原始文件、也沒有任何
+      MCP 連線。
+    </p>
+
+    <figure class="book-figure">
+      <img src="../assets/illustrations/ch02-kyc-permissions.svg"
+        alt="kyc-screener 的一層委派結構：doc-reader 讀文件、rules-engine 查規則與名單、只有 escalator 可寫檔。">
+      <figcaption>同一支 agent 內部也要切權限：碰未信任文件的人不能寫，能寫的人看不到原始文件。</figcaption>
+    </figure>
+
+    <div class="flow" data-animate>
+      <div class="step"><span class="n">1</span><strong>Orchestrator 收到 steering
+          event</strong><br><code>Screen onboarding packet &lt;id&gt;</code>，本身只有 read/grep/glob，無 write</div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="n">2</span><strong>doc-reader</strong><br>讀未受信任的護照／公司設立文件／實質受益人（UBO）圖，回傳 schema
+        驗證過的 JSON，不含自由文字</div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="n">3</span><strong>rules-engine</strong><br>拿驗證過的 entity 檔跑內部規則，並呼叫
+        <code>screening</code> MCP 做制裁／PEP／負面新聞篩查，回傳每條規則 pass/fail 與命中信心值
+      </div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="n">4</span><strong>escalator（唯一 Write）</strong><br>彙總規則結果與篩查命中，寫出
+        <code>./out/escalation-&lt;packet&gt;.xlsx</code>，交合規官簽核；agent 本身只建議風險評等，不做最終決定
+      </div>
+    </div>
+
+    <p>這個模式在銀行的意義很直接：一支「開戶審查」agent 內部其實有分工——碰未受信任文件的 worker 完全沒有寫檔權，能寫檔的 worker 完全不碰原始文件、也連不到任何外部系統。就算
+      <code>doc-reader</code> 讀到一份被塞了惡意指令的偽造護照掃描檔，它能造成的最大傷害也只是回傳一份格式不對的 JSON——它沒有 write，沒有
+      MCP，傷不到帳本也連不到黑名單庫。這種「用架構切分風險」的做法，正是下一節要講的設計哲學核心。
+    </p>
+
+    <h2 id="s5">5. 安全分層與把關哲學</h2>
+    <p>十支 named agent 依風險分成三級，越靠近「錢」跟「法規」，風險越高：</p>
+    <ul>
+      <li><span class="badge green">🟢 低</span> 前台／研究類，例如會前準備、市場研究——產出是內部草稿，主代理可以自己直接存檔。</li>
+      <li><span class="badge amber">🟡 中</span> 財報追蹤、估值建模、投行提案——仍是研究或提案性質，但牽涉的判斷更重。</li>
+      <li><span class="badge red">🔴 高</span>
+        開戶審查（kyc-screener）、總帳對帳、月底結帳、對帳單稽核、估值複核——牽涉法規遵循與帳目正確性，主代理一律不能自己存檔，寫檔動作切給單一、權限最小的葉子工人。</li>
+    </ul>
+    <p>這條「風險越高、寫檔權收得越緊」的規律，對應到外掛與 CMA 兩種殼卻是完全不同的把關機制。外掛跑在使用者自己的 Claude Code／Cowork
+      裡，本質上「整個外掛執行過程都在人的監督下」——需要分工時，人可以隨時介入、開新對話，安全靠的是<strong>人</strong>這道閘。CMA 是無人值守、由後端程式呼叫
+      <code>POST /v1/agents</code>
+      跑起來，沒有人可以在中途攔下一步操作，安全只能靠<strong>結構</strong>：把高風險動作（寫檔、升級）靜態切到一個權限被縮到最小的葉子子代理，佈署前就鎖死，不是跑起來才動態決定。這就是「Plugin 靠人把關、CMA
+      靠架構把關」——同一份系統提示，兩種殼各自用不同機制達成同一個安全目標。
+    </p>
+
+    <div class="callout warn"><span class="co-title">不是說 CMA 比較安全</span>兩種把關機制對應兩種使用情境：外掛假設分析師隨時在旁邊看結果；CMA 假設完全無人值守、必須靠
+      <code>callable_agents</code> 的權限隔離與 <code>output_schema</code> 的格式驗證頂住。挑哪種殼，先看你的流程是「人跑」還是「排程/事件觸發」。
+    </div>
+
+    <h2 id="s6">6. Manifest 語法 vs API 載荷</h2>
+    <p><code>agent.yaml</code> 用的欄位名稱就是 <code>POST /v1/agents</code> 實際載荷的欄位名稱，差別只在幾個「圖方便」的寫法，佈署腳本
+      <code>deploy-managed-agent.sh</code> 會在送出前把它們展開成 API 要的實際內容：
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Manifest 便利語法</th>
+            <th>解析成 API 實際載荷</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <code>system: {file: ../../plugins/agent-plugins/&lt;slug&gt;/agents/&lt;slug&gt;.md, append: "..."}</code>
+            </td>
+            <td><code>system: "&lt;檔案內容 + append 內容&gt;"</code>（內嵌成一個字串）</td>
+          </tr>
+          <tr>
+            <td><code>system: {text: "..."}</code></td>
+            <td><code>system: "&lt;text&gt;"</code></td>
+          </tr>
+          <tr>
+            <td><code>skills: [{from_plugin: ../../plugins/agent-plugins/&lt;slug&gt;}]</code></td>
+            <td>上傳該目錄下每個 <code>skills/*</code> → <code>[{type: custom, skill_id: ...}, ...]</code></td>
+          </tr>
+          <tr>
+            <td><code>skills: [{path: ../../...}]</code></td>
+            <td><code>skills: [{type: custom, skill_id: &lt;上傳後拿到的 id&gt;}]</code></td>
+          </tr>
+          <tr>
+            <td><code>callable_agents: [{manifest: ./subagents/x.yaml}]</code></td>
+            <td><code>callable_agents: [{type: agent, id: &lt;先建立子代理拿到的 id&gt;, version: latest}]</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>換句話說，<code>agent.yaml</code> 從來不是另一套 DSL（領域特定語言），它就是 API 載荷本身，只是把「上傳並拿 id 回填」這種需要先跑一輪 API
+      呼叫才知道結果的步驟，用相對路徑語法先寫死，讓你不用手動維護一串 id。想確認佈署會送出什麼，可以先跑 <code>deploy-managed-agent.sh --dry-run</code> 看展開後的載荷，不會真的送出。
+    </p>
+
+    <details>
+      <summary>跨 agent 協作怎麼辦？named agents 不能互叫</summary>
+      <p><code>callable_agents</code> 只能讓 orchestrator 叫自己宣告好的葉子工人，不能讓 <code>kyc-screener</code> 直接呼叫
+        <code>gl-reconciler</code>。跨 agent 的協作走另一條路：agent 在輸出裡帶一個 <code>handoff_request</code>，由
+        <code>scripts/orchestrate.py</code>（或銀行自己的事件匯流排）解析、做白名單校驗與 schema 驗證後，路由成一則新的 steering event 送進目標 agent 的
+        session。這一段會在第 8 章（多代理協作）展開。
+      </p>
+    </details>
+
+    <h2 id="s7">本章重點</h2>
+    <div class="callout tip">
+      <span class="co-title">本章重點</span>
+      <ul class="checklist">
+        <li>一個 agent＝系統提示＋Skill＋Tools＋MCP，外掛與 CMA 是同一份系統提示套的兩種殼</li>
+        <li>Skill 真本在 <code>vertical-plugins/</code>，副本在 <code>agent-plugins/&lt;slug&gt;/skills/</code>，改真本→跑 sync→跑
+          check，三步缺一不可</li>
+        <li><code>agent.yaml</code> 的欄位就是 <code>POST /v1/agents</code>
+          的欄位，<code>file</code>／<code>from_plugin</code>／<code>manifest</code> 只是省去手動回填 id 的便利寫法</li>
+        <li><code>callable_agents</code> 只有一層委派，且每支 agent 只有一個葉子工人有 Write</li>
+        <li>風險越高（🔴 法規／帳目），寫檔權收得越緊；外掛靠人把關，CMA 靠架構把關</li>
+      </ul>
+    </div>
+
+    <div class="quiz" data-answer="2">
+      <div class="q">Q：在 <code>kyc-screener</code> 的 CMA 委派結構裡，下列哪個說法正確？</div>
+      <label>orchestrator 本身有 write 權限，可以直接寫出稽核結果</label>
+      <label>doc-reader 可以再委派給另一個子代理去查制裁名單</label>
+      <label>escalator 是唯一擁有 Write 的葉子工人，且不直接碰未受信任的原始文件</label>
+      <div class="explain">正解是第三項。orchestrator 的 <code>agent_toolset_20260401</code> 只開了 read/grep/glob，沒有
+        write；<code>callable_agents</code> 限一層委派，doc-reader 不能再往下叫子代理；escalator 的 <code>agent.yaml</code> 明確寫著「Never
+        open onboarding documents directly」，只處理 rules-engine 與 doc-reader 產出的結構化結果。</div>
+    </div>
+
+  </main>
+  <script src="../assets/book.js"></script>
+</body>
+
+</html>

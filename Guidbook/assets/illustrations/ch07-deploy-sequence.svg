@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 355" role="img" aria-labelledby="title desc">
+  <title id="title">先建立 leaf workers，再建立 orchestrator</title>
+  <desc id="desc">部署腳本先建立三個 leaf workers 並取得 id/version，再建立引用它們的 orchestrator。</desc>
+  <defs><style>.bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.thin{stroke-width:2}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:16px;font-weight:700}.small{font-size:13px;font-weight:500}.card{fill:#fbf5e7;stroke:#2e2c28}.blue{fill:#e2eef4;stroke:#2c7a9e}.green{fill:#e5efe5;stroke:#4c7a4c}.label{fill:#c15f3c}</style></defs>
+  <rect class="bg" width="880" height="355" rx="18"/>
+  <text class="txt label" x="42" y="38">deploy-managed-agent.sh 的建立順序</text>
+  <rect class="card" x="48" y="86" width="150" height="60" rx="12"/><text class="txt small" x="74" y="121">reader.yaml</text>
+  <rect class="card" x="48" y="166" width="150" height="60" rx="12"/><text class="txt small" x="76" y="201">critic.yaml</text>
+  <rect class="card" x="48" y="246" width="150" height="60" rx="12"/><text class="txt small" x="72" y="281">resolver.yaml</text>
+  <path class="ink" d="M198 116 H322M198 196 H322M198 276 H322"/><path class="ink" d="M304 103 L322 116 L304 129M304 183 L322 196 L304 209M304 263 L322 276 L304 289"/>
+  <rect class="blue" x="322" y="76" width="170" height="240" rx="18"/>
+  <text class="txt" x="354" y="112">POST /v1/agents</text><text class="txt small" x="362" y="144">建立 leaf workers</text><text class="txt small" x="362" y="174">拿 id + version</text><text class="txt small" x="362" y="204">worker 不能再委派</text>
+  <path class="ink" d="M492 196 H574"/><path class="ink" d="M556 183 L574 196 L556 209"/>
+  <rect class="green" x="574" y="111" width="250" height="170" rx="18"/>
+  <text class="txt" x="620" y="146">orchestrator agent.yaml</text>
+  <text class="txt small" x="613" y="178">callable_agents = [</text>
+  <text class="txt small" x="638" y="202">{type, id, version},</text>
+  <text class="txt small" x="638" y="224">{type, id, version},</text>
+  <text class="txt small" x="638" y="246">{type, id, version}</text>
+  <text class="txt small" x="613" y="268">]</text>
+  <path class="ink thin" d="M585 308 H815"/><text class="txt small label" x="610" y="330">最後才 POST orchestrator</text>
+</svg>

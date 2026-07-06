@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 10 章 — 治理與模型風險管理 | Financial Agents 開發指南</title>
+<link rel="stylesheet" href="../assets/book.css">
+</head>
+<body data-chapter="ch10">
+<main>
+  <h1><span class="ch-no">Chapter 10</span>治理與模型風險管理</h1>
+  <p class="lead">前面幾章教你怎麼把 agent 建起來、接進銀行系統、上雲部署。這章回答一個更難的問題：稽核來問「這支 agent 誰批准的、現在跑哪個版本、出錯了怎麼回溯」時，你答不答得出來。答不出來，這支 agent 就別想過風控會，也別想大規模鋪開。</p>
+
+  <div class="toc"><div class="toc-title">本章內容</div>
+    <ol>
+      <li><a href="#s1">治理為何是成敗關鍵：把 agent 當「模型」列管</a></li>
+      <li><a href="#s2">repo 已內建的治理機制盤點</a></li>
+      <li><a href="#s3">變更管理流程：誰能改、怎麼審、怎麼留痕</a></li>
+      <li><a href="#s4">模型治理：清單、換模型、升級與退場</a></li>
+      <li><a href="#s5">權限治理：金鑰、隔離、prod 部署權</a></li>
+      <li><a href="#s6">文件與 audit 治理</a></li>
+      <li><a href="#s7">人機分工政策（HITL）</a></li>
+      <li><a href="#s8">Agent 台帳範本</a></li>
+    </ol>
+  </div>
+
+  <h2 id="s1">1. 治理為何是成敗關鍵：把 agent 當「模型」列管</h2>
+  <p>銀行的<strong>模型風險管理（Model Risk Management, MRM）</strong>框架（例如 SR 11-7 這類監理指引的精神）要求：任何會影響決策或財務數字的「模型」，都要有版本控制、獨立驗證、變更審批、使用範圍限制、定期複核。問題是，agent 系統提示（system prompt）、skill 裡的估值慣例、可呼叫的 MCP 工具，這些合在一起就是一個會「產出財務判斷」的系統——本質上就是 MRM 定義下的模型，只是換了一種實作方式（自然語言 + 工具呼叫，而非傳統的迴歸公式）。</p>
+  <p>如果你的團隊把 agent 當成「一個好用的聊天工具」在管，而不是「一個要列管的模型」，會在導入後期撞到三件事：</p>
+  <ul>
+    <li><strong>改了沒人知道</strong>：工程師改了 `SKILL.md` 裡的 WACC 組成或重大性門檻，法遵/會計完全不知情，直到某次估值結果對不上才發現。</li>
+    <li><strong>版本回溯不了</strong>：出了爭議的輸出，卻說不清楚當時 agent 是哪個版本、哪個模型、哪份 skill 產生的。</li>
+    <li><strong>誰簽核不清楚</strong>：agent 的輸出被當成「已核准」發出去，但其實只有分析師自己按了送出，沒有經過該有的簽核層級。</li>
+  </ul>
+  <div class="callout warn"><span class="co-title">銀行視角</span>對照傳統模型風險管理：一支 DCF 試算表模型上線前要走驗證、要有版本號、要有使用者手冊、要定期回測。<code>model-builder</code> 這支 agent 產出的也是 DCF——差別只在「模型」現在是 <code>agents/model-builder.md</code> + <code>dcf-model/SKILL.md</code> 這組檔案的組合。治理的問題沒有變小，只是換了載體。</div>
+
+  <h2 id="s2">2. repo 已內建的治理機制盤點</h2>
+  <p>好消息是，這個 repo 的架構本身就已經替治理做了一半的工作——不是靠人「記得要遵守」，而是靠工具擋。實際盤點四項：</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>機制</th><th>檔案/工具</th><th>解決的治理問題</th></tr>
+    <tr><td>單一真本（canonical prompt）</td><td><code>plugins/agent-plugins/&lt;slug&gt;/agents/&lt;slug&gt;.md</code></td><td>plugin 版與 CMA 版共用同一份系統提示（CMA 的 <code>agent.yaml</code> 用 <code>system.file</code> 指回它），不會出現「雲端跑的規則跟本地不一樣」的分裂風險</td></tr>
+    <tr><td>一致性強制檢查</td><td><code>scripts/check.py</code></td><td>第 4b 項比對 bundle skill 與 <code>vertical-plugins/</code> 真本是否逐檔一致，drift 直接擋 commit；第 4b2 項強制 agent 劇本裡提到的 skill 一定要 bundle 到位——防止「文件寫了但沒真的掛」</td></tr>
+    <tr><td>版本 bump 閘門</td><td><code>scripts/version_bump.py</code> + <code>.githooks/pre-commit</code> + <code>version-bump</code> GitHub Action</td><td>任何動到某 plugin 的分支，該 plugin 的 <code>plugin.json</code> <code>version</code> 一定要嚴格大於 <code>main</code>——因為 Claude Code 只在 version 變動時才會把更新推給已安裝用戶，version 就是治理上的「發布控制點」</td></tr>
+    <tr><td>部署來源標記</td><td><code>scripts/deploy-managed-agent.sh</code> 第 161 行：<code>metadata.anthropic_cookbook</code></td><td>每次 <code>POST /v1/agents</code> 都把 <code>{repo}/{slug}</code>（如 <code>fsi-agents/kyc-screener</code>）寫進雲端 agent 的 metadata，之後在 console 或 API 上看任何一個 agent，都能回答「這是從哪個 repo 的哪個 cookbook 部署的」</td></tr>
+  </table>
+  </div>
+  <div class="code-title">scripts/deploy-managed-agent.sh（節錄，第 161 行）</div>
+  <pre><code>json=$(jq --arg ck "$COOKBOOK_TAG" '.metadata = ((.metadata // {}) + {anthropic_cookbook: $ck})' &lt;&lt;&lt;"$json")</code></pre>
+  <p><code>COOKBOOK_TAG</code> 是 <code>${REPO_SLUG}/${ROLE}</code>（第 30 行），<code>REPO_SLUG</code> 又是從 <code>git remote origin</code> 自動推得——所以這個標記不需要人手動填，只要你是用這支腳本部署，溯源就是免費的。</p>
+  <div class="callout tip"><span class="co-title">別忽略的細節</span><code>docs/Customizing.md</code>第三段講得很白：CMA 沒有真人盯盤，安全只能靠結構，也就是三道閘——<strong>能力閘</strong>（每個 sub-agent 的 <code>tools</code> 只開該有的）、<strong>schema 閘</strong>（髒 reader 的輸出被 <code>output_schema</code> 鎖死，因為 API 目前不強制 schema，執行者其實是 <code>scripts/validate.py</code>，deploy 時 API payload 會 <code>del(.output_schema)</code>）、<strong>交棒閘</strong>（<code>scripts/orchestrate.py</code> 的 <code>ALLOWED_TARGETS</code> allowlist）。這三道閘同樣是治理機制的一部分，改動它們（放寬 schema、開放新交棒對象）要跟改 prompt 一樣走審核，不能工程自己說了算。</div>
+
+  <h2 id="s3">3. 變更管理流程：誰能改、怎麼審、怎麼留痕</h2>
+  <p>repo 本身不會替你決定「誰有權按下 merge」——那是組織流程，要自己設計。但 repo 已經把「怎麼卡住不合規變更」的技術閘門搭好了，流程只需要接上這些閘門。建議的變更管理流程分五步：</p>
+  <div class="flow" data-animate>
+    <div class="step"><span class="n">1</span><strong>提出變更</strong><br>工程師改 <code>agents/&lt;slug&gt;.md</code>（角色/流程/守則）或 <code>vertical-plugins/.../SKILL.md</code>（估值慣例、容差、重大性門檻）</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">2</span><strong>三方 PR 審核</strong><br>業務單位（該 agent 的使用部門）確認邏輯合理、法遵確認合規紅線、工程確認實作正確——三方缺一不可，沒有全部 review 過不能 merge</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">3</span><strong>CI 檢查</strong><br><code>scripts/check.py</code>（drift/參照）+ <code>version-bump</code> Action（版本閘）+ <code>scripts/test-cookbooks.sh</code>（10 支 cookbook 全部 dry-run 斷言）</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">4</span><strong>部署審批</strong><br>誰能對 prod 執行 <code>deploy-managed-agent.sh &lt;slug&gt;</code>（非 <code>--dry-run</code>）是獨立的一道關卡，見第 5 節</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">5</span><strong>部署紀錄入台帳</strong><br>部署腳本印出的 <code>agent id</code>／<code>version</code>／<code>cookbook</code> 三元組登錄進台帳（見第 8 節），供稽核回溯</div>
+  </div>
+  <p><code>docs/Customizing.md</code> 第二段第 4 點講得很直接：「業務門檻要 sign off——後台 agent 的容差（tolerance）、重大性（materiality）、估值政策藏在 <code>SKILL.md</code>，改它等於改稽核行為，要會計/法遵點頭，不是工程自己說了算。」這句話就是三方審核存在的理由：一個看起來只是「改個 YAML 縮排」的 PR，實際上可能動到的是總帳對帳的容差門檻。</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>誰</th><th>審什麼</th><th>擋下什麼樣的變更</th></tr>
+    <tr><td>業務單位（agent 的使用部門）</td><td>邏輯是否符合實務操作</td><td>「這個 workflow 步驟順序不對，實務上要先做 X 再做 Y」</td></tr>
+    <tr><td>法遵/合規</td><td>是否碰觸監理紅線</td><td>「這個容差放寬會讓某類異常漏篩」「escalator 的措辭要符合監理用語」</td></tr>
+    <tr><td>工程</td><td>實作正確性、是否過 <code>check.py</code></td><td>「skill 真本改了但沒 sync，bundle 會 drift」</td></tr>
+  </table>
+  </div>
+
+  <h2 id="s4">4. 模型治理：清單、換模型、升級與退場</h2>
+  <p>這裡的「模型」有兩層意思，容易混淆，先分清楚：</p>
+  <div class="tabs">
+    <div class="tab-bar"><button>底層 LLM（claude-*）</button><button>財務試算模型（DCF/LBO/...）</button></div>
+    <div class="tab-panel">
+      <p>每支 cookbook 的 <code>agent.yaml</code> 第一行 <code>model:</code> 指定跑哪支 Claude（例如 <code>managed-agent-cookbooks/kyc-screener/agent.yaml</code> 用 <code>claude-opus-4-7</code>）。這是「引擎」層級的模型治理對象：換版本、升級、退場都是 MRM 意義下最直接的「模型變更」。</p>
+    </div>
+    <div class="tab-panel">
+      <p><code>docs/Models.md</code> 定義的是另一種「模型」：會產出財務試算/估值結果的 skill，例如 <code>dcf-model</code>、<code>lbo-model</code>、<code>merger-model</code>。這張清單告訴你哪個模型被哪支 agent 掛著、狀態是「已掛」還是「有 source 但沒 agent 用」。改這類模型分三層：<strong>Layer 1</strong> 改 <code>SKILL.md</code> 真本（邏輯/慣例，影響 plugin+CMA）、<strong>Layer 2</strong> 改 <code>agents/&lt;slug&gt;.md</code>（掛哪些模型）、<strong>Layer 3</strong> 只是執行時的 prompt 輸入（換 WACC 數字），不算模型變更，不必走治理流程。</p>
+    </div>
+  </div>
+  <p>兩層治理對象都要留意的是<code>docs/Models.md</code>裡明確標出的「plugin 掛了、CMA 沒掛」的落差——例如 <code>pitch-agent</code> 的 <code>comps-analysis</code>／<code>3-statement-model</code> 寫在共用劇本裡，plugin 版會用，但 CMA 的 <code>subagents/modeler.yaml</code> 目前只掛了 <code>dcf-model</code>／<code>lbo-model</code>。治理上這是一個真實的風險：同一支 agent 的兩個 surface（本地 plugin vs 雲端 CMA）行為不一致，而且沒有工具會自動告訴你這個落差——只有讀 <code>docs/Models.md</code> 才知道。</p>
+
+  <h3>底層 LLM 升級的評估流程</h3>
+  <p>repo 沒有內建自動化的模型升級評測腳本，但既有的 <code>scripts/test-cookbooks.sh</code>（全 10 支 cookbook dry-run 結構斷言）給了升級流程一個現成的起點。建議流程：</p>
+  <ol>
+    <li><strong>先跑評測集</strong>：對候選新模型跑一組固定的歷史案例（例如過去 3 個月的真實估值輸入），比對輸出跟現行模型的差異，特別檢查數字結論是否偏移。</li>
+    <li><strong>金絲雀（canary）</strong>：先只切換低風險層級的 agent（🟢/🟡，如 <code>meeting-prep-agent</code>、<code>market-researcher</code>），觀察一段時間，確認無異常再擴大到 🔴 高風險 agent（<code>kyc-screener</code>、<code>gl-reconciler</code> 等）。</li>
+    <li><strong>逐支切換，不要一次全換</strong>：改 <code>agent.yaml</code> 的 <code>model:</code> 欄位是 per-agent 的，天生支援分批——沒有理由 10 支 cookbook 同一天全部切版本。</li>
+    <li><strong>退場計畫</strong>：舊模型版本停用前，保留一段可回退窗口（沿用舊 <code>model:</code> 值重新部署即可回退），並確認台帳（第 8 節）上所有仍標記舊模型的 agent 都已排入升級排程，不留孤兒。</li>
+  </ol>
+  <div class="callout info"><span class="co-title">銀行視角</span>把模型升級想成「換掉授信評分卡的其中一個子模型」：不會全行同時切，會先在一個分行、一段時間內金絲雀跑，確認核准率/拒絕率沒有異常漂移，才推全行。agent 的模型升級邏輯完全一樣，只是評測指標換成「財務數字結論是否一致、escalation 判斷是否穩定」。</div>
+
+  <h2 id="s5">5. 權限治理：金鑰、隔離、prod 部署權</h2>
+  <p>每支 cookbook 部署前都要 <code>export ANTHROPIC_API_KEY=sk-ant-...</code>（見任一支 README 的 Deploy 段落，例如 <code>managed-agent-cookbooks/kyc-screener/README.md</code>）以及各 MCP 的 URL（如 <code>SCREENING_MCP_URL</code>）。這兩類機密的治理原則：</p>
+  <ul>
+    <li><strong>per-agent 金鑰隔離</strong>：不要 10 支 agent 共用一把 <code>ANTHROPIC_API_KEY</code>。一支 agent 的金鑰外洩或行為異常，範圍應該只波及那一支，而不是全部 10 支同時要輪替、同時要下線調查。</li>
+    <li><strong>MCP URL 就是特權邊界</strong>：<code>agent.yaml</code> 裡的 <code>mcp_servers</code> 用 <code>${..._MCP_URL}</code> 環境變數佔位（見 <code>docs/TechSummary.md</code> 第 173-174 行的部署提醒），上線只是把同名 server 的 URL 從本機 mock（<code>127.0.0.1:800x</code>）改指真實系統——這代表「誰能設定這個環境變數」等於「誰能決定這支 agent 打到 prod 資料還是 mock 資料」，這權限要跟 CI/CD secret 管理一樣收斂，不能開發者人手一份。</li>
+    <li><strong>誰能碰 prod 部署</strong>：<code>deploy-managed-agent.sh</code> 沒有 <code>--dry-run</code> 時會真的呼叫 <code>POST /v1/agents</code>。這支腳本能在誰的機器上、用誰的憑證跑，就是「誰能改變生產環境裡的 agent」的實際答案——治理上應該收斂到部署管線（CI/CD service account），而不是任何工程師的筆電都能直接跑正式金鑰。</li>
+  </ul>
+  <div class="code-title">managed-agent-cookbooks/kyc-screener/README.md</div>
+  <pre><code>export ANTHROPIC_API_KEY=sk-ant-...
+export SCREENING_MCP_URL=...
+../../scripts/deploy-managed-agent.sh kyc-screener</code></pre>
+  <p>金鑰輪替沒有 repo 內建腳本可用，屬於組織既有的 secret 管理（如 KMS/Vault）該覆蓋的範圍；treasury 原則不變——定期輪替、外洩即時撤銷、per-agent 隔離避免炸半個艦隊。</p>
+
+  <h2 id="s6">6. 文件與 audit 治理</h2>
+  <p><code>scripts/check.py</code> 第 5 項規則是寫死的：<code>managed-agent-cookbooks/&lt;slug&gt;/</code> 下少了 <code>agent.yaml</code>、<code>README.md</code>、<code>steering-examples.json</code> 任何一個都直接 fail。這代表「每個 agent 必有 README」不是靠自覺，是 CI 擋出來的：</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>檔案</th><th>治理角色</th></tr>
+    <tr><td><code>README.md</code></td><td>必含 Security &amp; handoffs 段落：分工表（哪個 leaf 碰髒資料、哪個是唯一 Write-holder）+「Not guaranteed」一句話講清楚 agent 不保證什麼（例如 kyc-screener README：「this agent recommends a risk rating; the compliance officer decides.」）</td></tr>
+    <tr><td><code>steering-examples.json</code></td><td>等於這支 agent 的「行為規格」——不是文件描述，是可執行的範例輸入，稽核可以拿它直接驗證 agent 對標準情境的實際反應是否符合預期</td></tr>
+    <tr><td><code>agent.yaml</code></td><td>結構化列出 model、tools、mcp_servers、callable_agents——稽核不用讀 prompt 散文，直接看這份 yaml 就能回答「這支 agent 能碰什麼」</td></tr>
+  </table>
+  </div>
+  <p>audit trail（審計軌跡）的保存則落在部署腳本輸出的三元組：</p>
+  <div class="code-title">scripts/deploy-managed-agent.sh 部署後輸出</div>
+  <pre><code>deployed: kyc-screener
+agent id: &lt;uuid&gt;
+cookbook: fsi-agents/kyc-screener
+console:  https://console.anthropic.com/agents/&lt;uuid&gt;</code></pre>
+  <p>這三行（agent id、cookbook 標籤、console 連結）加上 <code>agent.yaml</code> 裡的 <code>model:</code>，就是一次部署的完整審計紀錄，應該進部署管線的日誌保存，而不是只印在誰的終端機上就沒了。</p>
+
+  <h2 id="s7">7. 人機分工政策（HITL）</h2>
+  <p><code>docs/AgentSummary.md</code> 把每支 agent 的「導入風險」用 🟢🟡🔴 分了級，同時攤開了「誰下指令 → 誰簽核」的角色鏈。這張表本質上就是這個 repo 的 HITL（human-in-the-loop）政策：</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Agent</th><th>風險</th><th>誰下指令 → 誰簽核</th></tr>
+    <tr><td>meeting-prep-agent</td><td><span class="badge green">🟢 低</span></td><td>財富顧問下指令＋自己 review → 顧問自己對客戶</td></tr>
+    <tr><td>market-researcher</td><td><span class="badge amber">🟡 中</span></td><td>研究分析師下指令＋review → 分析師核准</td></tr>
+    <tr><td>earnings-reviewer</td><td><span class="badge amber">🟡 中</span></td><td>股票分析師建 → <strong>資深分析師簽核才發</strong></td></tr>
+    <tr><td>model-builder</td><td><span class="badge amber">🟡 中</span></td><td>建模專員建 → banker／PM（Portfolio Manager，投資組合經理）核准</td></tr>
+    <tr><td>pitch-agent</td><td><span class="badge amber">🟡 中</span></td><td>分析師／經理建 → <strong>MD（Managing Director，董事總經理）／資深 banker 兩次簽核</strong></td></tr>
+    <tr><td>kyc-screener</td><td><span class="badge red">🔴 高</span></td><td>開戶人員送件 → <strong>合規官簽核才核准</strong></td></tr>
+    <tr><td>gl-reconciler</td><td><span class="badge red">🔴 高</span></td><td>對帳控制員建 → <strong>控制員簽核</strong>（帳務主管核容差）</td></tr>
+    <tr><td>month-end-closer</td><td><span class="badge red">🔴 高</span></td><td>結帳會計建 → <strong>控制員核准才過帳</strong>（唯一可 post）</td></tr>
+    <tr><td>statement-auditor</td><td><span class="badge red">🔴 高</span></td><td>基金會計建 → <strong>IR（Investor Relations，投資人關係）簽核才分送</strong></td></tr>
+    <tr><td>valuation-reviewer</td><td><span class="badge red">🔴 高</span></td><td>基金會計主管建 → <strong>IR ＋ CCO（Chief Compliance Officer，法遵長）雙簽才分送</strong></td></tr>
+  </table>
+  </div>
+  <p>規律很清楚：<strong>前台</strong>（財富管理、投行提案）風險低、下指令者可以自己簽核；<strong>後台</strong>（基金行政、對帳、法遵）風險高，建立者跟簽核者一定分開（分權），而且越靠近「錢／法規」，簽核層級越高（控制員 → IR → CCO 雙簽）。</p>
+  <p>簽核介面的落點跟結構設計是一致的：每支 🔴 agent 都只有一個 leaf worker 有 <code>Write</code> 權限（README 裡粗體標的那個，例如 kyc-screener 的 <code>escalator</code>、gl-reconciler 的 <code>resolver</code>、month-end-closer 的 <code>poster</code>），它產出的檔案（如 <code>./out/escalation-&lt;packet&gt;.xlsx</code>）就是送去給人簽核的實體，而不是 agent 自己決定發出去。這些 README 的「Not guaranteed」一句話，就是把 HITL 邊界寫死在文件裡：agent 只到「建議」為止，核准是人的動作。</p>
+  <div class="callout danger"><span class="co-title">不可退讓的紅線</span>🔴 分級的 agent，其 Write-holder 產出的檔案<strong>絕對不能</strong>被銀行的周邊系統設計成自動過帳/自動發送——一定要有一個人工簽核步驟卡在「agent 產出檔案」跟「檔案生效」之間。這是 HITL 政策唯一不能因為「流程太慢」而妥協的地方。</div>
+
+  <h2 id="s8">8. Agent 台帳範本</h2>
+  <p>稽核最常問的一句話是「把你們部署的所有 agent 列一張表給我看」。這張表 repo 不會自動幫你生成（<code>metadata.anthropic_cookbook</code> 只標了部署來源，不含風險分級跟負責人這類組織資訊），但所有欄位在 repo 裡都找得到來源，建議欄位：</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>欄位</th><th>從哪來</th></tr>
+    <tr><td>agent id</td><td>部署腳本輸出（<code>deploy-managed-agent.sh</code> 印出的 <code>agent id</code>）</td></tr>
+    <tr><td>version</td><td>部署腳本輸出的 <code>version</code>（對應 <code>POST /v1/agents</code> 回應）</td></tr>
+    <tr><td>cookbook / plugin.json version</td><td><code>metadata.anthropic_cookbook</code>（如 <code>fsi-agents/kyc-screener</code>）+ 該 plugin 的 <code>.claude-plugin/plugin.json</code> <code>version</code></td></tr>
+    <tr><td>底層模型</td><td><code>agent.yaml</code> 的 <code>model:</code> 欄位（如 <code>claude-opus-4-7</code>）</td></tr>
+    <tr><td>資料範圍</td><td><code>agent.yaml</code> 的 <code>mcp_servers</code>（實際打到哪些系統）</td></tr>
+    <tr><td>風險分級</td><td><code>docs/AgentSummary.md</code> 的 🟢/🟡/🔴（導入風險欄）</td></tr>
+    <tr><td>負責人 / 簽核角色</td><td><code>docs/AgentSummary.md</code>「誰下指令 → 誰簽核」欄 + README 的 Security &amp; handoffs 段落</td></tr>
+    <tr><td>上次評測日</td><td>組織自訂——建議跟第 4 節的模型升級評測集掛勾，每次跑過評測集就更新這欄</td></tr>
+  </table>
+  </div>
+  <details>
+    <summary>台帳一列的具體範例（kyc-screener）</summary>
+    <p><code>agent id: &lt;uuid&gt;</code> · <code>version: 3</code> · <code>cookbook: fsi-agents/kyc-screener</code>（plugin.json version 0.1.0）· <code>model: claude-opus-4-7</code> · <code>資料範圍: screening MCP（唯讀）</code> · <code>風險: 🔴 高</code> · <code>簽核: 開戶人員送件 → 合規官核准</code> · <code>上次評測: 依組織排程填</code></p>
+  </details>
+
+  <div class="callout tip"><span class="co-title">本章重點</span>
+    <ul>
+      <li>把 agent 當 MRM 意義下的「模型」列管：canonical prompt + <code>check.py</code> + version bump 閘門是 repo 已內建的三個免費治理機制，不用額外造輪子。</li>
+      <li>變更管理走「業務＋法遵＋工程」三方審核，因為改 <code>SKILL.md</code> 的容差/重大性門檻等於改稽核行為，工程單方面不能拍板。</li>
+      <li>模型治理分兩層：底層 LLM（<code>agent.yaml</code> 的 <code>model:</code>，升級走評測集＋金絲雀）跟財務試算模型（<code>docs/Models.md</code> 三層改法），兩層都要注意 plugin 與 CMA 兩個 surface 是否同步掛載。</li>
+      <li>權限治理三件事：per-agent 金鑰隔離、MCP URL 決定碰真資料還是 mock、prod 部署權收斂到部署管線。</li>
+      <li>HITL 政策已經寫在 <code>docs/AgentSummary.md</code> 的簽核鏈跟每支 README 的「Not guaranteed」——🔴 分級 agent 的 Write-holder 產出必須卡一個人工簽核，不能自動生效。</li>
+      <li>Agent 台帳的每個建議欄位都能對應到 repo 裡的具體檔案或腳本輸出，不必自己編。</li>
+    </ul>
+  </div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">Q：某支後台 agent（🔴 分級）的 Write-holder leaf worker 產出了一份異動建議檔案。依本章的 HITL 政策，接下來正確的做法是？</div>
+    <label>直接讓周邊系統自動讀取該檔案並過帳，加快處理速度</label>
+    <label>因為只有工程改得動 prompt，所以由工程主管簽核即可</label>
+    <label>檔案送交對應的人工簽核角色（如控制員／IR／合規官，依 README 與 AgentSummary.md 的角色鏈而定）核准後才生效</label>
+    <div class="explain">🔴 高風險 agent 的設計原則是「建立者 ≠ 簽核者」，且簽核者是業務/法遵角色而非工程。Write-holder 只負責產出建議檔案（如 <code>./out/escalation-&lt;packet&gt;.xlsx</code>），是否生效必須經人工簽核——這條紅線不能因效率而妥協。</div>
+  </div>
+
+</main>
+<script src="../assets/book.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 365" role="img" aria-labelledby="title desc">
+  <title id="title">CMA SSE 觀測管線</title>
+  <desc id="desc">CMA SSE 事件流應由正式工作流引擎落地到 S3 與 CloudWatch，並經狀態機判斷逾時與失敗告警。</desc>
+  <defs><style>.bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:16px;font-weight:700}.small{font-size:13px;font-weight:500}.card{fill:#fbf5e7;stroke:#2e2c28}.blue{fill:#e2eef4;stroke:#2c7a9e}.green{fill:#e5efe5;stroke:#4c7a4c}.amber{fill:#f6ecd9;stroke:#a3712a}.red{fill:#f7e3e1;stroke:#b3382f}.label{fill:#c15f3c}</style></defs>
+  <rect class="bg" width="880" height="365" rx="18"/>
+  <text class="txt label" x="42" y="38">不要只讀 message_delta：SSE 要落地、判斷、告警</text>
+  <rect class="card" x="44" y="138" width="142" height="70" rx="14"/><text class="txt small" x="72" y="169">CMA SSE</text><text class="txt small" x="76" y="190">stream</text>
+  <path class="ink" d="M186 173 H280"/><path class="ink" d="M262 160 L280 173 L262 186"/>
+  <rect class="blue" x="280" y="126" width="190" height="94" rx="14"/><text class="txt" x="316" y="160">workflow engine</text><text class="txt small" x="323" y="187">Temporal / Airflow</text><text class="txt small" x="323" y="207">or orchestrator</text>
+  <path class="ink" d="M470 173 H540M540 173 V75M540 173 V172M540 173 V270"/>
+  <path class="ink" d="M540 75 H646M540 173 H646M540 270 H646"/><path class="ink" d="M628 62 L646 75 L628 88M628 160 L646 173 L628 186M628 257 L646 270 L628 283"/>
+  <rect class="green" x="646" y="42" width="178" height="66" rx="14"/><text class="txt small" x="690" y="73">S3 audit archive</text><text class="txt small" x="690" y="94">長期留存</text>
+  <rect class="amber" x="646" y="140" width="178" height="66" rx="14"/><text class="txt small" x="680" y="171">CloudWatch Logs</text><text class="txt small" x="683" y="192">短期查詢 / 規則</text>
+  <rect class="red" x="646" y="237" width="178" height="66" rx="14"/><text class="txt small" x="682" y="268">state machine</text><text class="txt small" x="681" y="289">timeout / alerting</text>
+  <text class="txt small label" x="72" y="290">不足做法：只挑 message_delta 看文字，跑完不留事件軌跡</text>
+</svg>

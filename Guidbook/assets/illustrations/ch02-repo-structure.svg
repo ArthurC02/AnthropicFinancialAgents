@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 560" role="img" aria-labelledby="title desc">
+  <title id="title">Financial Agents repo 三層目錄結構</title>
+  <desc id="desc">vertical-plugins 存放 skill 真本與 MCP 定義，agent-plugins 存放 named agent 封裝與 skill 副本，managed-agent-cookbooks 存放 CMA agent.yaml、subagents、steering examples 與 README；skill 同步只能由 vertical-plugins 流向 agent-plugins。</desc>
+  <defs>
+    <style>
+      .bg{fill:#faf2e4}
+      .ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+      .thin{stroke-width:2}
+      .txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:17px;font-weight:700}
+      .small{font-size:12.5px;font-weight:500}
+      .tiny{font-size:11px;font-weight:500}
+      .label{fill:#c15f3c}
+      .center{text-anchor:middle}
+      .cloud{fill:#fbf5e7;stroke:#2e2c28}
+      .blue{fill:#e2eef4;stroke:#2c7a9e}
+      .green{fill:#e5efe5;stroke:#4c7a4c}
+      .amber{fill:#f6ecd9;stroke:#a3712a}
+      .red{fill:#f7e3e1;stroke:#b3382f}
+    </style>
+  </defs>
+  <rect class="bg" width="880" height="560" rx="20"/>
+  <text class="txt label" x="42" y="42">Repo 結構：一份內容，三種責任位置</text>
+
+  <rect class="green" x="46" y="82" width="246" height="238" rx="18"/>
+  <text class="txt center" x="169" y="115">vertical-plugins</text>
+  <text class="txt tiny center" x="169" y="137">plugins/vertical-plugins/&lt;vertical&gt;/</text>
+  <rect class="cloud" x="72" y="158" width="194" height="36" rx="10"/>
+  <text class="txt tiny center" x="169" y="181">skills/&lt;skill&gt;/SKILL.md 真本</text>
+  <rect class="cloud" x="72" y="206" width="194" height="36" rx="10"/>
+  <text class="txt tiny center" x="169" y="229">commands/ slash commands</text>
+  <rect class="cloud" x="72" y="254" width="194" height="36" rx="10"/>
+  <text class="txt tiny center" x="169" y="277">.mcp.json MCP server 定義</text>
+
+  <rect class="blue" x="318" y="82" width="246" height="238" rx="18"/>
+  <text class="txt center" x="441" y="115">agent-plugins</text>
+  <text class="txt tiny center" x="441" y="137">plugins/agent-plugins/&lt;slug&gt;/</text>
+  <rect class="cloud" x="344" y="158" width="194" height="36" rx="10"/>
+  <text class="txt tiny center" x="441" y="181">agents/&lt;slug&gt;.md canonical</text>
+  <rect class="cloud" x="344" y="206" width="194" height="36" rx="10"/>
+  <text class="txt tiny center" x="441" y="229">skills/ 副本</text>
+  <rect class="cloud" x="344" y="254" width="194" height="36" rx="10"/>
+  <text class="txt tiny center" x="441" y="277">.claude-plugin/plugin.json</text>
+
+  <rect class="amber" x="590" y="82" width="246" height="238" rx="18"/>
+  <text class="txt center" x="713" y="115">managed-agent-cookbooks</text>
+  <text class="txt tiny center" x="713" y="137">managed-agent-cookbooks/&lt;slug&gt;/</text>
+  <rect class="cloud" x="616" y="158" width="194" height="36" rx="10"/>
+  <text class="txt tiny center" x="713" y="181">agent.yaml → system.file / skills</text>
+  <rect class="cloud" x="616" y="206" width="194" height="36" rx="10"/>
+  <text class="txt tiny center" x="713" y="229">subagents/*.yaml 一層 leaf</text>
+  <rect class="cloud" x="616" y="254" width="194" height="36" rx="10"/>
+  <text class="txt tiny center" x="713" y="277">steering-examples.json / README</text>
+
+  <path class="ink" d="M292 176 H344"/>
+  <path class="ink" d="M326 163 L344 176 L326 189"/>
+  <text class="txt tiny label center" x="318" y="156">sync skills</text>
+
+  <path class="ink thin" d="M564 174 H616"/>
+  <path class="ink thin" d="M598 161 L616 174 L598 187"/>
+  <text class="txt tiny label center" x="590" y="154">CMA 引用同源 prompt / skills</text>
+
+  <rect class="green" x="92" y="378" width="210" height="56" rx="14"/>
+  <text class="txt small center" x="197" y="402">Skill 真本</text>
+  <text class="txt tiny center" x="197" y="421">vertical-plugins/&lt;vertical&gt;/skills/</text>
+
+  <rect class="blue" x="580" y="378" width="210" height="56" rx="14"/>
+  <text class="txt small center" x="685" y="402">Skill 副本</text>
+  <text class="txt tiny center" x="685" y="421">agent-plugins/&lt;slug&gt;/skills/</text>
+
+  <rect class="amber" x="338" y="374" width="204" height="64" rx="14"/>
+  <text class="txt small center" x="440" y="400">scripts/sync-agent-skills.py</text>
+  <text class="txt tiny center" x="440" y="420">rmtree + copytree 整包覆蓋</text>
+
+  <path class="ink" d="M302 406 H338"/>
+  <path class="ink" d="M320 393 L338 406 L320 419"/>
+  <path class="ink" d="M542 406 H580"/>
+  <path class="ink" d="M562 393 L580 406 L562 419"/>
+
+  <rect class="red" x="228" y="474" width="424" height="46" rx="14"/>
+  <path class="ink thin" d="M250 497 H276"/>
+  <path class="ink thin" d="M258 487 L274 507M274 487 L258 507"/>
+  <text class="txt small label" x="292" y="501">禁止逆寫：不要直接改 agent-plugins 裡的 skill 副本</text>
+</svg>

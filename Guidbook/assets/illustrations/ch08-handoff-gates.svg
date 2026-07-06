@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 370" role="img" aria-labelledby="title desc">
+  <title id="title">handoff_request 的攻擊面與兩道閘</title>
+  <desc id="desc">handoff_request 從不可信文字輸出進入 orchestrate.py，必須通過 allowlist 與 payload schema 驗證才會觸發 steer。</desc>
+  <defs><style>.bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.dash{stroke-dasharray:7 7}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:16px;font-weight:700}.small{font-size:13px;font-weight:500}.tiny{font-size:11px;font-weight:500}.card{fill:#fbf5e7;stroke:#2e2c28}.red{fill:#f7e3e1;stroke:#b3382f}.green{fill:#e5efe5;stroke:#4c7a4c}.blue{fill:#e2eef4;stroke:#2c7a9e}.label{fill:#c15f3c}.center{text-anchor:middle}</style></defs>
+  <rect class="bg" width="880" height="370" rx="18"/>
+  <text class="txt label" x="42" y="38">handoff_request 只是文字，執行前要過兩道門</text>
+  <rect class="red" x="42" y="96" width="145" height="82" rx="14"/><text class="txt small" x="72" y="128">不可信文件</text><text class="txt small" x="63" y="151">偽造 JSON</text>
+  <path class="ink" d="M187 137 H260"/><path class="ink" d="M242 124 L260 137 L242 150"/>
+  <rect class="card" x="260" y="96" width="145" height="82" rx="14"/><text class="txt small" x="295" y="128">agent 輸出</text><text class="txt small" x="286" y="151">文字增量</text>
+  <path class="ink" d="M405 137 H478"/><path class="ink" d="M460 124 L478 137 L460 150"/>
+  <rect class="blue" x="478" y="88" width="160" height="98" rx="14"/><text class="txt small" x="516" y="123">orchestrate.py</text><text class="txt small" x="516" y="148">extract / parse</text>
+  <path class="ink" d="M638 137 H700"/><path class="ink" d="M682 124 L700 137 L682 150"/>
+  <rect class="green" x="700" y="74" width="130" height="60" rx="12"/><text class="txt small" x="724" y="109">Gate 1</text><text class="txt small" x="716" y="128">allowlist</text>
+  <rect class="green" x="700" y="172" width="130" height="60" rx="12"/><text class="txt small" x="724" y="207">Gate 2</text><text class="txt small" x="713" y="226">payload schema</text>
+  <path class="ink" d="M765 134 V172"/>
+  <rect class="green" x="690" y="274" width="148" height="42" rx="12"/>
+  <text class="txt tiny center" x="764" y="292">通過</text>
+  <text class="txt tiny center" x="764" y="308">steer() 下一個 agent</text>
+  <rect class="red" x="514" y="274" width="148" height="42" rx="12"/>
+  <text class="txt tiny center" x="588" y="292">失敗</text>
+  <text class="txt tiny center" x="588" y="308">discard / DLQ</text>
+  <path class="ink" d="M765 232 V252"/>
+  <path class="ink" d="M765 252 H764 V274"/>
+  <path class="ink" d="M752 256 L764 274 L777 256"/>
+  <path class="ink" d="M765 252 H588 V274"/>
+  <path class="ink" d="M575 256 L588 274 L601 256"/>
+  <text class="txt tiny label center" x="812" y="244">兩閘都通過</text>
+  <text class="txt tiny label center" x="674" y="244">任一閘失敗</text>
+  <path class="ink dash" d="M45 235 H630"/>
+  <text class="txt small" x="58" y="260">正式環境：優先改成 dedicated tool call 或 typed SSE event</text>
+</svg>

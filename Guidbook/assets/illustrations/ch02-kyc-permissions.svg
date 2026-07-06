@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 390" role="img" aria-labelledby="title desc">
+  <title id="title">kyc-screener 權限隔離</title>
+  <desc id="desc">kyc-screener 的一層委派結構：doc-reader 讀文件、rules-engine 查規則與名單、只有 escalator 可寫檔。</desc>
+  <defs><style>.bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.thin{stroke-width:2}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:17px;font-weight:700}.small{font-size:13px;font-weight:500}.red{fill:#f7e3e1;stroke:#b3382f}.green{fill:#e5efe5;stroke:#4c7a4c}.blue{fill:#e2eef4;stroke:#2c7a9e}.amber{fill:#f6ecd9;stroke:#a3712a}.paper{fill:#fbf5e7;stroke:#2e2c28}.label{fill:#c15f3c}</style></defs>
+  <rect class="bg" width="880" height="390" rx="18"/>
+  <text class="txt label" x="42" y="38">一層委派：worker 不能再叫 worker</text>
+  <rect class="paper" x="345" y="64" width="190" height="64" rx="14"/>
+  <text class="txt" x="379" y="96">orchestrator</text>
+  <text class="txt small" x="376" y="116">read / grep / glob</text>
+  <path class="ink" d="M440 128 V166M440 166 H170M440 166 H710M170 166 V202M440 166 V202M710 166 V202"/>
+  <rect class="blue" x="58" y="202" width="220" height="124" rx="16"/>
+  <text class="txt" x="101" y="232">doc-reader</text>
+  <text class="txt small" x="88" y="262">Read/Grep only</text>
+  <text class="txt small" x="88" y="284">no MCP</text>
+  <text class="txt small" x="88" y="306">no Write</text>
+  <rect class="green" x="330" y="202" width="220" height="124" rx="16"/>
+  <text class="txt" x="374" y="232">rules-engine</text>
+  <text class="txt small" x="361" y="262">Read/Grep + screening MCP</text>
+  <text class="txt small" x="361" y="284">規則 / PEP / sanctions</text>
+  <text class="txt small" x="361" y="306">no Write</text>
+  <rect class="amber" x="602" y="202" width="220" height="124" rx="16"/>
+  <text class="txt" x="661" y="232">escalator</text>
+  <text class="txt small" x="633" y="262">唯一 Write/Edit</text>
+  <text class="txt small" x="633" y="284">no raw docs</text>
+  <text class="txt small" x="633" y="306">no MCP</text>
+  <path class="ink thin" d="M80 350 H801"/>
+  <text class="txt small label" x="210" y="374">髒文件停在 reader；能寫檔的 leaf 看不到原始文件，也連不到外部系統</text>
+</svg>

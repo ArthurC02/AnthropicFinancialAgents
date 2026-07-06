@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 340" role="img" aria-labelledby="title desc">
+  <title id="title">MCP 名稱不變，只換 URL</title>
+  <desc id="desc">同一個 internal-gl MCP 名稱在 plugin 與 CMA 中分別由 .mcp.json 或環境變數解析到不同 URL。</desc>
+  <defs><style>.bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.thin{stroke-width:2}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:17px;font-weight:700}.small{font-size:13px;font-weight:500}.card{fill:#fbf5e7;stroke:#2e2c28}.blue{fill:#e2eef4;stroke:#2c7a9e}.green{fill:#e5efe5;stroke:#4c7a4c}.amber{fill:#f6ecd9;stroke:#a3712a}.label{fill:#c15f3c}</style></defs>
+  <rect class="bg" width="880" height="340" rx="18"/>
+  <text class="txt label" x="42" y="38">MCP 以名字解析：上線換 URL，不換 agent 內的名字</text>
+  <rect class="card" x="54" y="112" width="190" height="96" rx="16"/>
+  <text class="txt" x="88" y="146">agent frontmatter</text><text class="txt small" x="82" y="174">mcp__internal-gl__*</text>
+  <path class="ink" d="M244 160 H318"/><path class="ink" d="M300 147 L318 160 L300 173"/>
+  <rect class="blue" x="318" y="72" width="218" height="90" rx="16"/>
+  <text class="txt" x="352" y="105">Plugin</text><text class="txt small" x="344" y="132">.mcp.json url</text>
+  <rect class="green" x="318" y="198" width="218" height="90" rx="16"/>
+  <text class="txt" x="359" y="231">CMA</text><text class="txt small" x="344" y="258">${GL_MCP_URL}</text>
+  <path class="ink" d="M536 116 C600 106 648 105 710 118"/><path class="ink" d="M692 106 L710 118 L690 129"/>
+  <path class="ink" d="M536 244 C600 254 648 255 710 242"/><path class="ink" d="M692 231 L710 242 L690 254"/>
+  <rect class="amber" x="710" y="87" width="126" height="72" rx="14"/>
+  <text class="txt small" x="730" y="116">mock</text><text class="txt small" x="724" y="138">127.0.0.1:8001</text>
+  <rect class="amber" x="710" y="211" width="126" height="72" rx="14"/>
+  <text class="txt small" x="726" y="240">production</text><text class="txt small" x="721" y="262">gl.bank.internal</text>
+  <path class="ink thin" d="M72 303 H807"/>
+  <text class="txt small label" x="216" y="324">internal-gl 這個名字不變；解析到哪個 URL 由殼決定</text>
+</svg>

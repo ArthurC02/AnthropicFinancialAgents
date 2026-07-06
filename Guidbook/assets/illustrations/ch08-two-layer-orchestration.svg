@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 560" role="img" aria-labelledby="title desc">
+  <title id="title">兩層編排：agent 內委派與 agent 間協作</title>
+  <desc id="desc">第一層是 Anthropic Cloud 內的 callable_agents 一層委派；第二層是銀行編排器把 handoff_request 路由成另一個 named agent 的新 steering event。</desc>
+  <defs>
+    <style>
+      .bg{fill:#faf2e4}
+      .ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+      .thin{stroke-width:2}
+      .dash{stroke-dasharray:8 8}
+      .txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:17px;font-weight:700}
+      .small{font-size:12.5px;font-weight:500}
+      .tiny{font-size:11px;font-weight:500}
+      .label{fill:#c15f3c}
+      .center{text-anchor:middle}
+      .cloud{fill:#fbf5e7;stroke:#2e2c28}
+      .blue{fill:#e2eef4;stroke:#2c7a9e}
+      .green{fill:#e5efe5;stroke:#4c7a4c}
+      .amber{fill:#f6ecd9;stroke:#a3712a}
+      .red{fill:#f7e3e1;stroke:#b3382f}
+    </style>
+  </defs>
+  <rect class="bg" width="880" height="560" rx="20"/>
+
+  <text class="txt label" x="42" y="42">兩層編排，責任邊界完全不同</text>
+
+  <rect class="cloud" x="38" y="72" width="804" height="238" rx="20"/>
+  <text class="txt" x="66" y="104">第一層：agent 內委派</text>
+  <text class="txt small label" x="66" y="126">callable_agents，一層，Anthropic 端執行</text>
+
+  <rect class="blue" x="310" y="136" width="260" height="68" rx="14"/>
+  <text class="txt center" x="440" y="164">kyc-screener</text>
+  <text class="txt small center" x="440" y="186">orchestrator / Anthropic Cloud</text>
+
+  <path class="ink" d="M440 204 V225M440 225 H167M440 225 H713M167 225 V242M440 225 V242M713 225 V242"/>
+  <rect class="green" x="66" y="242" width="202" height="48" rx="12"/>
+  <text class="txt small center" x="167" y="264">doc-reader</text>
+  <text class="txt tiny center" x="167" y="282">Read/Grep only</text>
+  <rect class="green" x="324" y="242" width="232" height="48" rx="12"/>
+  <text class="txt small center" x="440" y="264">rules-engine</text>
+  <text class="txt tiny center" x="440" y="282">Read/Grep/Glob</text>
+  <rect class="amber" x="612" y="242" width="202" height="48" rx="12"/>
+  <text class="txt small center" x="713" y="264">escalator</text>
+  <text class="txt tiny center" x="713" y="282">唯一 Write worker</text>
+
+  <rect class="red" x="592" y="96" width="214" height="46" rx="14"/>
+  <path class="ink thin" d="M612 119 H638"/>
+  <path class="ink thin" d="M620 109 L636 129M636 109 L620 129"/>
+  <text class="txt tiny label" x="650" y="116">限制規則</text>
+  <text class="txt tiny label" x="650" y="132">worker 不能再呼叫 worker</text>
+
+  <path class="ink thin" d="M65 328 H815"/>
+
+  <rect class="cloud" x="38" y="346" width="804" height="168" rx="20"/>
+  <text class="txt" x="66" y="378">第二層：agent 之間協作</text>
+  <text class="txt small label" x="66" y="400">handoff_request，銀行編排器路由</text>
+
+  <rect class="blue" x="66" y="426" width="152" height="62" rx="14"/>
+  <text class="txt small center" x="142" y="451">gl-reconciler</text>
+  <text class="txt tiny center" x="142" y="471">完成一次工作</text>
+
+  <path class="ink" d="M218 457 H326"/>
+  <path class="ink" d="M308 444 L326 457 L308 470"/>
+  <text class="txt tiny label center" x="272" y="438">文字輸出中的</text>
+  <text class="txt tiny label center" x="272" y="494">handoff_request</text>
+  <text class="txt tiny label center" x="272" y="509">JSON 區塊</text>
+
+  <rect class="red" x="326" y="414" width="220" height="86" rx="14"/>
+  <text class="txt small center" x="436" y="441">orchestrate.py /</text>
+  <text class="txt small center" x="436" y="462">銀行事件匯流排</text>
+  <text class="txt tiny center" x="436" y="484">Temporal / Airflow / ...</text>
+
+  <path class="ink" d="M546 457 H654"/>
+  <path class="ink" d="M636 444 L654 457 L636 470"/>
+  <text class="txt tiny label center" x="600" y="438">allowlist + schema</text>
+  <text class="txt tiny label center" x="600" y="494">驗證通過後</text>
+  <text class="txt tiny label center" x="600" y="509">new steer</text>
+
+  <rect class="green" x="654" y="426" width="166" height="62" rx="14"/>
+  <text class="txt small center" x="737" y="451">month-end</text>
+  <text class="txt small center" x="737" y="470">closer</text>
+  <text class="txt tiny center" x="737" y="486">全新 session</text>
+
+  <text class="txt small label center" x="440" y="535">named agents 之間永遠不會直接互相呼叫 API</text>
+</svg>

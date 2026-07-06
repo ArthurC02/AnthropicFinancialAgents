@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 560" role="img" aria-labelledby="title desc">
+  <title id="title">銀行 AWS VPC 與 Anthropic Cloud 部署邊界</title>
+  <desc id="desc">銀行 AWS VPC 內包含呼叫端後端、編排器、MCP servers、Secrets Manager 與資料源；唯一跨界流量是經 NAT Gateway 和 egress 白名單送往 Anthropic Cloud 的 HTTPS API 呼叫。</desc>
+  <defs>
+    <style>
+      .bg{fill:#faf2e4}
+      .ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+      .thin{stroke-width:2}
+      .dash{stroke-dasharray:8 8}
+      .txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:17px;font-weight:700}
+      .small{font-size:12.5px;font-weight:500}
+      .tiny{font-size:11px;font-weight:500}
+      .label{fill:#c15f3c}
+      .center{text-anchor:middle}
+      .cloud{fill:#fbf5e7;stroke:#2e2c28}
+      .blue{fill:#e2eef4;stroke:#2c7a9e}
+      .green{fill:#e5efe5;stroke:#4c7a4c}
+      .amber{fill:#f6ecd9;stroke:#a3712a}
+      .red{fill:#f7e3e1;stroke:#b3382f}
+    </style>
+  </defs>
+  <rect class="bg" width="880" height="560" rx="20"/>
+  <text class="txt label" x="42" y="42">部署邊界：銀行 AWS 放周邊系統，agent runtime 在 Anthropic Cloud</text>
+
+  <rect class="cloud" x="42" y="70" width="796" height="314" rx="22"/>
+  <text class="txt" x="70" y="106">銀行 AWS 帳號 / VPC</text>
+  <text class="txt small label" x="70" y="128">自建、自維運：後端、編排器、MCP、資料源、密鑰</text>
+
+  <rect class="blue" x="78" y="162" width="150" height="70" rx="14"/>
+  <text class="txt small center" x="153" y="190">呼叫端後端</text>
+  <text class="txt tiny center" x="153" y="211">授信 / 對帳 UI</text>
+
+  <rect class="amber" x="310" y="154" width="172" height="86" rx="14"/>
+  <text class="txt small center" x="396" y="184">編排器</text>
+  <text class="txt tiny center" x="396" y="204">orchestrate.py</text>
+  <text class="txt tiny center" x="396" y="222">ECS / Step Functions</text>
+
+  <rect class="green" x="580" y="142" width="218" height="110" rx="14"/>
+  <text class="txt small center" x="689" y="169">MCP servers（私有子網）</text>
+  <text class="txt tiny center" x="689" y="193">internal-gl :8001</text>
+  <text class="txt tiny center" x="689" y="211">subledger :8002</text>
+  <text class="txt tiny center" x="689" y="229">crm / nav / screening</text>
+
+  <rect class="red" x="312" y="286" width="168" height="76" rx="14"/>
+  <text class="txt small center" x="396" y="315">Secrets Manager</text>
+  <text class="txt tiny center" x="396" y="336">ANTHROPIC_API_KEY</text>
+  <text class="txt tiny center" x="396" y="352">*_MCP_URL 憑證</text>
+
+  <rect class="green" x="590" y="286" width="208" height="76" rx="14"/>
+  <text class="txt small center" x="694" y="315">真實資料源</text>
+  <text class="txt tiny center" x="694" y="337">GL / Subledger / CRM</text>
+  <text class="txt tiny center" x="694" y="353">NAV / 篩查名單資料庫</text>
+
+  <path class="ink" d="M228 197 H310"/>
+  <path class="ink" d="M292 184 L310 197 L292 210"/>
+  <text class="txt tiny label center" x="258" y="174">觸發 session</text>
+
+  <path class="ink" d="M482 197 H580"/>
+  <path class="ink" d="M562 184 L580 197 L562 210"/>
+  <text class="txt tiny label center" x="531" y="184">MCP 工具呼叫</text>
+
+  <path class="ink" d="M689 252 V286"/>
+  <path class="ink" d="M676 268 L689 286 L702 268"/>
+  <text class="txt tiny label" x="708" y="274">查詢真實系統</text>
+
+  <path class="ink thin dash" d="M396 240 V286"/>
+  <text class="txt tiny label" x="412" y="266">讀取金鑰 / URL</text>
+
+  <rect class="amber" x="314" y="418" width="164" height="58" rx="14"/>
+  <text class="txt small center" x="396" y="442">NAT Gateway</text>
+  <text class="txt tiny center" x="396" y="460">egress 白名單</text>
+
+  <path class="ink" d="M396 362 V418"/>
+  <path class="ink" d="M383 400 L396 418 L409 400"/>
+
+  <rect class="cloud" x="548" y="420" width="250" height="94" rx="20"/>
+  <text class="txt center" x="673" y="450">Anthropic Cloud</text>
+  <text class="txt tiny center" x="673" y="472">POST /v1/agents · POST /v1/skills</text>
+  <text class="txt tiny center" x="673" y="490">session / steer / stream</text>
+  <text class="txt tiny label center" x="673" y="508">agent 本體實際執行處</text>
+
+  <path class="ink" d="M478 447 H548"/>
+  <path class="ink" d="M530 434 L548 447 L530 460"/>
+  <text class="txt tiny label center" x="513" y="430">HTTPS</text>
+  <text class="txt tiny label center" x="513" y="475">唯一跨界流量</text>
+</svg>

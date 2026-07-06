@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 11 章 — 維運、監控與成本 | Financial Agents 開發指南</title>
+<link rel="stylesheet" href="../assets/book.css">
+</head>
+<body data-chapter="ch11">
+<main>
+  <h1><span class="ch-no">Chapter 11</span>維運、監控與成本</h1>
+  <p class="lead">CMA（Claude Managed Agents，Claude 託管代理）上線之後，「跑得動」跟「能維運」是兩回事。這一章處理的是：agent 半夜跑壞了，誰的手機會響？token 帳單暴增，怎麼查是哪支 agent、哪一步燒的？改一版 skill，怎麼在不停掉現有服務的前提下換血？讀完你應該能畫出自己銀行版本的維運界線圖、接上三層可觀測性、算出 per-agent 成本歸因，並且手上有一份能直接照抄的事件應變 runbook。</p>
+
+  <div class="toc"><div class="toc-title">本章內容</div>
+    <ol>
+      <li><a href="#s1">維運界線：Anthropic 管什麼、銀行管什麼</a></li>
+      <li><a href="#s2">可觀測性三層</a></li>
+      <li><a href="#s3">成本管理：token 歸因與模型選擇</a></li>
+      <li><a href="#s4">更新與發布維運</a></li>
+      <li><a href="#s5">事件應變 Runbook</a></li>
+      <li><a href="#s6">日常維運節奏</a></li>
+      <li><a href="#s7">本章重點</a></li>
+    </ol>
+  </div>
+
+  <h2 id="s1">1. 維運界線：Anthropic 管什麼、銀行管什麼</h2>
+  <p>第 2 章談過「外掛靠人把關、CMA 靠架構把關」的安全哲學；維運上有一條同等重要、卻常被搞混的界線：<strong>CMA 本身（模型推論、agent 執行環境）跑在 Anthropic 雲端，用 <code>POST /v1/agents</code>（beta header <code>managed-agents-2026-04-01</code>）呼叫；但「部署在 AWS」講的是周邊系統</strong>——呼叫端後端、MCP servers、編排器（<code>scripts/orchestrate.py</code>）、資料源，全部在銀行自己的 AWS 帳號裡。這條界線決定了「誰的 on-call 手機會響」：模型推論本身掛了，是 Anthropic 的 SLA（Service Level Agreement，服務等級協議）；MCP server 掛了、編排器卡住、密鑰過期，是銀行自己的 SLA。</p>
+
+  <pre class="diagram">┌────────────────────────────────────────────────────────────────┐
+│  Anthropic 雲端 —— Anthropic 的維運責任                          │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  模型推論（claude-opus-4-7 …）                             │  │
+│  │  agent 執行環境（session、steering、SSE 事件流）             │  │
+│  │  callable_agents 的委派執行（orchestrator → leaf worker）    │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                     ▲ POST /v1/agents ／ SSE 事件流回傳          │
+└─────────────────────┼────────────────────────────────────────────┘
+                       │
+┌─────────────────────┼────────────────────────────────────────────┐
+│  銀行的 AWS 帳號 —— 銀行自己的維運責任                             │
+│  ┌────────────┐ ┌────────────┐ ┌──────────────┐ ┌─────────────┐ │
+│  │ 呼叫端後端  │ │ 編排器      │ │ MCP servers  │ │ 密鑰／網路   │ │
+│  │(觸發 run、  │ │orchestrate.│ │(internal-gl, │ │ANTHROPIC_    │ │
+│  │ 收 SSE 事件)│ │py 或銀行自  │ │ subledger,   │ │API_KEY、     │ │
+│  │             │ │ 己的事件匯流│ │ screening…)  │ │*_MCP_URL、   │ │
+│  │             │ │ 排/Temporal │ │ 對外連 factset│ │VPC/防火牆    │ │
+│  └────────────┘ └────────────┘ └──────────────┘ └─────────────┘ │
+└────────────────────────────────────────────────────────────────┘</pre>
+
+  <div class="callout warn"><span class="co-title">SLA 思維：兩份，不是一份</span>簽 Anthropic 的 SLA 只保證「模型推論可用、agent 執行環境正常」；MCP server 的可用率、編排器的處理延遲、密鑰輪替，這些都是銀行自己 AWS 帳號裡的資源，出問題不會有 Anthropic 的告警幫你叫醒值班工程師。第 7 章的 AWS 部署架構跟這裡是同一組資源，維運責任也在同一邊。</div>
+
+  <h2 id="s2">2. 可觀測性三層</h2>
+  <p>一個 run 從觸發到交付，會經過三層系統，每一層要看的指標完全不同。混在一起看儀表板，通常是「模型很正常、業務卻悄悄劣化」這種事故被漏掉的主因。</p>
+
+  <div class="tabs">
+    <div class="tab-bar"><button>① Agent 執行層</button><button>② AWS 基礎層</button><button>③ 業務層</button></div>
+    <div class="tab-panel">
+      <p>這一層看「這一次 run 到底發生了什麼」。CMA 的回傳管道是 SSE（Server-Sent Events，伺服器推送事件）事件流，<code>scripts/orchestrate.py</code> 就是消費這條事件流的參考實作：</p>
+      <div class="code-title">scripts/orchestrate.py</div>
+      <pre><code>with client.beta.agents.sessions.stream(session_id=source_session_id) as stream:  # type: ignore[attr-defined]
+    for event in stream:
+        if event.type != "message_delta" or not getattr(event, "text", None):
+            continue
+        handoff = extract_handoff(event.text)
+        ...</code></pre>
+      <p>要注意：這支腳本檔頭寫明「<strong>REFERENCE ONLY</strong> — replace with your firm's workflow engine（Temporal、Airflow、Guidewire event bus）」，它示範的是事件迴圈的形狀，不是一份可以直接上線的落地/告警實作。銀行要在這個迴圈外面自己補三件事：<strong>①</strong> 每個事件（工具呼叫、中間輸出、最終輸出）原樣落地到 <a href="https://aws.amazon.com/tw/s3/" target="_blank" rel="noopener noreferrer">S3</a>（長期歸檔、供覆核與稽核）與 <a href="https://docs.aws.amazon.com/zh_tw/cloudwatch/" target="_blank" rel="noopener noreferrer">CloudWatch Logs</a>（短期查詢、接告警規則）；<strong>②</strong> 對 <code>event.type</code> 做完整的狀態機判斷，不是只挑 <code>message_delta</code>——一個 run 沒有在預期時間內收到「結束」事件，本身就是異常；<strong>③</strong> run 失敗（逾時、工具呼叫連續出錯、回傳格式驗證失敗）要送出告警，而不是靜靜結束。KYC 開戶審查、總帳對帳這種 🔴 高風險 agent，失敗的 run 不該無聲無息地消失——它代表某一批交易或某一個開戶案件卡在了流程裡。</p>
+      <figure class="book-figure">
+        <img src="../assets/illustrations/ch11-sse-observability.svg" alt="CMA SSE 事件流應由正式工作流引擎落地到 S3 與 CloudWatch，並經狀態機判斷逾時與失敗告警。">
+        <figcaption>SSE 事件流是稽核原料；正式維運要把它分流到歸檔、查詢、狀態判斷與告警。</figcaption>
+      </figure>
+    </div>
+    <div class="tab-panel">
+      <p>這一層看「銀行自己 AWS 帳號裡的周邊系統是不是健康」，跟 CMA 本身無關。<code>mock-mcp/run_all_http.py</code> 這支開發用啟動器把九個 MCP server 各自綁一個固定 port：</p>
+      <div class="code-title">mock-mcp/run_all_http.py</div>
+      <pre><code>SERVERS = {
+    "internal-gl": 8001, "subledger": 8002, "portfolio": 8003, "nav": 8004,
+    "crm": 8005, "screening": 8006, "capiq": 8007, "factset": 8008, "daloopa": 8009,
+}</code></pre>
+      <p>本機開發時，這支腳本自己用 <code>p.poll()</code> 檢查每個子行程有沒有意外退出。正式上線後，這些 server 換成部署在 AWS 上的真實服務（<a href="https://aws.amazon.com/tw/ecs/" target="_blank" rel="noopener noreferrer">ECS</a>/<a href="https://docs.aws.amazon.com/zh_tw/eks/" target="_blank" rel="noopener noreferrer">EKS</a> 上的容器，或直接接供應商網址），對應的監控就換成 CloudWatch 的標準組合：<a href="https://docs.aws.amazon.com/zh_tw/elasticloadbalancing/latest/application/introduction.html" target="_blank" rel="noopener noreferrer">ALB</a>（Application Load Balancer）對每個 MCP server 做 target health check、CloudWatch 量測延遲與 5xx 錯誤率、以及編排器那一側的佇列深度（排隊中的 run 數量——這是「MCP 變慢但還沒完全掛掉」的先行指標，比等到錯誤率飆高才發現更早）。<code>gl-reconciler</code> 的 <code>agent.yaml</code> 裡 <code>internal-gl</code>／<code>subledger</code> 兩個 MCP 都標注 <code>enabled: true # read-only server</code>——這兩個是總帳類系統，健康檢查要盯的不只是「活著」，還有「回應時間有沒有拉長」，因為對帳類 agent 一次 run 通常要連續打很多次查詢。</p>
+    </div>
+    <div class="tab-panel">
+      <p>這一層看「產出的東西是不是還對」，是三層裡最容易被忽略、卻最先反映問題的一層。技術層全綠，不代表業務結果正常——模型行為可能因為上游資料格式微調、skill 版本更新後的邊界案例、或者單純提示詞漂移（prompt drift）而悄悄變差。建議至少盯三個數字：<strong>每日處理件數</strong>（跟歷史基準比，忽然掉一半通常是上游資料源或觸發流程壞了，不是 agent 的問題）、<strong>handoff 率</strong>（第 8 章談的 <code>handoff_request</code> 觸發頻率，忽然飆高可能代表某個 agent 開始把它本來能處理的案子都往外推）、<strong>人審駁回率</strong>（🔴 高風險 agent 產出的 <code>./out/</code> 報告被覆核人員退回的比例——這是品質劣化最敏感的先行指標，通常比「模型出錯」的告警還早幾天亮起來）。</p>
+    </div>
+  </div>
+
+  <h2 id="s3">3. 成本管理：token 歸因與模型選擇</h2>
+  <p>CMA 的帳單是照 token 用量算的，多代理架構下最容易踩的坑是「只看得到總帳單，看不出是哪支 agent、哪一次 run、哪一個葉子工人燒的」。歸因至少要拆到兩個維度：<strong>per-agent</strong>（哪支 named agent 的月度 token 用量最高）與 <strong>per-run</strong>（同一支 agent 裡，是不是某幾次 run 異常地長——例如 <code>gl-reconciler</code> 的 <code>critic</code> 子代理如果陷入重複覆核循環，單次 run 的 token 用量會遠高於正常值）。這兩個維度都可以從第 2 節「Agent 執行層」落地的事件流回推——只要落地時把 <code>run_id</code>、<code>agent slug</code>、<code>callable_agent</code> 名稱一起記進 CloudWatch Logs 的結構化欄位，之後就能用查詢語言直接切維度算總量，不需要另外建一套計量系統。</p>
+
+  <p>模型選擇是成本槓桿裡最直接的一項。目前這份 repo 裡全部十支 named agent、以及底下所有 <code>subagents/*.yaml</code> 的葉子工人，<code>model:</code> 欄位一致寫死 <code>claude-opus-4-7</code>——包括 <code>gl-reconciler/subagents/reader.yaml</code> 這種只做「讀取未受信任文件、吐出 schema 驗證過的 JSON」的窄任務工人。這其實留了一塊沒動用的省錢空間：<code>model:</code> 是每個 yaml 檔各自的欄位，不是全域設定，理論上可以只把某個葉子工人换成較小/較便宜的模型單獨測試，不影響其他子代理。哪些工人是候選？看兩個特徵：<strong>①</strong> 輸出有 <code>output_schema</code> 把關（像 <code>reader.yaml</code> 那樣，<code>scripts/validate.py</code> 會在 orchestrator（主代理）看到之前先做長度與字元類別校驗）——就算換小模型輸出品質有落差，schema 驗證這道閘還在，壞掉的輸出進不了下一步；<strong>②</strong> 任務本身是窄範圍抽取/分類，不需要跨文件的長鏈推理。<code>doc-reader</code>（KYC）、<code>reader</code>（GL 對帳）、<code>ledger-reader</code>（月結）這類「讀取＋結構化輸出」的葉子工人都符合這兩個特徵，是換模型實驗最該優先試的對象；反過來，<code>escalator</code>／<code>resolver</code> 這種唯一持有 Write 權限、要綜合多方結果做最終判斷的工人，不建議急著降規格。</p>
+
+  <div class="callout info"><span class="co-title">預算告警怎麼設</span>沿用第 2 節同一條資料管道：run 落地時記下 token 用量，用 CloudWatch 的 metric filter 從結構化日誌抽出每小時/每日總量，對「per-agent 日用量」與「全域月用量」各設一條告警門檻。門檻抓法建議用「過去 4 週同期均值 × 倍數」而不是寫死一個絕對值——業務量本來就有月結、季底的自然波動，寫死門檻只會逼你三不五時手動調整或乾脆忽略告警。</div>
+
+  <h2 id="s4">4. 更新與發布維運</h2>
+  <p>第 2 章與 <code>docs/TechSummary.md</code> 第四節談過的維護紀律（改真本 → sync → check）是開發期流程；上生產環境要在後面再接四步，變成一條完整的七步發布線：</p>
+
+  <div class="flow" data-animate>
+    <div class="step"><span class="n">1</span><strong>改真本</strong><br>編輯 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/&lt;skill&gt;/SKILL.md</code></div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">2</span><strong>sync</strong><br><code>python3 scripts/sync-agent-skills.py</code> 覆蓋各 agent 包副本</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">3</span><strong>check</strong><br><code>python3 scripts/check.py</code> 驗 manifest、驗路徑、驗漂移</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">4</span><strong>dry-run</strong><br><code>deploy-managed-agent.sh &lt;slug&gt; --dry-run</code> 看展開後的 API 載荷，不真的送出</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">5</span><strong>deploy</strong><br>正式跑 <code>deploy-managed-agent.sh &lt;slug&gt;</code>，<code>POST /v1/agents</code> 拿到新的 agent id</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">6</span><strong>驗證</strong><br>拿 <code>steering-examples.json</code> 的範例事件跑一輪，核對輸出與人審結果</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">7</span><strong>切換</strong><br>把呼叫端的 slug→agent_id 映射指到新 id，舊 id 先保留不刪</div>
+  </div>
+
+  <p>第 4 步的 <code>--dry-run</code> 是這條線上最便宜的保險：<code>deploy-managed-agent.sh</code> 在 dry-run 模式下會把 skill 上傳、子代理建立都改成假值（<code>DRYRUN_&lt;name&gt;</code>），只把展開後、真正要送給 <code>POST /v1/agents</code> 的 JSON 印出來，不觸發任何真實 API 呼叫。發布前用它確認：<code>system</code> 有沒有正確內嵌新版 SKILL.md 的內容、<code>callable_agents</code> 的委派結構有沒有跟預期一致，比等到正式部署完才發現載荷不對划算得多。</p>
+
+  <div class="code-title">deploy-managed-agent.sh 用法</div>
+  <pre><code># 先看載荷，不送出
+scripts/deploy-managed-agent.sh gl-reconciler --dry-run
+
+# 確認沒問題後才正式部署
+export ANTHROPIC_API_KEY=sk-ant-...
+export GL_MCP_URL=... SUBLEDGER_MCP_URL=...
+scripts/deploy-managed-agent.sh gl-reconciler
+# 輸出：deployed / agent id: &lt;id&gt; / cookbook: &lt;repo&gt;/gl-reconciler / console 連結</code></pre>
+
+  <p><strong>回滾策略</strong>建立在這支腳本一個容易被忽略的事實上：它每次執行都是對 <code>/v1/agents</code> 發一次全新的 <code>POST</code>，不是「更新既有 agent」，所以每次部署都會拿到一個新的 agent id；只要你沒有主動棄用，<strong>舊 id 會一直保持可呼叫</strong>。這代表回滾不需要任何「復原版本」的操作——你唯一要管理的狀態是自己那一層 slug→agent_id 的對照表（就是 <code>scripts/orchestrate.py</code> 裡 <code>agent_ids: dict[str, str]</code> 那個映射的生產版本）。新版本驗證有問題，直接把映射切回舊 id，呼叫端完全無感；等新版本確認穩定，再考慮汰除舊 id。這比「在同一個 agent 上做版本回退」簡單很多，代價是你要自己維護這份映射表，並且記得舊 id 何時可以真正棄用。</p>
+
+  <h2 id="s5">5. 事件應變 Runbook 骨架</h2>
+  <p>以下四種事件是 CMA 生產環境最常見的異常類型，各給一份可以直接照抄、再依銀行自己的工具鏈填空的處置骨架。</p>
+
+  <details>
+    <summary>🔴 MCP server 掛了（例如 internal-gl 連不上）</summary>
+    <ol>
+      <li>確認範圍：是單一 MCP（如 <code>internal-gl</code>）還是整組 AWS 網路/<a href="https://aws.amazon.com/tw/vpc/" target="_blank" rel="noopener noreferrer">VPC</a> 出問題——先查 ALB target health，再查該 server 所在的 ECS/EKS 服務狀態。</li>
+      <li>立即動作：暫停會用到這個 MCP 的 agent 觸發（本例是 <code>gl-reconciler</code>、<code>month-end-closer</code>），避免大量 run 卡在逾時、堆積編排器佇列。</li>
+      <li>檢查是否為單純的網路/憑證問題（如 <code>${GL_MCP_URL}</code> 指向的憑證過期），還是後端系統本身異常。</li>
+      <li>MCP 復原後，先用 <code>steering-examples.json</code> 的單一範例事件驗證連線，確認回應正常再恢復正式流量。</li>
+      <li>回填：事件期間卡住的 run 要盤點清單，逐一決定重跑或人工補處理，不能假設「MCP 好了、資料自動補齊」。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>🟡 Anthropic API 異常（模型推論層出狀況）</summary>
+    <ol>
+      <li>先確認是自己帳號問題（金鑰、額度、beta header 版本）還是 Anthropic 平台層級事故——查 Anthropic 狀態頁與自己的錯誤碼分佈。</li>
+      <li>這一層不歸銀行維運，但呼叫端要有合理的重試與退避（backoff）邏輯，避免在平台恢復瞬間，堆積的重試流量把自己的編排器打爆。</li>
+      <li>對高風險（🔴）agent 的觸發，考慮暫停自動排程、改人工逐案確認是否要送出，直到平台狀態明確恢復。</li>
+      <li>記錄事故期間影響的 run 清單，事後跟業務單位對齊哪些案子需要重跑。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>🟡 輸出品質劣化（人審駁回率上升，但沒有明確錯誤/告警）</summary>
+    <ol>
+      <li>先確認不是資料源本身的問題——上游 MCP 回傳的資料格式/欄位是否近期有變動。</li>
+      <li>比對最近一次 skill/prompt 變更的時間點，跟駁回率上升的時間點是否吻合；如果吻合，先把該 agent 切回上一個 agent id（見第 4 節回滾策略）觀察是否回穩。</li>
+      <li>抽樣調閱第 2 節落地的 SSE 事件記錄（工具呼叫、中間輸出），還原模型實際的推理路徑，判斷是提示詞含糊、skill 邊界案例沒覆蓋，還是模型本身行為差異。</li>
+      <li>修正後走完整條發布線（第 4 節七步），不要為了「先解決眼前」跳過 dry-run 或驗證步驟。</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>🔴 疑似資料外洩（未受信任文件夾帶指令、或輸出出現不該有的敏感內容）</summary>
+    <ol>
+      <li>立即動作：暫停相關 agent 的觸發；<code>scripts/orchestrate.py</code> 檔頭已明確點出風險——「讀未受信任文件的 agent，其輸出裡如果字面上出現一段 <code>handoff_request</code> JSON，理論上可能被誤當成真正的委派指令執行」，先確認這條路徑沒有被觸發。</li>
+      <li>核對防線是否生效：<code>ALLOWED_TARGETS</code> 白名單、<code>HANDOFF_PAYLOAD_SCHEMA</code> 的 <code>jsonschema.validate</code> 是否攔下了異常 payload——正常情況下，格式不符或目標不在白名單，事件會被直接丟棄，不會路由出去。</li>
+      <li>調閱該次 run 完整的落地事件記錄，確認實際造成的影響範圍——依第 2 章的安全分層，只碰未受信任文件的 worker（如 <code>doc-reader</code>、<code>reader</code>）本身沒有 Write 也沒有 MCP，能造成的最大傷害有結構性上限，先確認這個上限是否被突破。</li>
+      <li>知會合規／資安團隊，依銀行既有的資料外洩應變流程（而非本 runbook）走正式通報與調查程序——本節只涵蓋 agent 維運側的第一時間止血。</li>
+    </ol>
+  </details>
+
+  <h2 id="s6">6. 日常維運節奏</h2>
+  <p>把上面三層可觀測性跟成本歸因落成日常習慣，不是每次都從頭想「今天要看什麼」：</p>
+
+  <p><strong>每日</strong></p>
+  <ul class="checklist">
+    <li>看業務層三個數字：處理件數、handoff 率、人審駁回率，跟基準比有沒有異常波動</li>
+    <li>掃過夜間/排程觸發的失敗 run 清單，逐一確認是否已補處理</li>
+    <li>檢查 MCP server 的 ALB target health 與錯誤率儀表板</li>
+  </ul>
+
+  <p><strong>每週</strong></p>
+  <ul class="checklist">
+    <li>檢視 per-agent token 用量趨勢，抓出用量異常升高的 agent 或子代理</li>
+    <li>確認所有 <code>*_MCP_URL</code> 對應的密鑰／憑證有效期，排定到期前的輪替</li>
+    <li>複核本週上線的 skill/prompt 變更是否都走完整條發布線（sync → check → dry-run → deploy → 驗證）</li>
+  </ul>
+
+  <p><strong>每月</strong></p>
+  <ul class="checklist">
+    <li>對照月度帳單與 per-agent 歸因總量，確認沒有「帳單對不上任何已知 run」的落差</li>
+    <li>盤點可以棄用的舊 agent id（已確認新版本穩定超過一個觀察週期）</li>
+    <li>檢討當月事件應變記錄，更新 runbook 裡過時或不準確的步驟</li>
+  </ul>
+
+  <h2 id="s7">本章重點</h2>
+  <div class="callout tip">
+    <span class="co-title">本章重點</span>
+    <ul class="checklist">
+      <li>維運責任分兩份：Anthropic 管模型推論與 agent 執行環境；銀行管 AWS 上的 MCP servers、編排器、呼叫端、密鑰與網路</li>
+      <li>可觀測性分三層看，缺一層都會漏掉不同種類的異常：Agent 執行層（SSE 事件與落地）、AWS 基礎層（MCP 健康與延遲）、業務層（處理量、handoff 率、人審駁回率）</li>
+      <li>成本歸因要拆到 per-agent、per-run；<code>model:</code> 是逐檔欄位，窄任務、有 <code>output_schema</code> 把關的葉子工人是換小模型省成本的優先候選</li>
+      <li>生產發布是七步線：改真本 → sync → check → dry-run → deploy → 驗證 → 切換；回滾靠的是保留舊 agent id、切換自己那層 slug→agent_id 映射，不是版本復原</li>
+      <li>四類事件（MCP 掛了、Anthropic API 異常、輸出劣化、疑似資料外洩）各有骨架化的處置步驟，可直接照抄再依自家工具鏈補細節</li>
+    </ul>
+  </div>
+
+  <div class="quiz" data-answer="1">
+    <div class="q">Q：某支 🔴 高風險 agent（如 gl-reconciler）發布新版 skill 後，人審駁回率明顯升高。根據本章的回滾策略，最直接的處置是什麼？</div>
+    <label>去 Anthropic 主控台對同一個 agent id 做「版本回退」</label>
+    <label>把呼叫端 slug→agent_id 的映射切回舊版本部署時拿到的那個 agent id</label>
+    <label>刪除新的 agent id，重新對舊版 skill 跑一次 deploy 取得同一個 id</label>
+    <div class="explain">正解是第二項。<code>deploy-managed-agent.sh</code> 每次都是對 <code>POST /v1/agents</code> 發一次新的建立請求，新版本會拿到一個全新的 agent id，舊 id 只要沒被棄用就持續可呼叫。回滾不是在同一個 agent 上復原版本，而是把自己維護的 slug→agent_id 映射（<code>scripts/orchestrate.py</code> 裡 <code>agent_ids</code> 字典的生產版本）切回舊 id，呼叫端完全無感。</div>
+  </div>
+
+</main>
+<script src="../assets/book.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 330" role="img" aria-labelledby="title desc">
+  <title id="title">mock-mcp selftest 與 golden output</title>
+  <desc id="desc">mock-mcp 的 selftest.py 先確認埋好的測試考點仍存在，之後 agent workflow 與 golden output 比對才有意義。</desc>
+  <defs><style>.bg{fill:#faf2e4}.ink{fill:none;stroke:#2e2c28;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.txt{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;fill:#2e2c28;font-size:16px;font-weight:700}.small{font-size:13px;font-weight:500}.card{fill:#fbf5e7;stroke:#2e2c28}.blue{fill:#e2eef4;stroke:#2c7a9e}.green{fill:#e5efe5;stroke:#4c7a4c}.amber{fill:#f6ecd9;stroke:#a3712a}.label{fill:#c15f3c}</style></defs>
+  <rect class="bg" width="880" height="330" rx="18"/>
+  <text class="txt label" x="42" y="38">先測考卷有沒有壞，再測 agent 會不會答</text>
+  <rect class="card" x="40" y="98" width="170" height="88" rx="14"/><text class="txt small" x="72" y="130">mock CSV</text><text class="txt small" x="63" y="153">planted cases</text><text class="txt small" x="64" y="173">VRT / Ivan Petrov</text>
+  <path class="ink" d="M210 142 H290"/><path class="ink" d="M272 129 L290 142 L272 155"/>
+  <rect class="blue" x="290" y="98" width="170" height="88" rx="14"/><text class="txt" x="338" y="130">selftest.py</text><text class="txt small" x="325" y="154">確認考點仍在</text><text class="txt small" x="325" y="174">不是測 agent</text>
+  <path class="ink" d="M460 142 H540"/><path class="ink" d="M522 129 L540 142 L522 155"/>
+  <rect class="amber" x="540" y="98" width="145" height="88" rx="14"/><text class="txt small" x="579" y="130">agent</text><text class="txt small" x="568" y="153">workflow</text><text class="txt small" x="565" y="173">run against mock</text>
+  <path class="ink" d="M685 142 H765"/><path class="ink" d="M747 129 L765 142 L747 155"/>
+  <rect class="green" x="765" y="98" width="80" height="88" rx="14"/><text class="txt small" x="783" y="130">golden</text><text class="txt small" x="783" y="153">output</text>
+  <path class="ink" d="M127 224 C248 264 520 264 804 224"/>
+  <text class="txt small label" x="250" y="291">如果 selftest 先失敗，後面的 agent 評測就沒有可信基準</text>
+</svg>
