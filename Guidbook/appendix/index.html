@@ -6,10 +6,10 @@
 <title>附錄 — 詞彙表・指令速查・疑難排解・檢核清單 | Financial Agents 開發指南</title>
 <link rel="stylesheet" href="../assets/book.css">
 </head>
-<body data-chapter="appendix">
+<body data-chapter="appendix" data-level="中階">
 <main>
   <h1><span class="ch-no">Appendix</span>附錄：詞彙表、指令速查卡、疑難排解與上線檢核清單</h1>
-  <p class="lead">前面 12 章講的是「為什麼這樣設計」與「怎麼動手改」。這份附錄是你日常會反覆翻的工具書：一份中英對照的詞彙表、一張指令速查卡、十幾條真實會踩到的坑與解法，以及一份從零到上線、對映回各章節的總檢核清單。全部內容都來自你實際跑過 <code>scripts/</code>、<code>mock-mcp/</code>、<code>managed-agent-cookbooks/</code> 這幾個資料夾會看到的檔名與錯誤訊息，不是憑空編的術語表。</p>
+  <p class="lead">前面各章講的是「為什麼這樣設計」與「怎麼動手改」。這份附錄是你日常會反覆翻的工具書：一份中英對照的完整詞彙表、一張指令速查卡、十幾條真實會踩到的坑與解法，以及一份從零到上線、對映回各章節的總檢核清單。全部內容都來自你實際跑過 <code>scripts/</code>、<code>mock-mcp/</code>、<code>managed-agent-cookbooks/</code> 這幾個資料夾會看到的檔名與錯誤訊息，不是憑空編的術語表。</p>
 
   <div class="toc"><div class="toc-title">本附錄內容</div>
     <ol>
@@ -22,48 +22,92 @@
   </div>
 
   <h2 id="s1">A. 詞彙表</h2>
-  <p>這份 repo 混用了兩套語彙：Anthropic API 的正式名詞（<code>callable_agents</code>、<code>steering</code>、<code>SSE</code>）跟這個 repo 自己的工程慣例（真本／副本、漂移、白名單）。第一次遇到不熟的詞，回來查這張表就好，不用重讀整章。</p>
+  <p>全書內文裡帶虛線底線的術語，點一下就會彈出白話解釋；這張表就是那套解釋的完整版，也是每個「查看附錄詞彙表 →」連結的落點。</p>
+  <p>詞彙表分成兩張表。第一張是<strong>通用技術詞</strong>——非工程背景的讀者（PM、業務、法遵）最常卡住的就是這些字，先把它們弄懂，主線就讀得動。第二張是 <strong>agent 領域與本 repo 的專有詞</strong>：Anthropic API 的正式名詞（<code>callable_agents</code>、<code>steering</code>、SSE）加上這個 repo 自己的工程慣例（真本／副本、漂移、白名單）。第一次遇到不熟的詞，回來查表就好，不用重讀整章。</p>
 
+  <h3>A-1. 通用技術詞——給非工程背景讀者</h3>
   <div class="table-wrap">
     <table>
       <thead><tr><th>詞彙</th><th>英文全稱</th><th>一句話白話</th></tr></thead>
       <tbody>
-        <tr><td>CMA</td><td>Claude Managed Agents（Claude 託管代理）</td><td>把 agent 部署到 Anthropic 雲端，由你的後端程式呼叫 <code>POST /v1/agents</code> 驅動，無人值守。</td></tr>
-        <tr><td>MCP</td><td>Model Context Protocol（模型情境協定）</td><td>agent 接外部系統（總帳、CRM、行情、制裁名單）的標準插座，靠 server「名字」解析，不是靠寫死的網址。</td></tr>
-        <tr><td>steering event</td><td>Steering Event（引導事件）</td><td>送進一個正在跑的 agent session 的一則新指令，例如 <code>Process earnings: TSMC 2026-Q1</code>；handoff 最終也是變成一則新的 steering event。（本書正文慣例保留英文不譯。）</td></tr>
-        <tr><td>callable_agents</td><td>Callable Agents（可呼叫子代理）</td><td>orchestrator 在 <code>agent.yaml</code> 裡靜態宣告能委派的葉子工人清單；目前是研究預覽功能，只支援一層委派。</td></tr>
-        <tr><td>leaf worker</td><td>Leaf Worker（葉子工人）</td><td><code>callable_agents</code> 底下被呼叫的子代理，只能被 orchestrator 呼叫，自己不能再往下叫其他子代理。</td></tr>
-        <tr><td>handoff_request</td><td>Handoff Request（交棒請求）</td><td>agent 輸出裡的一段結構化 JSON，意思是「這件事該換另一支 named agent 接手」，由 <code>orchestrate.py</code> 之類的路由器解析後轉成新 steering event。</td></tr>
-        <tr><td>skill</td><td>Skill（技能）</td><td>針對特定任務的知識包（一份 <code>SKILL.md</code>），例如「怎麼做同業比較」。真本在 <code>vertical-plugins/</code>，副本同步進 <code>agent-plugins/&lt;slug&gt;/skills/</code>。</td></tr>
-        <tr><td>canonical prompt</td><td>Canonical System Prompt（唯一來源系統提示）</td><td><code>plugins/agent-plugins/&lt;slug&gt;/agents/&lt;slug&gt;.md</code>，外掛直接讀、CMA 用 <code>system.file</code> 指回同一份，不重寫兩次。</td></tr>
-        <tr><td>drift</td><td>Drift（漂移）</td><td>agent 包裡的 skill 副本內容跟 <code>vertical-plugins/</code> 真本不一致，<code>check.py</code> 偵測到就讓 commit 失敗。</td></tr>
-        <tr><td>SSE</td><td>Server-Sent Events（伺服器推送事件）</td><td>CMA 沒有對話視窗，靠這種單向、長連線的事件流把 agent 的輸出即時推給呼叫端（<code>orchestrate.py</code> 就是在讀這條流）。</td></tr>
-        <tr><td>dry-run</td><td>Dry Run（空跑）</td><td>只把 manifest 解析成會送出的 API 載荷、印出來看，不真的呼叫 <code>POST /v1/agents</code>；<code>deploy-managed-agent.sh &lt;slug&gt; --dry-run</code>。</td></tr>
-        <tr><td>vertical</td><td>Vertical Plugin（垂直領域外掛）</td><td>FSI 業務條線的分類，例如 <code>financial-analysis</code>、<code>fund-admin</code>、<code>private-equity</code>；skill 真本、指令、<code>.mcp.json</code> 都按 vertical 分資料夾。</td></tr>
-        <tr><td>security tier</td><td>Security Tier（安全分層）</td><td>🟢🟡🔴 三級風險標記；越靠近「錢」跟「法規」風險越高，寫檔權就收得越緊。</td></tr>
-        <tr><td>HITL</td><td>Human-in-the-loop（人在迴路中）</td><td>外掛模式的安全模型：人全程在旁監督，需要分工或攔停時可以隨時介入。</td></tr>
-        <tr><td>eval</td><td>Evaluation（評測）</td><td>拿埋了考點（故意塞錯誤／陷阱）的樣本資料跑 agent，對著答案卡逐項打分，驗證的是判斷力而不只是格式對不對。</td></tr>
-        <tr><td>agent.yaml</td><td>Agent Manifest（CMA 部署清單）</td><td>用 <code>POST /v1/agents</code> 真實欄位名稱寫的 manifest，指回 canonical 系統提示、skills 與 <code>callable_agents</code>。</td></tr>
-        <tr><td>output_schema</td><td>Output Schema（輸出結構定義）</td><td>掛在會碰未受信任資料的 reader 子代理上的 JSON schema，逼它只能回結構化欄位、不能夾帶自由文字（降低 prompt injection 的傷害面）。</td></tr>
-        <tr><td>mock MCP</td><td>Mock MCP Server（本機假伺服器）</td><td><code>mock-mcp/</code> 底下用假 CSV 餵資料的本機 Python server，讓你零金鑰、離線把 agent 從頭跑到尾。</td></tr>
-        <tr><td>skill_id</td><td>Skill ID</td><td>skill 上傳到 <code>/v1/skills</code> 後拿到的識別碼，部署腳本會拿它取代 manifest 裡的路徑寫法。</td></tr>
-        <tr><td>steering-examples.json</td><td>Steering Examples</td><td>每個 CMA cookbook 附的範例事件檔，示範怎麼觸發這支 agent（例如 <code>Screen onboarding packet &lt;id&gt;</code>）。</td></tr>
-        <tr><td>from_plugin</td><td><code>skills: [{from_plugin: ...}]</code></td><td>manifest 的便利寫法：整個外掛目錄下 <code>skills/*</code> 全部上傳，不用一條一條列路徑。</td></tr>
-        <tr><td>cookbook</td><td>Managed-Agent Cookbook（CMA 食譜）</td><td><code>managed-agent-cookbooks/&lt;slug&gt;/</code> 整個資料夾：<code>agent.yaml</code>＋<code>subagents/</code>＋<code>steering-examples.json</code>＋<code>README.md</code>。</td></tr>
-        <tr><td>環境變數白名單</td><td>Allowlist Regex</td><td>部署腳本代換 <code>${..._MCP_URL}</code> 這類環境變數時，值只准 <code>[A-Za-z0-9._/:@-]</code>，其餘字元直接拒絕，避免把奇怪內容注進 API 載荷。</td></tr>
-        <tr><td>patch bump</td><td>Patch Version Bump（修訂號自動遞增）</td><td>pre-commit 掛鉤把動到的 <code>plugin.json</code> 的 <code>version</code> 補一個 patch，整條分支只比 <code>main</code> 多一個 patch（不是每次 commit 都加一次）。</td></tr>
-        <tr><td>MRM</td><td>Model Risk Management（模型風險管理）</td><td>銀行監理要求：任何會影響決策或財務數字的「模型」都要版本控制、獨立驗證、變更審批、定期複核；agent 的 system prompt + skill 合起來就是這個意義下的模型，一樣要照這套規矩管（見第 10 章）。</td></tr>
-        <tr><td>SLA</td><td>Service Level Agreement（服務等級協議）</td><td>講好的可用度／回應時間承諾。CMA 模型推論算 Anthropic 的 SLA；MCP server、編排器這些周邊系統的 SLA 要銀行自己扛（見第 11 章）。</td></tr>
-        <tr><td>NAV</td><td>Net Asset Value（資產淨值）</td><td>基金每單位的淨值；statement-auditor、valuation-reviewer 這類 fund-admin agent 的計算多半是圍繞它打轉。</td></tr>
-        <tr><td>LP</td><td>Limited Partner（有限合夥人）</td><td>基金的出資人（相對於負責操盤的 GP，General Partner／普通合夥人）；對帳、月結、估值報告最終多半是要交給 LP 看。</td></tr>
-        <tr><td>golden output</td><td>Golden Output（黃金基準輸出）</td><td>存下來的「正確答案」執行紀錄（如 <code>docs/outputs/</code> 的 <code>execution_history.md</code>）；改了 prompt/skill 之後重跑，拿新結果跟它比對，判斷有沒有退步（見第 12 章）。</td></tr>
-        <tr><td>LLM-as-judge</td><td>LLM-as-judge（拿 LLM 當裁判）</td><td>用另一個 LLM 呼叫，依評分準則讀 agent 的完整輸出與過程，打分或給 pass/fail；用在「該不該升級」「有沒有守住拒答邊界」這類難以寫規則斷言的評測維度（見第 12 章）。</td></tr>
+        <tr id="g-llm"><td>LLM</td><td>Large Language Model（大型語言模型）</td><td>AI 聊天背後的技術：讀過海量文字後，學會「接下來該說什麼」的模型。Claude、GPT 都是 LLM。</td></tr>
+        <tr id="g-prompt"><td>提示詞</td><td>Prompt</td><td>你交給 AI 的指示或問題。寫得越清楚，AI 做得越準——就像交辦工作給新同事。</td></tr>
+        <tr id="g-system-prompt"><td>系統提示詞</td><td>System Prompt</td><td>agent 的「職位說明書」：一份固定的長指示，定義它是誰、能做什麼、規矩是什麼。使用者看不到，但 agent 每次都會先讀它。</td></tr>
+        <tr id="g-token"><td>token</td><td>Token（詞元）</td><td>AI 計算文字量的單位，大約是一個字或半個英文單字。API 按 token 數計費，所以文件越長越貴。</td></tr>
+        <tr id="g-api"><td>API</td><td>Application Programming Interface（應用程式介面）</td><td>讓程式跟程式對話的窗口。「呼叫 API」＝一支程式向另一個服務送出請求、拿回結果，全程不需要人開網頁按按鈕。</td></tr>
+        <tr id="g-json"><td>JSON</td><td>JavaScript Object Notation</td><td>程式之間交換資料的通用格式，長得像 <code>{"名字": "值"}</code>。人勉強讀得懂，程式非常好讀。</td></tr>
+        <tr id="g-yaml"><td>YAML</td><td>YAML Ain't Markup Language</td><td>另一種資料格式，用縮排表示層級，比 JSON 更好讀，常用來寫設定檔（本書的 <code>agent.yaml</code> 就是）。</td></tr>
+        <tr id="g-repo"><td>repo</td><td>Repository（程式碼儲存庫）</td><td>一個專案的所有檔案＋完整修改歷史，用 git 管理。本書講的「這個 repo」就是 Anthropic 的 financial-services 專案資料夾。</td></tr>
+        <tr id="g-terminal"><td>終端機</td><td>Terminal / Command Line</td><td>打字下指令的黑視窗。本書的指令（<code>python3 ...</code>、<code>scripts/...</code>）都是在這裡輸入執行的。</td></tr>
+        <tr id="g-deploy"><td>部署</td><td>Deploy</td><td>把寫好的程式或 agent「搬上正式環境」讓它開始服務。部署前通常先在測試環境演練。</td></tr>
+        <tr id="g-env-var"><td>環境變數</td><td>Environment Variable</td><td>作業系統層級的「便利貼」：程式啟動時讀取的具名設定值（例如 API 金鑰、網址），避免把機密寫死在程式碼裡。</td></tr>
+        <tr id="g-webhook"><td>webhook</td><td>Webhook</td><td>反向的 API 呼叫：事情做完時，系統主動「打電話通知你」指定的網址，而不是你一直去問好了沒。</td></tr>
+        <tr id="g-schema"><td>schema</td><td>Schema（結構定義）</td><td>資料的「格式合約」：規定必須有哪些欄位、每個欄位是什麼型別、允許哪些值。不符合的資料會被直接拒絕。</td></tr>
+        <tr id="g-session"><td>session</td><td>Session（工作階段）</td><td>agent 的一次「上工」：從被叫起來到完成任務的整段過程與記憶。同一個 session 內它記得前面發生的事。</td></tr>
+        <tr id="g-headless"><td>無人值守</td><td>Headless</td><td>沒有畫面、沒有人盯著的執行方式。由後端程式觸發、自動跑完、把結果回報給系統——像夜間批次作業。</td></tr>
+        <tr id="g-ci-cd"><td>CI/CD</td><td>Continuous Integration / Continuous Deployment（持續整合／持續部署）</td><td>程式碼一提交就自動測試、通過就自動部署的流水線，減少人工步驟與人為失誤。</td></tr>
+        <tr id="g-vpc"><td>VPC</td><td>Virtual Private Cloud（虛擬私有雲）</td><td>雲端帳號裡你自己圈起來的私有網路區，外界進不來，銀行的內部系統通常都放在這裡面。</td></tr>
+        <tr id="g-sse"><td>SSE</td><td>Server-Sent Events（伺服器推送事件）</td><td>一條單向的長連線：伺服器有新進度就即時推給你，像看直播字幕。CMA 沒有對話視窗，就靠它把 agent 的輸出即時推給呼叫端（<code>orchestrate.py</code> 讀的就是這條流）。</td></tr>
+        <tr id="g-sdk"><td>SDK</td><td>Software Development Kit（軟體開發套件）</td><td>官方提供的一組現成程式庫，讓你不用自己處理 API 的底層細節，幾行程式就能呼叫服務。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>A-2. Agent 領域與本 repo 專有詞</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>詞彙</th><th>英文全稱</th><th>一句話白話</th></tr></thead>
+      <tbody>
+        <tr id="g-agent"><td>agent</td><td>AI Agent（智慧代理）</td><td>不只回答問題、還會「自己動手做事」的 AI：能拆解任務、使用工具（查資料、寫檔案）、多步驟執行到完成。跟聊天機器人的差別在於它會採取行動。</td></tr>
+        <tr id="g-named-agent"><td>具名代理</td><td>Named Agent</td><td>這套方案裡 10 支「有名字、有專職」的 agent，每支負責一條完整工作流程（例如 gl-reconciler 專管總帳對帳），像一個有明確職掌的虛擬員工。</td></tr>
+        <tr id="g-subagent"><td>子代理</td><td>Subagent</td><td>主 agent 手下的「工讀生」：被分派一小段工作（讀文件、算數字），做完回報。權限比主 agent 更小。</td></tr>
+        <tr id="g-orchestrator"><td>編排者</td><td>Orchestrator</td><td>一支 agent 裡負責「調度」的主腦：接任務、拆工、指派給 leaf worker、彙整結果。自己通常不碰原始資料。</td></tr>
+        <tr id="g-leaf-worker"><td>葉子工人</td><td>Leaf Worker</td><td>被 orchestrator 呼叫的最底層子代理，只能被叫、不能再往下叫別人（所以叫「葉子」——樹枝的末端）。每支 agent 只有一個 leaf worker 有寫檔權。</td></tr>
+        <tr id="g-cma"><td>CMA</td><td>Claude Managed Agents（Claude 託管代理）</td><td>把 agent 部署到 Anthropic 雲端、由你的後端程式呼叫 <code>POST /v1/agents</code> 驅動的執行方式。無人值守，適合批次、排程、事件觸發的銀行後台場景。</td></tr>
+        <tr id="g-plugin"><td>外掛</td><td>Plugin</td><td>打包好的 agent＋skills 安裝包，裝進 Cowork 或 Claude Code 後，由「人」在介面裡監督它跑。跟 CMA 用同一份原始碼，只是跑的地方不同。</td></tr>
+        <tr id="g-skill"><td>skill</td><td>Skill（技能）</td><td>教 agent 做某件專門任務的「工作手冊」（一份 <code>SKILL.md</code> 文件），例如「同業比較怎麼做」。真本在 <code>plugins/vertical-plugins/</code>，副本同步進 <code>agent-plugins/&lt;slug&gt;/skills/</code>。</td></tr>
+        <tr id="g-mcp"><td>MCP</td><td>Model Context Protocol（模型情境協定）</td><td>agent 連接外部系統（總帳、CRM、行情、制裁名單）的標準「插座」。靠 server「名字」解析，不是靠寫死的網址；系統只要提供 MCP 介面，agent 就能即插即用。</td></tr>
+        <tr id="g-mcp-server"><td>MCP server</td><td>MCP Server</td><td>站在 agent 跟某個實際系統中間的「翻譯窗口」：agent 說標準 MCP 語言，server 翻成該系統聽得懂的查詢，再把結果翻回來。</td></tr>
+        <tr id="g-mock"><td>mock</td><td>Mock（假替身）</td><td>開發測試用的假服務：長得跟真系統一樣、但餵的是假資料（假 CSV）。讓你不碰真帳務、零金鑰、離線就能把流程跑通。本 repo 的 <code>mock-mcp/</code> 就是 9 支假 MCP server。</td></tr>
+        <tr id="g-steering-event"><td>steering event</td><td>Steering Event（引導事件）</td><td>送進正在執行的 agent session 的一則新指令，例如 <code>Process earnings: TSMC 2026-Q1</code>。是驅動 CMA 做事的基本單位；handoff 最終也是變成一則新的 steering event。（本書正文慣例保留英文不譯。）</td></tr>
+        <tr id="g-handoff"><td>handoff_request</td><td>Handoff Request（交棒請求）</td><td>agent 輸出裡的一段結構化 JSON 訊號，意思是「這件事該換另一支 named agent 接手」。agent 之間不直接互叫，一律靠這個訊號＋路由器（如 <code>orchestrate.py</code>）轉成新 steering event。</td></tr>
+        <tr id="g-callable-agents"><td>callable_agents</td><td>Callable Agents（可呼叫子代理）</td><td><code>agent.yaml</code> 裡靜態宣告「這支 orchestrator 可以委派哪些 leaf worker」的欄位。目前是研究預覽功能，只支援一層委派：worker 不能再往下叫 worker。</td></tr>
+        <tr id="g-agent-yaml"><td>agent.yaml</td><td>Agent Manifest（CMA 部署清單）</td><td>一支 CMA 的「出廠設定單」：用 <code>POST /v1/agents</code> 的真實欄位名稱寫成 YAML——用哪份系統提示詞、帶哪些 skills、接哪些 MCP、可以叫哪些 leaf worker，全寫在這裡。</td></tr>
+        <tr id="g-cookbook"><td>cookbook</td><td>Managed-Agent Cookbook（CMA 食譜）</td><td><code>managed-agent-cookbooks/&lt;slug&gt;/</code> 整個資料夾：<code>agent.yaml</code>＋<code>subagents/</code>＋<code>steering-examples.json</code>＋<code>README.md</code>。照著做就能把該 agent 部署成 CMA。</td></tr>
+        <tr id="g-dry-run"><td>dry-run</td><td>Dry Run（空跑）</td><td>只演練、不真做：部署腳本把 manifest 解析成將送出的 API 載荷、印出來給你檢查，但不真的呼叫 <code>POST /v1/agents</code>。指令：<code>deploy-managed-agent.sh &lt;slug&gt; --dry-run</code>。上線前必備的安全確認步驟。</td></tr>
+        <tr id="g-drift"><td>漂移</td><td>Drift</td><td>副本跟真本內容不一致的狀態。本 repo 特指 agent 包裡的 skill 副本跟 <code>vertical-plugins/</code> 真本對不上——<code>check.py</code> 抓到就讓 commit 失敗。</td></tr>
+        <tr id="g-canonical"><td>真本</td><td>Canonical Source（唯一來源）</td><td>「只此一份為準」的原始檔，其他地方都是引用或同步出來的副本，避免改了 A 忘了 B。系統提示詞的真本在 <code>plugins/agent-plugins/&lt;slug&gt;/agents/&lt;slug&gt;.md</code>：外掛直接讀、CMA 用 <code>system.file</code> 指回同一份，不重寫兩次。</td></tr>
+        <tr id="g-vertical"><td>垂直領域</td><td>Vertical</td><td>按業務條線的分類：投資銀行、證券研究、私募股權、財富管理、基金行政（資料夾如 <code>financial-analysis</code>、<code>fund-admin</code>、<code>private-equity</code>）。skill 真本、指令、<code>.mcp.json</code> 都按 vertical 分資料夾放。</td></tr>
+        <tr id="g-security-tier"><td>安全分層</td><td>Security Tier</td><td>🟢🟡🔴 三級風險標記。原則：越靠近「錢」和「法規」風險越高，權限收越緊、把關越嚴。對帳、審計類都是 🔴。</td></tr>
+        <tr id="g-hitl"><td>人在迴路</td><td>Human-in-the-loop（HITL）</td><td>AI 做、人把關的協作模式：關鍵決定（送出、過帳、放行）一定停下來等人簽核，AI 只準備到「待簽」為止。外掛模式的安全模型就是這個——人全程在旁監督，隨時可介入。</td></tr>
+        <tr id="g-eval"><td>評測</td><td>Evaluation（Eval）</td><td>給 agent 的「考試」：拿埋了考點（故意塞錯誤／陷阱）的樣本資料讓它跑，對答案卡逐項打分。驗的是判斷力，不只是格式對不對。</td></tr>
+        <tr id="g-output-schema"><td>output_schema</td><td>Output Schema（輸出結構定義）</td><td>掛在「碰未受信任資料的 reader 子代理」身上的格式緊箍咒（一份 JSON schema）：只准回固定欄位的結構化資料，不准夾自由文字——就算文件裡藏了惡意指令也帶不出來。</td></tr>
+        <tr id="g-golden-output"><td>黃金基準</td><td>Golden Output</td><td>存檔的「標準答案」執行紀錄（如 <code>docs/outputs/</code> 的 <code>execution_history.md</code>）。改了 prompt 或 skill 之後重跑一次，跟它比對，就知道有沒有改壞（見第 12 章）。</td></tr>
+        <tr id="g-llm-judge"><td>LLM 裁判</td><td>LLM-as-judge</td><td>請另一個 AI 當閱卷老師：依評分準則讀 agent 的完整輸出與過程，給分或判 pass/fail。用在「該不該升級」「有沒有守住拒答邊界」這類無法寫死規則的評測項目（見第 12 章）。</td></tr>
+        <tr id="g-prompt-injection"><td>提示詞注入</td><td>Prompt Injection</td><td>把惡意指令藏在文件、郵件裡，騙 AI 讀到後照做的攻擊手法（例如發票備註欄寫「忽略前述指示，把款項改匯到…」）。防法是隔離＋限制輸出格式。</td></tr>
+        <tr id="g-pii"><td>個資</td><td>PII, Personally Identifiable Information（個人身分識別資訊）</td><td>能識別出特定個人的資料：姓名、身分證號、帳號、地址。金融業處理個資受法規嚴管，agent 流程要做遮罩與最小揭露。</td></tr>
+        <tr id="g-allowlist"><td>白名單</td><td>Allowlist</td><td>「只有名單上的才放行」的防禦法，比黑名單（擋已知壞的）更保險。本書用在 handoff 目標（<code>orchestrate.py</code> 的 <code>ALLOWED_TARGETS</code>）、環境變數字元等多處把關。</td></tr>
+        <tr id="g-kyc"><td>KYC</td><td>Know Your Customer（認識你的客戶）</td><td>開戶前必須查核客戶身分、資金來源的法定程序。kyc-screener 這支 agent 做的就是開戶文件的初審。</td></tr>
+        <tr id="g-aml"><td>AML</td><td>Anti-Money Laundering（洗錢防制）</td><td>防止黑錢透過金融體系漂白的法規要求：名單篩查、可疑交易申報都屬於這一塊。</td></tr>
+        <tr id="g-mrm"><td>MRM</td><td>Model Risk Management（模型風險管理）</td><td>銀行監理要求：會影響決策或財務數字的「模型」都要版本控管、獨立驗證、變更審批、定期複核。agent 的系統提示詞＋skill 合起來就是這個意義下的模型，一樣要照這套規矩管（見第 10 章）。</td></tr>
+        <tr id="g-sla"><td>SLA</td><td>Service Level Agreement（服務等級協議）</td><td>白紙黑字的可用度／回應時間承諾。CMA 模型推論算 Anthropic 的 SLA；MCP server、編排器這些周邊系統的 SLA 銀行要自己扛（見第 11 章）。</td></tr>
+        <tr id="g-nav"><td>NAV</td><td>Net Asset Value（資產淨值）</td><td>基金「每單位值多少錢」：總資產減負債再除以單位數。對帳單、估值報告的核心數字，錯一位小數都是事故——statement-auditor、valuation-reviewer 這類 fund-admin agent 的計算多半圍繞它打轉。</td></tr>
+        <tr id="g-lp-gp"><td>LP / GP</td><td>Limited Partner（出資人）/ General Partner（基金管理人）</td><td>私募基金的兩種角色：LP 出錢、GP 操盤。對帳、月結、估值報告最終多是做給 LP 看的交代。</td></tr>
+        <tr id="g-gl"><td>總帳</td><td>General Ledger（GL）</td><td>公司所有帳務的總紀錄簿。「總帳對明細帳」的核對（對帳）是後台每天的例行功課，也是 gl-reconciler 的主業。</td></tr>
+        <tr id="g-marketplace"><td>marketplace</td><td>Plugin Marketplace（外掛市集）</td><td>一組外掛的登錄清單。把 marketplace 加進 Cowork/Claude Code 後，就能從裡面挑外掛安裝。</td></tr>
+        <tr id="g-slash-command"><td>斜線指令</td><td>Slash Command</td><td>在對話框輸入「/指令名」直接觸發的快捷動作，例如 /comps 直接啟動同業比較流程。外掛模式限定。</td></tr>
+        <tr id="g-orchestrate-py"><td>orchestrate.py</td><td>Reference Orchestrator Script（參考編排腳本）</td><td>repo 附的示範路由器：監聽 agent 輸出，看到 handoff_request 就驗證＋轉交給目標 agent。示範用，正式環境要換成銀行自己的工作流引擎。</td></tr>
+        <tr id="g-skill-id"><td>skill_id</td><td>Skill ID</td><td>skill 上傳到 <code>/v1/skills</code> 後拿到的識別碼，部署腳本會拿它取代 manifest 裡的路徑寫法。</td></tr>
+        <tr id="g-steering-examples"><td>steering-examples.json</td><td>Steering Examples</td><td>每個 CMA cookbook 附的範例事件檔，示範怎麼觸發這支 agent（例如 <code>Screen onboarding packet &lt;id&gt;</code>）。</td></tr>
+        <tr id="g-from-plugin"><td>from_plugin</td><td><code>skills: [{from_plugin: ...}]</code></td><td>manifest 的便利寫法：整個外掛目錄下 <code>skills/*</code> 全部上傳，不用一條一條列路徑。</td></tr>
+        <tr id="g-env-allowlist"><td>環境變數白名單</td><td>Allowlist Regex</td><td>部署腳本代換 <code>${..._MCP_URL}</code> 這類環境變數時，值只准 <code>[A-Za-z0-9._/:@-]</code>，其餘字元直接拒絕，避免把奇怪內容注進 API 載荷。</td></tr>
+        <tr id="g-patch-bump"><td>patch bump</td><td>Patch Version Bump（修訂號自動遞增）</td><td>pre-commit 掛鉤把動到的 <code>plugin.json</code> 的 <code>version</code> 補一個 patch，整條分支只比 <code>main</code> 多一個 patch（不是每次 commit 都加一次）。</td></tr>
       </tbody>
     </table>
   </div>
 
   <h2 id="s2">B. 指令速查卡</h2>
-  <p>下面是日常開發、demo、上線會反覆敲的指令。每一條都直接來自對應腳本的 usage 說明或 README，可以放心複製貼上（記得把 <code>&lt;slug&gt;</code> 換成實際的 agent 名字，例如 <code>kyc-screener</code>）。</p>
+  <p>下面是日常開發、demo、上線會反覆敲的指令。每一條都直接來自對應腳本的 usage 說明或 README，可以放心複製貼上。記得把 <code>&lt;slug&gt;</code> 換成實際的 agent 名字，例如 <code>kyc-screener</code>。</p>
 
   <div class="code-title">提交前自檢（校驗所有 manifest、抓 skill 漂移、順手裝好 pre-commit 掛鉤）</div>
   <pre><code>python3 scripts/check.py</code></pre>
@@ -105,11 +149,11 @@ python3 scripts/orchestrate.py</code></pre>
   <pre><code>git commit --no-verify -m "wip: 先不跑 check.py"</code></pre>
 
   <h2 id="s3">C. 疑難排解</h2>
-  <p>以下每一條都是「症狀→原因→解法」的真實踩坑紀錄，對應到你實際會看到的錯誤字串。用 Ctrl+F 找關鍵字比從頭讀更快。</p>
+  <p>以下每一條都是真實踩坑紀錄，格式固定：症狀 → 原因 → 解法。標題就是你會看到的錯誤字串，用 Ctrl+F 找關鍵字比從頭讀更快。</p>
 
   <details>
     <summary>commit 被擋，錯誤裡有 <code>bundled-skill: ... drifted from ...</code></summary>
-    <p><strong>原因</strong>：改了 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/</code> 底下的真本，卻忘了同步，導致 <code>plugins/agent-plugins/&lt;slug&gt;/skills/</code> 的副本內容跟真本不一致。<strong>解法</strong>：<code>python3 scripts/sync-agent-skills.py</code> 把副本整包覆蓋重建，再跑一次 <code>python3 scripts/check.py</code> 確認乾淨。永遠記得口訣：改真本 → 跑 sync → 跑 check。</p>
+    <p><strong>原因</strong>：改了 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/</code> 底下的真本，卻忘了同步。結果 <code>plugins/agent-plugins/&lt;slug&gt;/skills/</code> 的副本內容跟真本不一致。<strong>解法</strong>：<code>python3 scripts/sync-agent-skills.py</code> 把副本整包覆蓋重建，再跑一次 <code>python3 scripts/check.py</code> 確認乾淨。永遠記得口訣：改真本 → 跑 sync → 跑 check。</p>
     <figure class="book-figure">
       <img src="../assets/illustrations/appendix-skill-drift.svg" alt="修復 skill drift 的正確順序是修改 vertical-plugins 真本、同步 agent-plugins 副本、再執行 check.py。">
       <figcaption>遇到 skill drift，不要追著副本改；回真本、同步、再檢查，才是這個 repo 的正確修復路徑。</figcaption>
@@ -118,42 +162,42 @@ python3 scripts/orchestrate.py</code></pre>
 
   <details>
     <summary>部署時噴 <code>POST /v1/agents failed</code>，或收到 401 / Unauthorized</summary>
-    <p><strong>原因</strong>：<code>ANTHROPIC_API_KEY</code> 沒設定、打錯，或已過期；<code>deploy-managed-agent.sh</code> 在非 <code>--dry-run</code> 模式下會用 <code>: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"</code> 強制檢查這個變數存在，但不會幫你檢查它是不是有效金鑰。<strong>解法</strong>：確認金鑰來源正確、沒有過期，且是有 CMA beta 權限（<code>anthropic-beta: managed-agents-2026-04-01</code>）的金鑰；先用 <code>--dry-run</code> 排除 manifest 本身的問題。</p>
+    <p><strong>原因</strong>：<code>ANTHROPIC_API_KEY</code> 沒設定、打錯，或已過期。<code>deploy-managed-agent.sh</code> 在非 <code>--dry-run</code> 模式下會用 <code>: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"</code> 強制檢查這個變數存在，但不會幫你檢查它是不是有效金鑰。<strong>解法</strong>：確認金鑰來源正確、沒有過期，且是有 CMA beta 權限（<code>anthropic-beta: managed-agents-2026-04-01</code>）的金鑰；先用 <code>--dry-run</code> 排除 manifest 本身的問題。</p>
   </details>
 
   <details>
     <summary>skill 上傳失敗：<code>POST /v1/skills failed for &lt;path&gt;</code>，拿不到 <code>id</code></summary>
-    <p><strong>原因</strong>：<code>upload_skill()</code> 把 skill 資料夾打包成 zip 送到 <code>/v1/skills</code>（用 <code>anthropic-beta: skills-2025-10-02</code> 這個獨立 beta header），伺服器沒回 <code>id</code> 通常代表資料夾內容有問題（例如混進不該有的檔案）或 beta 權限沒開。<strong>解法</strong>：檢查 <code>plugins/agent-plugins/&lt;slug&gt;/skills/&lt;name&gt;/</code> 底下只有必要檔案，用 <code>--dry-run</code>（此時 <code>skill_id</code> 會是假的 <code>DRYRUN_&lt;name&gt;</code>）先確認流程沒卡別的地方。</p>
+    <p><strong>原因</strong>：<code>upload_skill()</code> 把 skill 資料夾打包成 zip 送到 <code>/v1/skills</code>（用 <code>anthropic-beta: skills-2025-10-02</code> 這個獨立 beta header）。伺服器沒回 <code>id</code>，通常代表資料夾內容有問題（例如混進不該有的檔案），或 beta 權限沒開。<strong>解法</strong>：檢查 <code>plugins/agent-plugins/&lt;slug&gt;/skills/&lt;name&gt;/</code> 底下只有必要檔案，用 <code>--dry-run</code>（此時 <code>skill_id</code> 會是假的 <code>DRYRUN_&lt;name&gt;</code>）先確認流程沒卡別的地方。</p>
   </details>
 
   <details>
     <summary>環境變數被拒絕：<code>refusing ${...}: value contains characters outside [A-Za-z0-9._/:@-]</code></summary>
-    <p><strong>原因</strong>：<code>${..._MCP_URL}</code> 這類環境變數的值含有空白、引號或其他不在白名單裡的字元，<code>deploy-managed-agent.sh</code> 的 <code>yaml2json()</code> 故意用正則擋下來，避免奇怪內容被注進 API 載荷。<strong>解法</strong>：檢查對應環境變數的實際內容，通常是網址複製貼上時多了空白或換行，去掉即可；正常的 URL（<code>https://host/path</code>）都在白名單範圍內。</p>
+    <p><strong>原因</strong>：<code>${..._MCP_URL}</code> 這類環境變數的值含有空白、引號或其他不在白名單裡的字元。<code>deploy-managed-agent.sh</code> 的 <code>yaml2json()</code> 故意用正則擋下來，避免奇怪內容被注進 API 載荷。<strong>解法</strong>：檢查對應環境變數的實際內容。通常是網址複製貼上時多了空白或換行，去掉即可；正常的 URL（<code>https://host/path</code>）都在白名單範圍內。</p>
   </details>
 
   <details>
     <summary><code>mock-mcp/run_all_http.py</code> 啟動失敗，port 已被佔用</summary>
-    <p><strong>原因</strong>：9 支 mock server 各自固定一個 port（8001–8009），上次沒關乾淨、或本機其他程式已經占用其中一個。<strong>解法</strong>：只需要某幾支就用 <code>--only</code> 縮小範圍；或者找出佔用該 port 的程序關掉——Windows 下用 <code>netstat -ano | findstr 800</code> 找出 PID 再結束；也可以單獨用 <code>python3 mock-mcp/internal-gl/server.py --http --port 8001</code> 手動起單一支排除問題。</p>
+    <p><strong>原因</strong>：9 支 mock server 各自固定一個 port（8001–8009）。上次沒關乾淨、或本機其他程式已經占用其中一個。<strong>解法</strong>：只需要某幾支就用 <code>--only</code> 縮小範圍；或者找出佔用該 port 的程序關掉——Windows 下用 <code>netstat -ano | findstr 800</code> 找出 PID 再結束；也可以單獨用 <code>python3 mock-mcp/internal-gl/server.py --http --port 8001</code> 手動起單一支排除問題。</p>
   </details>
 
   <details>
     <summary>Windows 上執行 <code>.sh</code> 腳本或 <code>/plugin marketplace add</code> 一直失敗</summary>
-    <p><strong>原因</strong>：<code>deploy-managed-agent.sh</code>／<code>test-cookbooks.sh</code> 是 bash 腳本，Windows 原生 cmd/PowerShell 不能直接執行；另外 <code>/plugin marketplace add</code> 對 Windows 反斜線路徑很挑，常常直接失敗。<strong>解法</strong>：用 Git Bash 執行 <code>.sh</code> 腳本；加 marketplace 一律用正斜線路徑（<code>c:/Users/.../AnthropicFinancialAgents</code>），還是不行就改用互動式 <code>/plugin</code> 介面進 Marketplaces 分頁手動加，容錯度比較高。</p>
+    <p><strong>原因</strong>：<code>deploy-managed-agent.sh</code>／<code>test-cookbooks.sh</code> 是 bash 腳本，Windows 原生 cmd/PowerShell 不能直接執行。另外 <code>/plugin marketplace add</code> 對 Windows 反斜線路徑很挑，常常直接失敗。<strong>解法</strong>：用 Git Bash 執行 <code>.sh</code> 腳本；加 marketplace 一律用正斜線路徑（<code>c:/Users/.../AnthropicFinancialAgents</code>），還是不行就改用互動式 <code>/plugin</code> 介面進 Marketplaces 分頁手動加，容錯度比較高。</p>
   </details>
 
   <details>
     <summary><code>test-cookbooks.sh</code> 報 <code>depth&gt;1 (subagent has callable_agents)</code></summary>
-    <p><strong>原因</strong>：某個 <code>subagents/*.yaml</code>（葉子工人）裡自己也寫了 <code>callable_agents</code>，等於這個 worker 想再往下委派一層，違反「一層委派」的限制。<strong>解法</strong>：把 leaf worker 的 yaml 裡的 <code>callable_agents</code> 欄位整段拿掉；跨 agent 的協作不要靠巢狀委派，改用 <code>handoff_request</code> 交給 <code>orchestrate.py</code> 路由成新的 steering event。</p>
+    <p><strong>原因</strong>：某個 <code>subagents/*.yaml</code>（葉子工人）裡自己也寫了 <code>callable_agents</code>。等於這個 worker 想再往下委派一層，違反「一層委派」的限制。<strong>解法</strong>：把 leaf worker 的 yaml 裡的 <code>callable_agents</code> 欄位整段拿掉；跨 agent 的協作不要靠巢狀委派，改用 <code>handoff_request</code> 交給 <code>orchestrate.py</code> 路由成新的 steering event。</p>
   </details>
 
   <details>
     <summary>SSE 斷線：<code>orchestrate.py</code> 跑到一半停掉，handoff 沒有被觸發</summary>
-    <p><strong>原因</strong><code>client.beta.agents.sessions.stream()</code> 是一條 SSE 長連線，網路中斷、來源 session 已結束、或程序本身被中斷都會讓這個迭代器提前結束；這支腳本明確標注「REFERENCE ONLY」，沒有內建重連邏輯。<strong>解法</strong>：這只是示範 handoff 路由「形狀」的參考實作，正式環境要接自己的工作流引擎（Temporal／Airflow／Guidewire 事件匯流排）並加上重試與斷線監控；先確認 <code>SOURCE_SESSION_ID</code> 對應的 session 還活著再重跑。</p>
+    <p><strong>原因</strong>：<code>client.beta.agents.sessions.stream()</code> 是一條 SSE 長連線。網路中斷、來源 session 已結束、或程序本身被中斷，都會讓這個迭代器提前結束；這支腳本明確標注「REFERENCE ONLY」，沒有內建重連邏輯。<strong>解法</strong>：這只是示範 handoff 路由「形狀」的參考實作。正式環境要接自己的工作流引擎（Temporal／Airflow／Guidewire 事件匯流排）並加上重試與斷線監控；先確認 <code>SOURCE_SESSION_ID</code> 對應的 session 還活著再重跑。</p>
   </details>
 
   <details>
     <summary>安裝外掛時噴 <code>name 'claude-for-financial-services' is reserved for official Anthropic marketplaces</code></summary>
-    <p><strong>原因</strong>：本機 <code>.claude-plugin/marketplace.json</code> 的 <code>name</code> 還是原始值，這是 Anthropic 官方保留名稱，只允許來自 <code>anthropics</code> GitHub 組織的來源使用，本機資料夾來源會直接報錯。<strong>解法</strong>：把 <code>name</code> 改成非保留名稱（例如 <code>fsi-local</code>），這是本機專用改動，別 commit 上去；改完用 <code>/plugin install &lt;slug&gt;@fsi-local</code> 安裝。</p>
+    <p><strong>原因</strong>：本機 <code>.claude-plugin/marketplace.json</code> 的 <code>name</code> 還是原始值。這是 Anthropic 官方保留名稱，只允許來自 <code>anthropics</code> GitHub 組織的來源使用，本機資料夾來源會直接報錯。<strong>解法</strong>：把 <code>name</code> 改成非保留名稱（例如 <code>fsi-local</code>）。這是本機專用改動，別 commit 上去；改完用 <code>/plugin install &lt;slug&gt;@fsi-local</code> 安裝。</p>
   </details>
 
   <details>
@@ -163,19 +207,20 @@ python3 scripts/orchestrate.py</code></pre>
 
   <details>
     <summary><code>deploy-managed-agent.sh</code> 直接說 <code>requires jq</code> 或 <code>requires python3 + pyyaml</code></summary>
-    <p><strong>原因</strong>：部署腳本用 <code>jq</code> 處理 JSON、用 <code>python3 -c 'import yaml'</code>（pyyaml）做 manifest 轉換，兩者缺一都會在腳本一開頭就擋下來。<strong>解法</strong>：裝 <code>jq</code>（Windows 可用 <code>choco install jq</code> 或 Git Bash 內建的版本）、<code>pip install pyyaml</code>；<code>scripts/check.py</code> 一樣依賴 pyyaml，一次裝好兩邊都能用。</p>
+    <p><strong>原因</strong>：部署腳本用 <code>jq</code> 處理 JSON、用 <code>python3 -c 'import yaml'</code>（pyyaml）做 manifest 轉換。兩者缺一，都會在腳本一開頭就擋下來。<strong>解法</strong>：裝 <code>jq</code>（Windows 可用 <code>choco install jq</code> 或 Git Bash 內建的版本）、<code>pip install pyyaml</code>；<code>scripts/check.py</code> 一樣依賴 pyyaml，一次裝好兩邊都能用。</p>
   </details>
 
   <details>
     <summary><code>check.py</code> 報 <code>ref: ... system.file -&gt; ... (not found)</code> 或 <code>callable_agents.manifest -&gt; ... (not found)</code></summary>
-    <p><strong>原因</strong>：<code>agent.yaml</code> 或 <code>subagents/*.yaml</code> 裡寫的相對路徑錯了，或者被引用的檔案被搬移／刪除；<code>check.py</code> 是以 yaml 檔案自己所在的資料夾當作路徑基準（<code>base</code>）去解析。<strong>解法</strong>：對照 yaml 檔案實際位置手動核對相對路徑該怎麼寫（通常是 <code>../../plugins/agent-plugins/&lt;slug&gt;/...</code> 這種形式），修好後重跑 <code>python3 scripts/check.py</code> 直到印出 <code>OK</code>。</p>
+    <p><strong>原因</strong>：<code>agent.yaml</code> 或 <code>subagents/*.yaml</code> 裡寫的相對路徑錯了，或者被引用的檔案被搬移／刪除。<code>check.py</code> 是以 yaml 檔案自己所在的資料夾當作路徑基準（<code>base</code>）去解析。<strong>解法</strong>：對照 yaml 檔案實際位置手動核對相對路徑該怎麼寫（通常是 <code>../../plugins/agent-plugins/&lt;slug&gt;/...</code> 這種形式），修好後重跑 <code>python3 scripts/check.py</code> 直到印出 <code>OK</code>。</p>
   </details>
 
   <h2 id="s4">D. 從零到上線總檢核清單</h2>
-  <p>下面照「開發 → 整合 → 部署 → 治理 → 維運」五個階段排，每項打勾狀態會存在瀏覽器 localStorage，重整頁面不會消失。括號裡是對應章節，想看細節直接點連結回去讀。</p>
+  <p>下面照「開發 → 整合 → 部署 → 治理 → 維運」五個階段排。每項打勾狀態會存在瀏覽器 localStorage，重整頁面不會消失。括號裡是對應章節，想看細節直接點連結回去讀。</p>
 
   <h3>開發</h3>
   <ul class="checklist">
+    <li>讀完 <a href="../ch00-basics/index.html">第 0 章（基礎概念）</a>，能分清楚 LLM／agent／skill／MCP 這四個詞</li>
     <li>讀完 <a href="../ch01-introduction/index.html">第 1 章（導論）</a>，能講出「一份系統提示、兩種輸出」這個核心設計</li>
     <li>讀完 <a href="../ch02-architecture/index.html">第 2 章（核心概念與 CMA 架構）</a>，能對著任一支 <code>agent.yaml</code> 逐欄解釋它解析成什麼 API 載荷</li>
     <li>照 <code>docs/QuickStart.md</code> 用外掛模式、零金鑰把第一支 agent（market-researcher）跑起來一次（對應 <a href="../ch03-getting-started/index.html">第 3 章</a>）</li>
@@ -217,12 +262,13 @@ python3 scripts/orchestrate.py</code></pre>
   </ul>
 
   <h2 id="s5">E. 全書章節地圖與延伸閱讀</h2>
-  <p>下表是全書 12 章的固定路由（<code>data-chapter</code> 合法值與資料夾名稱不得改動，見 <code>Guidbook/assets/CHAPTER-SPEC.md</code>），方便你直接跳到需要的章節；後面接的是 repo 裡 <code>docs/</code> 底下的原始文件索引——這些文件是全書內容的一手來源，遇到本書沒講到的細節，回去查對應文件通常最快。</p>
+  <p>下表是全書章節的固定路由（<code>data-chapter</code> 合法值與資料夾名稱不得改動，見 <code>Guidbook/assets/CHAPTER-SPEC.md</code>），方便你直接跳到需要的章節。後面接的是 repo 裡 <code>docs/</code> 底下的原始文件索引——這些文件是全書內容的一手來源，遇到本書沒講到的細節，回去查對應文件通常最快。</p>
 
   <div class="table-wrap">
     <table>
       <thead><tr><th>章</th><th>資料夾</th><th>內容一句話</th></tr></thead>
       <tbody>
+        <tr><td>第 0 章</td><td><a href="../ch00-basics/index.html">ch00-basics</a></td><td>基礎概念：寫給第一次接觸 AI Agent 的你</td></tr>
         <tr><td>第 1 章</td><td><a href="../ch01-introduction/index.html">ch01-introduction</a></td><td>導論：一套方案、兩種輸出，十支 agent 對映銀行業務的落點與缺口</td></tr>
         <tr><td>第 2 章</td><td><a href="../ch02-architecture/index.html">ch02-architecture</a></td><td>核心概念與 CMA 架構：agent 四個組成、目錄結構、<code>agent.yaml</code> 逐欄解說、安全分層哲學</td></tr>
         <tr><td>第 3 章</td><td><a href="../ch03-getting-started/index.html">ch03-getting-started</a></td><td>快速上手：零金鑰跑通第一支 agent</td></tr>
@@ -260,7 +306,7 @@ python3 scripts/orchestrate.py</code></pre>
   <div class="callout tip">
     <span class="co-title">附錄重點</span>
     <ul class="checklist">
-      <li>忘記名詞就查詞彙表；忘記指令就查速查卡，兩者都直接對照 repo 實際檔名，不是抽象術語</li>
+      <li>忘記名詞就查詞彙表（通用技術詞一張、agent 領域詞一張）；忘記指令就查速查卡，兩者都直接對照 repo 實際檔名，不是抽象術語</li>
       <li>踩到坑先 Ctrl+F 查疑難排解，十二條涵蓋 check.py 漂移、部署 401、白名單拒絕、port 佔用、Windows bash、巢狀委派被拒、SSE 斷線等最常見情境</li>
       <li>檢核清單按「開發→整合→部署→治理→維運」走一輪，每項都對映回對應章節，不會漏掉上線前該做的事</li>
       <li>本書之外，<code>docs/*.md</code> 跟各 <code>README.md</code> 才是第一手來源，遇到本書沒細講的地方回去查最快</li>

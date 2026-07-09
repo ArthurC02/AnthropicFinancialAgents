@@ -6,10 +6,17 @@
 <title>第 3 章 — 開發環境與快速上手 | Financial Agents 開發指南</title>
 <link rel="stylesheet" href="../assets/book.css">
 </head>
-<body data-chapter="ch03">
+<body data-chapter="ch03" data-level="入門">
 <main>
   <h1><span class="ch-no">Chapter 3</span>開發環境與快速上手</h1>
-  <p class="lead">這一章把你從「clone 下來」帶到「10 支 agent 全部離線跑過一次、也看過一次真正要送去 Anthropic 雲端的部署 payload 長什麼樣」。全程不需要任何廠商金鑰——本機 mock MCP 會頂替 FactSet / CapIQ / 內部總帳這些資料源。讀完你會知道：裝什麼工具、第一個指令要跑什麼、改完程式碼的日常循環是什麼，以及第一天最常卡住的幾個地方怎麼解。</p>
+  <p class="lead">這一章帶你動手做第一次。起點是把程式碼倉庫（<span class="term" data-term="repo">repo</span>）抓到自己的電腦上；終點是 10 支 <span class="term" data-term="agent">agent</span> 全部在本機離線跑過一遍，而且親眼看過一次「真的要送去 Anthropic 雲端做部署（<span class="term" data-term="deploy">deploy</span>）時，送出去的內容長什麼樣」。全程不需要任何廠商金鑰——本機的 <span class="term" data-term="mock">mock</span>（假資料替身）<span class="term" data-term="mcp">MCP</span> 服務會頂替 FactSet、CapIQ、內部總帳這些真實資料源。讀完你會知道：要裝哪幾樣工具、第一個指令跑什麼、改完檔案的日常循環是什麼，以及第一天最常卡住的幾個地方怎麼解。就算你是第一次打開<span class="term" data-term="terminal">終端機</span>，也可以照著做。</p>
+
+  <div class="callout info prereq"><span class="co-title">🔑 開始前，你需要先懂</span>
+    <ul>
+      <li><a href="../ch00-basics/index.html#s5">終端機、mock、部署這些技術詞是什麼意思</a>（第 0 章第 5 節）——本章會一直用到這幾個詞。</li>
+      <li><a href="../ch01-introduction/index.html#s2">Plugin 與 CMA 兩種出貨形態的差別</a>（第 1 章第 2 節）——本章 3.4 節的 <span class="term" data-term="dry-run">dry-run</span> 部署，講的是 <span class="term" data-term="cma">CMA</span> 這一條路。</li>
+    </ul>
+  </div>
 
   <div class="toc"><div class="toc-title">本章內容</div>
     <ol>
@@ -24,14 +31,14 @@
   </div>
 
   <h2 id="s1">3.1　環境需求</h2>
-  <p>這個 repo 沒有 Node 建置鏈、沒有 Docker、也沒有資料庫——工具鏈刻意壓到最少。你需要裝的東西只有這幾樣：</p>
+  <p>先講結論：要裝的東西只有四樣，外加一把「只有真的要部署才用到」的金鑰。這個 repo 刻意把工具鏈壓到最少——沒有 Node 建置鏈、沒有 Docker、也沒有資料庫。對第一次接觸這類專案的人來說，這是好消息：不用先花半天架環境。只有最後「真的送上雲端」那一步，才需要 Anthropic 的 <span class="term" data-term="api">API</span> 金鑰。</p>
 
   <div class="table-wrap">
   <table>
     <thead><tr><th>工具</th><th>用在哪</th><th>版本／備註</th></tr></thead>
     <tbody>
       <tr><td><code>git</code></td><td>clone、pre-commit hook（<code>.githooks/</code>）</td><td>任何近期版本</td></tr>
-      <tr><td><code>python3</code> + <code>pyyaml</code></td><td><code>scripts/check.py</code>、<code>scripts/deploy-managed-agent.sh</code> 的 YAML→JSON 轉換、<code>scripts/sync-agent-skills.py</code></td><td><code>pip install pyyaml</code>；<code>mock-mcp/</code> 另外只多依賴一個套件：官方 <code>mcp</code> SDK（見 <code>mock-mcp/requirements.txt</code>）</td></tr>
+      <tr><td><code>python3</code> + <code>pyyaml</code></td><td><code>scripts/check.py</code>、<code>scripts/deploy-managed-agent.sh</code> 的 <span class="term" data-term="yaml">YAML</span>→<span class="term" data-term="json">JSON</span> 轉換、<code>scripts/sync-agent-skills.py</code></td><td><code>pip install pyyaml</code>；<code>mock-mcp/</code> 另外只多依賴一個套件：官方 <code>mcp</code> <span class="term" data-term="sdk">SDK</span>（見 <code>mock-mcp/requirements.txt</code>）</td></tr>
       <tr><td><code>jq</code></td><td><code>deploy-managed-agent.sh</code> 組 JSON payload、<code>test-cookbooks.sh</code> 驗證</td><td>沒裝這支腳本會直接 <code>exit 1</code>：「requires jq」</td></tr>
       <tr><td><code>bash</code></td><td>所有 <code>scripts/*.sh</code></td><td>Windows 請用 <strong>Git Bash</strong> 或 <strong>WSL</strong>，見下方提醒</td></tr>
       <tr><td><code>ANTHROPIC_API_KEY</code></td><td>只有「真的部署」（非 <code>--dry-run</code>）才需要</td><td><code>deploy-managed-agent.sh</code> 第 22 行：<code>[[ $DRY_RUN -eq 1 ]] || : "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"</code>——沒設就直接失敗，不會偷偷用假值</td></tr>
@@ -39,32 +46,51 @@
   </table>
   </div>
 
+  <p>看不懂表格裡的腳本名稱沒關係，後面每一節會逐一介紹。現在只要記住：<code>git</code>、<code>python3</code>（加裝 <code>pyyaml</code>）、<code>jq</code>、<code>bash</code>，四樣裝齊就能開工。</p>
+
   <div class="callout warn"><span class="co-title">Windows 開發者請注意</span>
   這個 repo 的自動化腳本（<code>scripts/*.sh</code>、<code>mock-mcp/README.md</code> 的操作說明）都是用 POSIX shell 寫的，直接在 PowerShell 或 cmd.exe 下無法執行。兩個選項：
   <ul style="margin:.5em 0 0 1.2em">
-    <li><strong>Git Bash</strong>：裝 Git for Windows 就會附。<code>bash scripts/test-cookbooks.sh</code> 這樣直接跑。<code>jq</code>、<code>python3</code> 要另外裝並確保在 Git Bash 的 <code>PATH</code> 上能找到。</li>
-    <li><strong>WSL</strong>：整個當一個 Linux 環境用，跟 CI（GitHub Actions 用的也是 Linux runner）行為最一致，推薦拿來跑 <code>test-cookbooks.sh</code> 這類「要跟 CI 結果對齊」的腳本。</li>
+    <li><strong>Git Bash</strong>：裝 Git for Windows 就會附。<code>bash scripts/test-cookbooks.sh</code> 這樣直接跑。<code>jq</code>、<code>python3</code> 要另外裝，並確認在 Git Bash 的 <code>PATH</code> 上找得到。</li>
+    <li><strong>WSL</strong>：整個當一個 Linux 環境用，跟 <span class="term" data-term="ci-cd">CI</span>（GitHub Actions 用的也是 Linux runner）行為最一致。推薦拿來跑 <code>test-cookbooks.sh</code> 這類「要跟 CI 結果對齊」的腳本。</li>
   </ul>
-  另外 <code>docs/QuickStart.md</code> 特別提醒：<code>/plugin marketplace add</code> 指令裡的路徑要用正斜線 <code>/</code>，反斜線 <code>\</code> 有時候會出問題（官方範例一律用正斜線）。
+  另外 <code>docs/QuickStart.md</code> 特別提醒：<code>/plugin marketplace add</code> 這個<span class="term" data-term="slash-command">斜線指令</span>裡的路徑要用正斜線 <code>/</code>，反斜線 <code>\</code> 有時候會出問題（官方範例一律用正斜線）。
   </div>
 
+  <p><strong>一句話總結：</strong>準備 <code>git</code>、<code>python3+pyyaml</code>、<code>jq</code>、<code>bash</code> 四樣工具就夠了；API 金鑰留到真部署那一刻再說，Windows 使用者一律改用 Git Bash 或 WSL。</p>
+
   <h2 id="s2">3.2　Clone 之後第一件事：<code>scripts/check.py</code></h2>
-  <p>Clone 下來、裝好 <code>pyyaml</code> 之後，第一個要跑的指令是：</p>
+  <p>Clone 下來、裝好 <code>pyyaml</code> 之後，第一個要跑的指令是一支「全倉庫健康檢查」。它的用途：在你動手改任何東西之前，先確認這份 repo 在你這台機器上是完整、乾淨的。做法：打開終端機（Windows 請開 Git Bash），先用 <code>cd</code> 移動到你 clone 下來的 repo 資料夾，然後貼上這行、按 Enter：</p>
   <div class="code-title">終端機</div>
   <pre><code>python3 scripts/check.py</code></pre>
 
-  <p>它做兩件事：</p>
+  <p>你應該會看到：檢查跑完、沒有列出任何錯誤，結束碼是 0（終端機沒噴紅字、沒出現「ERROR」）。如果第一行就印出 <code>ERROR: requires pyyaml (pip install pyyaml)</code>，代表 <code>pyyaml</code> 還沒裝好——先照訊息執行 <code>pip install pyyaml</code> 再跑一次。如果印出某個檔案路徑找不到或 YAML 壞掉，通常是 clone 不完整或你已經不小心改到檔案。</p>
+
+  <p>這支腳本一次做兩件事：</p>
   <div class="cards">
-    <div class="card"><h4>1. 掛好 pre-commit hook</h4><p>一進腳本就呼叫 <code>ensure_hooks_installed()</code>，把 <code>git config core.hooksPath .githooks</code> 設起來（等於 Husky 的 <code>prepare</code>，但沒有 Husky、沒有 Node）。失敗也不會讓腳本中斷——它是 best-effort。</p></div>
-    <div class="card"><h4>2. 對整個倉庫做 lint + 交叉引用檢查</h4><p>依序驗證：所有 <code>managed-agent-cookbooks/**/*.yaml</code> 能不能 parse、所有 <code>plugin.json</code>／<code>marketplace.json</code>／<code>steering-examples.json</code> 是不是合法 JSON、每個 <code>agents/*.md</code> 的 YAML frontmatter 有沒有 <code>name</code>／<code>description</code>、以及 <code>agent.yaml</code> 裡 <code>system.file</code>／<code>skills[].path</code>／<code>callable_agents[].manifest</code> 指到的檔案是否真的存在。乾淨則結束碼 0，有錯就結束碼 1。</p></div>
+    <div class="card"><h4>1. 掛好 pre-commit hook</h4><p>自動幫你設定 git 的「提交前檢查」掛勾（把 <code>git config core.hooksPath .githooks</code> 設起來），之後每次 commit 都會先自動把關。這一步就算失敗也不會讓腳本中斷——它是盡力而為（best-effort）。</p></div>
+    <div class="card"><h4>2. 對整個倉庫做 lint + 交叉引用檢查</h4><p>把所有設定檔逐一驗證：格式對不對、引用到的檔案存不存在。全部乾淨就以結束碼 0 收尾；有任何一項出錯，結束碼 1。</p></div>
+  </div>
+
+  <div class="adv" data-note="check.py 到底逐項檢查了什麼——想知道它擋下哪些錯誤類型再展開，跳過不影響操作">
+    <p><code>check.py</code> 的檢查順序如下：</p>
+    <ul>
+      <li>所有 <code>managed-agent-cookbooks/**/*.yaml</code> 能不能被 parse（YAML 語法、縮排）。</li>
+      <li>所有 <code>plugin.json</code>／<code>marketplace.json</code>／<code>steering-examples.json</code> 是不是合法 JSON。</li>
+      <li>每個 <code>agents/*.md</code> 的 YAML frontmatter 有沒有 <code>name</code>／<code>description</code> 兩個欄位。</li>
+      <li><code>agent.yaml</code> 裡 <code>system.file</code>／<code>skills[].path</code>／<code>callable_agents[].manifest</code> 指到的檔案是否真的存在。</li>
+    </ul>
+    <p>掛 hook 的部分是腳本一進來就呼叫 <code>ensure_hooks_installed()</code>——效果等同 Husky 的 <code>prepare</code>，但整個 repo 沒有 Husky、沒有 Node。</p>
   </div>
 
   <div class="callout info"><span class="co-title">為什麼要先跑這支</span>
-  它會提早抓到「路徑打錯」「YAML 縮排錯」這種低階錯誤——比等到 <code>deploy-managed-agent.sh</code> 半路噴 <code>system.file not found</code> 划算得多。<code>check.py</code> 沒有相依 <code>jq</code> 或任何 shell，唯一的外部套件是 <code>pyyaml</code>，所以它可以當「這台機器到底有沒有裝對開發依賴」的第一道測試。
+  它會提早抓到「路徑打錯」「YAML 縮排錯」這種低階錯誤——比等到 <code>deploy-managed-agent.sh</code> 半路噴 <code>system.file not found</code> 划算得多。<code>check.py</code> 不依賴 <code>jq</code> 或任何 shell，唯一的外部套件是 <code>pyyaml</code>，所以它也能當「這台機器到底有沒有裝對開發依賴」的第一道測試。
   </div>
 
+  <p><strong>一句話總結：</strong>clone 完先跑 <code>python3 scripts/check.py</code>——它一次幫你掛好提交前檢查、又把全倉庫的設定檔健檢一遍，沒紅字就代表可以放心往下走。</p>
+
   <h2 id="s3">3.3　離線跑通全部 10 支 agent：本機 mock MCP</h2>
-  <p>這 10 支 agent（<code>earnings-reviewer</code>、<code>gl-reconciler</code>、<code>kyc-screener</code>、<code>market-researcher</code>、<code>meeting-prep-agent</code>、<code>model-builder</code>、<code>month-end-closer</code>、<code>pitch-agent</code>、<code>statement-auditor</code>、<code>valuation-reviewer</code>）各自要接一到多個資料源——內部總帳、CapIQ、CRM……。<code>mock-mcp/</code> 資料夾用 <strong>Python + FastMCP</strong> 寫了 9 支假 server，各自從自己的 <code>data/*.csv</code> 餵資料，讓你不用任何廠商金鑰、不用碰銀行內部系統就能把整條流程跑一遍。</p>
+  <p>先講這一節在解決什麼：agent 要工作就得連資料源，但你第一天不會有 FactSet 訂閱，也不會有內部系統的存取權限。解法是用「替身」。這 10 支 agent（<code>earnings-reviewer</code>、<code>gl-reconciler</code>、<code>kyc-screener</code>、<code>market-researcher</code>、<code>meeting-prep-agent</code>、<code>model-builder</code>、<code>month-end-closer</code>、<code>pitch-agent</code>、<code>statement-auditor</code>、<code>valuation-reviewer</code>）各自要接一到多個資料源——內部<span class="term" data-term="gl">總帳（GL）</span>、基金淨值（<span class="term" data-term="nav">NAV</span>）、CRM、CapIQ……。<code>mock-mcp/</code> 資料夾用 <strong>Python + FastMCP</strong> 寫了 9 支假 server，各自從自己的 <code>data/*.csv</code> 餵資料。有了它們，你不需要任何廠商金鑰、不用碰銀行內部系統，就能把整條流程跑一遍。</p>
 
   <div class="table-wrap">
   <table>
@@ -83,7 +109,7 @@
   </table>
   </div>
 
-  <p><code>mock.env</code>（<code>mock-mcp/mock.env</code>）就是 CMA cookbook 那些 <code>${..._MCP_URL}</code> 佔位符的值來源——注意它裡面 <code>factset</code>／<code>daloopa</code> 兩行是**註解掉**的，因為 shipped 設定預設指真實廠商網址，要完全離線才需要手動解開。</p>
+  <p>那 agent 怎麼知道要連到這些假 server？靠一份<span class="term" data-term="env-var">環境變數</span>設定檔：<code>mock-mcp/mock.env</code>。它就是 CMA <span class="term" data-term="cookbook">cookbook</span> 裡那些 <code>${..._MCP_URL}</code> 佔位符的值來源。注意它裡面 <code>factset</code>／<code>daloopa</code> 兩行是<strong>註解掉</strong>的——因為出貨（shipped）設定預設指向真實廠商網址，要完全離線測試才需要手動解開註解。</p>
 
   <div class="code-title">mock-mcp/mock.env（節錄，只列出預設會生效的部分）</div>
   <pre><code>export GL_MCP_URL=http://127.0.0.1:8001/mcp          # internal-gl  (gl-reconciler, month-end-closer)
@@ -94,10 +120,10 @@ export CAPIQ_MCP_URL=http://127.0.0.1:8007/mcp       # capiq        (market-rese
 # export FACTSET_MCP_URL=http://127.0.0.1:8008/mcp
 # export DALOOPA_MCP_URL=http://127.0.0.1:8009/mcp</code></pre>
 
-  <p>完整離線起跑的順序（動畫流程圖，點「▶ 播放流程」逐步看）：</p>
+  <p>看不懂 <code>export</code> 語法沒關係：這份檔案的意思就是一張對照表——「叫這個名字的資料源，去這個網址找」。完整離線起跑的順序如下（動畫流程圖，點「▶ 播放流程」逐步看）：</p>
 
   <div class="flow" data-animate>
-    <div class="step"><span class="n">1</span><strong>Clone</strong><br>取得 repo，改本機用的 marketplace name（見 <code>docs/QuickStart.md</code> A0）避免撞 Anthropic 保留字</div>
+    <div class="step"><span class="n">1</span><strong>Clone</strong><br>取得 repo，改本機用的 <span class="term" data-term="marketplace">marketplace</span> name（見 <code>docs/QuickStart.md</code> A0）避免撞 Anthropic 保留字</div>
     <div class="arrow">→</div>
     <div class="step"><span class="n">2</span><strong>裝依賴</strong><br><code>pip install -r mock-mcp/requirements.txt</code>（只有 <code>mcp&gt;=1.2.0</code> 一個套件）+ <code>pyyaml</code>、<code>jq</code></div>
     <div class="arrow">→</div>
@@ -108,6 +134,8 @@ export CAPIQ_MCP_URL=http://127.0.0.1:8007/mcp       # capiq        (market-rese
     <div class="step"><span class="n">5</span><strong>真部署</strong><br>設好 <code>ANTHROPIC_API_KEY</code> 後拿掉 <code>--dry-run</code>，或改用 Cowork 外掛模式跟 agent 對話（<code>docs/QuickStart.md</code>）</div>
   </div>
 
+  <p>下面三個頁籤是最常用的三種跑法。提醒一件終端機新手常見的事：mock server 起來之後會「占住」那個終端機視窗持續執行（想全部關掉就按 Ctrl+C）；要接著跑別的指令，另開一個終端機視窗即可。</p>
+
   <div class="tabs">
     <div class="tab-bar"><button>起全部</button><button>只起某幾支</button><button>驗證資料</button></div>
     <div class="tab-panel">
@@ -116,31 +144,37 @@ export CAPIQ_MCP_URL=http://127.0.0.1:8007/mcp       # capiq        (market-rese
 # 每支固定 port：internal-gl 8001、subledger 8002、portfolio 8003、
 # nav 8004、crm 8005、screening 8006、capiq 8007、factset 8008、daloopa 8009
 # 服務開在 http://127.0.0.1:&lt;port&gt;/mcp，Ctrl+C 全部收掉</code></pre>
+      <p>成功的樣子：9 支 server 都起來、視窗持續掛著不會跳回提示字元。如果看到某支印出 <code>! &lt;name&gt; (:&lt;port&gt;) exited with code ...</code>，代表那個 port 被別的程式占走了——解法見 3.6 節「Port 佔用」。</p>
     </div>
     <div class="tab-panel">
       <div class="code-title">終端機</div>
       <pre><code>python3 mock-mcp/run_all_http.py --only internal-gl subledger
 # 例如只在跑 gl-reconciler 的時候不用開全部 9 支</code></pre>
+      <p>什麼時候用：你只測某一支 agent 時，用 <code>--only</code> 指定它需要的資料源就好，省資源也避開 port 衝突。</p>
     </div>
     <div class="tab-panel">
       <div class="code-title">終端機</div>
       <pre><code>python3 mock-mcp/selftest.py
 # 跑 54 項檢查：CSV 讀得進來、埋的測試雷（制裁名單命中、估值違反政策、
 # 對帳對不起來…）都還在。完全不需要裝任何相依套件，跟 mcp SDK 無關。</code></pre>
+      <p>成功的樣子：54 項全數通過、結束碼 0。這支不用先起 server、也不用裝任何套件，適合當「假資料有沒有被我改壞」的快速自我檢查。</p>
     </div>
   </div>
 
   <div class="callout tip"><span class="co-title">銀行工程師的實務意義</span>
-  這代表你可以在完全沒有 FactSet／CapIQ 訂閱、也還沒申請到內部總帳系統存取權限的第一週，就把 <code>gl-reconciler</code>（總帳對帳）、<code>kyc-screener</code>（KYC/AML 篩查）這類要碰內部系統的 agent 跑過一遍——只是資料是假的、還故意埋了雷（制裁名單命中、估值違反政策）讓你驗證 agent 的把關邏輯有沒有擋下來。等 IT 把真實 MCP server 接上，你只要換 URL（<code>${..._MCP_URL}</code> 或 <code>.mcp.json</code> 裡的 <code>url</code>），**不改 agent 裡的 server 名稱**，agent 本身完全不用重寫。
+  這代表你可以在完全沒有 FactSet／CapIQ 訂閱、也還沒申請到內部總帳系統存取權限的第一週，就把 <code>gl-reconciler</code>（總帳對帳）、<code>kyc-screener</code>（<span class="term" data-term="kyc">KYC</span>/<span class="term" data-term="aml">AML</span> 篩查）這類要碰內部系統的 agent 跑過一遍——只是資料是假的、還故意埋了雷（制裁名單命中、估值違反政策）讓你驗證 agent 的把關邏輯有沒有擋下來。等 IT 把真實 MCP server 接上，你只要換 URL（<code>${..._MCP_URL}</code> 或 <code>.mcp.json</code> 裡的 <code>url</code>），<strong>不改 agent 裡的 server 名稱</strong>，agent 本身完全不用重寫。
   </div>
 
+  <p><strong>一句話總結：</strong>mock MCP 就是 9 支「假資料替身」服務，讓你第一週就能離線跑通全部 agent；之後上線只換網址、不換名字，agent 一行都不用改。</p>
+
   <h2 id="s4">3.4　先看 payload 不真的送：<code>--dry-run</code></h2>
-  <p><code>scripts/deploy-managed-agent.sh</code> 把一份 <code>agent.yaml</code>（含它底下的 <code>subagents/*.yaml</code>）轉成 <code>POST /v1/agents</code> 要送的 JSON body：<code>system: {file: ...}</code> 會被讀檔內嵌成字串、<code>skills: [{path: ...}]</code> 會被打包上傳換成 <code>skill_id</code>、<code>callable_agents: [{manifest: ...}]</code> 會先遞迴建立 subagent 再換成 agent id 引用。真的打 API 之前，先用 <code>--dry-run</code> 看它到底組出了什麼：</p>
+  <p>先講概念：dry-run 就是「彩排」。部署腳本原本會把設定檔組成一包資料、送到 Anthropic 的雲端；加上 <code>--dry-run</code> 之後，它把那包資料組好、印在螢幕上給你看，但<strong>不會</strong>真的送出去。你可以先確認內容對不對，再決定要不要花那次真實的 API 呼叫。</p>
+  <p>技術上，<code>scripts/deploy-managed-agent.sh</code> 做的事是：把一份 <span class="term" data-term="agent-yaml">agent.yaml</span>（含它底下的 <code>subagents/*.yaml</code>，也就是子 agent——<span class="term" data-term="subagent">subagent</span>——的設定）轉成 <code>POST /v1/agents</code> 要送的 JSON body。轉換過程有三個替換：<code>system: {file: ...}</code> 會被讀檔、把整份 <span class="term" data-term="system-prompt">system prompt</span>（系統提示詞）內嵌成字串；<code>skills: [{path: ...}]</code> 會被打包上傳、換成 <code>skill_id</code>；<span class="term" data-term="callable-agents">callable_agents</span> 清單裡的 <code>manifest</code> 會先遞迴建立 subagent，再換成 agent id 引用。真的打 API 之前，先用 <code>--dry-run</code> 看它到底組出了什麼：</p>
 
   <div class="code-title">終端機</div>
   <pre><code>bash scripts/deploy-managed-agent.sh gl-reconciler --dry-run</code></pre>
 
-  <p>預期輸出形狀（<code>--dry-run</code> 分支：先遞迴建立完子 agent 再印出來，depth-1，subagent 在前、orchestrator 在最後一筆）：</p>
+  <p>你應該會看到一大段 JSON，形狀像下面這樣：先列出各個 subagent、最後一筆才是總指揮 <span class="term" data-term="orchestrator">orchestrator</span>（一層委派、subagent 在前、orchestrator 在最後一筆）。如果跑不起來，先檢查兩件事：<code>jq</code> 裝了沒、<code>pyyaml</code> 裝了沒——這支腳本開頭就會探測，缺哪個會直接印 <code>requires jq</code> 或 <code>requires python3 + pyyaml</code> 告訴你。</p>
 
   <div class="code-title">輸出（示意，實際欄位以真實 agent.yaml 內容為準）</div>
   <pre><code># --dry-run: resolved POST /v1/agents bodies (subagents first, orchestrator last)
@@ -170,9 +204,13 @@ export CAPIQ_MCP_URL=http://127.0.0.1:8007/mcp       # capiq        (market-rese
   }
 ]</code></pre>
 
-  <p>注意：<code>--dry-run</code> 完全不需要 <code>ANTHROPIC_API_KEY</code>（第 22 行的 <code>:?</code> 檢查被 <code>[[ $DRY_RUN -eq 1 ]] ||</code> 短路跳過），但還是需要 <code>jq</code> 和 <code>python3 + pyyaml</code>——沒裝這兩樣，腳本第 40～41 行會直接印 <code>requires jq</code> 或 <code>requires python3 + pyyaml</code> 後結束。</p>
+  <p>重點：<code>--dry-run</code> 完全不需要 <code>ANTHROPIC_API_KEY</code>，但仍然需要 <code>jq</code> 和 <code>python3 + pyyaml</code>。</p>
 
-  <p>整個 repo 有一支腳本專門把「dry-run 出來的 payload 是不是健康」這件事自動化檢查——<code>scripts/test-cookbooks.sh</code>：對每一個 <code>managed-agent-cookbooks/&lt;slug&gt;/</code> 跑一次 <code>--dry-run</code>，接著用 Python 檢查三件事：每個 body 的 <code>system</code> 不能是空字串、非最後一筆（也就是 subagent）不能帶 <code>callable_agents</code>（對應「只支援一層委派」的規則）、整份 JSON 裡不能出現 <code>output_schema</code>（它應該在部署時被 <code>del(.output_schema)</code> 拔掉、改用驗證 wrapper）。任何一支 cookbook 沒過，腳本結束碼非 0。</p>
+  <div class="adv" data-note="腳本行號級的細節：API key 檢查怎麼被短路、依賴探測在第幾行——除錯到腳本內部時才需要">
+    <p>API key 的檢查在 <code>deploy-managed-agent.sh</code> 第 22 行：<code>[[ $DRY_RUN -eq 1 ]] || : "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"</code>。dry-run 模式下，<code>||</code> 前半為真，後面的 <code>:?</code> 檢查被短路跳過，所以不需要金鑰；非 dry-run 時沒設金鑰會在腳本一開頭就失敗，不會跑到一半才發現。依賴探測在第 40～41 行：先 <code>command -v jq</code>，再 <code>python3 -c 'import yaml'</code>，缺哪個就印對應的 <code>requires ...</code> 訊息並以結束碼 1 收尾。</p>
+  </div>
+
+  <p>整個 repo 還有一支腳本，專門把「dry-run 出來的 payload 是不是健康」自動化成批次檢查——<code>scripts/test-cookbooks.sh</code>。它對每一個 <code>managed-agent-cookbooks/&lt;slug&gt;/</code> 跑一次 <code>--dry-run</code>，接著用 Python 檢查三件事：每個 body 的 <code>system</code> 不能是空字串；非最後一筆（也就是 subagent）不能帶 <code>callable_agents</code>——這對應「只支援一層委派，<span class="term" data-term="leaf-worker">leaf worker</span> 不能再叫 worker」的規則；整份 JSON 裡不能出現 <code>output_schema</code>——<span class="term" data-term="output-schema">輸出格式規範（output schema）</span>應該在部署時被 <code>del(.output_schema)</code> 拔掉、改用驗證 wrapper。任何一支 cookbook 沒過，腳本結束碼非 0。</p>
 
   <div class="code-title">終端機 — 一次跑完全部 cookbook 的 dry-run 健檢</div>
   <pre><code>bash scripts/test-cookbooks.sh
@@ -180,8 +218,12 @@ export CAPIQ_MCP_URL=http://127.0.0.1:8007/mcp       # capiq        (market-rese
 #   ✓ kyc-screener               4 bodies
 #   ...（10 支各印一行）</code></pre>
 
+  <p>你應該會看到 10 行、每行一個打勾。有任何一行沒過，先回頭跑 <code>python3 scripts/check.py</code> 看是不是引用檔案壞了，再檢查你最近改過的那支 cookbook 的 YAML。</p>
+
+  <p><strong>一句話總結：</strong>先用 <code>--dry-run</code> 彩排、看清楚要送出去的 payload 長相，再用 <code>test-cookbooks.sh</code> 把 10 支 cookbook 一次健檢——確認「送什麼」永遠排在「真的送」之前。</p>
+
   <h2 id="s5">3.5　日常開發循環：改檔 → sync → check → commit</h2>
-  <p>Skill 的「真本」只放在 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/</code>；<code>plugins/agent-plugins/&lt;slug&gt;/skills/</code> 底下的是**同步過去的副本**（給外掛打包用）。日常改動的順序固定是這四步：</p>
+  <p>先記住一個原則：<span class="term" data-term="skill">skill</span>（技能文件）的「真本」（<span class="term" data-term="canonical">canonical</span>，唯一正版來源）只放在 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/</code>——也就是各垂直領域（<span class="term" data-term="vertical">vertical</span>）的資料夾裡。<code>plugins/agent-plugins/&lt;slug&gt;/skills/</code> 底下的是<strong>同步過去的副本</strong>，給外掛（<span class="term" data-term="plugin">plugin</span>）打包用。你可以把它想成銀行的「總行版規章」與「各分行影本」：只改總行版，再統一發下去。日常改動的順序固定是這四步：</p>
 
   <div class="flow" data-animate>
     <div class="step"><span class="n">1</span><strong>改檔</strong><br>只改 <code>vertical-plugins/&lt;vertical&gt;/skills/&lt;name&gt;/SKILL.md</code>，不要直接動 <code>agent-plugins/</code> 底下的副本</div>
@@ -193,23 +235,33 @@ export CAPIQ_MCP_URL=http://127.0.0.1:8007/mcp       # capiq        (market-rese
     <div class="step"><span class="n">4</span><strong>commit</strong><br><code>git commit</code>——pre-commit hook 自動觸發 <code>version_bump.py --apply</code></div>
   </div>
 
-  <p><code>scripts/sync-agent-skills.py</code> 的邏輯很直白：先把 <code>vertical-plugins/*/skills/*</code> 全部掃一遍建索引（skill 名稱 → 來源路徑），再對每一個 <code>agent-plugins/*/skills/*</code> 副本找到對應來源，整包 <code>shutil.rmtree</code> + <code>shutil.copytree</code> 覆蓋掉。如果某個副本在 vertical 裡找不到同名來源，會印警告並以結束碼 1 收尾——這通常代表你砍掉了 vertical 裡的 skill 卻忘了同時處理 agent 包裡的殘留副本。</p>
+  <p>sync 那一步做的事：把真本整包複製過去、覆蓋掉每一份副本。跑完你應該會看到它順利結束；如果它印出警告並以結束碼 1 收尾，最常見的原因是你刪了 vertical 裡的某個 skill，卻忘了同時處理 agent 包裡的殘留副本。</p>
 
-  <div class="callout warn"><span class="co-title">為什麼不能直接改 agent-plugins/ 底下的副本</span>
-  <code>scripts/check.py</code> 的第 4 項檢查會比對 <code>agent-plugins/&lt;slug&gt;/skills/</code> 是否跟 <code>vertical-plugins/</code> 的來源一致，drift 掉會直接擋下 commit（pre-commit hook 跑的就是它）。改錯地方等於改了一份下次 sync 就會被覆蓋掉的副本。
+  <div class="adv" data-note="sync-agent-skills.py 的內部行為走讀：怎麼建索引、怎麼覆蓋——好奇腳本原理再展開">
+    <p><code>scripts/sync-agent-skills.py</code> 的邏輯很直白：先把 <code>vertical-plugins/*/skills/*</code> 全部掃一遍建索引（skill 名稱 → 來源路徑），再對每一個 <code>agent-plugins/*/skills/*</code> 副本找到對應來源，整包 <code>shutil.rmtree</code> + <code>shutil.copytree</code> 覆蓋掉。如果某個副本在 vertical 裡找不到同名來源，就印警告並以結束碼 1 收尾。</p>
   </div>
 
-  <p>commit 這一步，<code>.githooks/pre-commit</code>（<code>check.py</code> 首次執行時透過 <code>ensure_hooks_installed()</code> 幫你把 <code>git config core.hooksPath</code> 指過去）會呼叫 <code>python3 scripts/version_bump.py --apply</code>：對這個分支上「有 staged 改動、而且版本還沒領先 <code>main</code>」的每個 plugin，把 <code>.claude-plugin/plugin.json</code> 的 <code>version</code> patch 一次（<code>base+1</code>），並且是**冪等**的——同一個 plugin 在分支上 commit 好幾次也只會 bump 一次，不會每次 commit 都加一版。這件事之所以重要，是因為 Claude Code 只有在 plugin 的 <code>version</code> 變了才會重新推送更新給已安裝的使用者；忘記 bump，銀行內部已經裝好這支 agent 的同事就永遠收不到你的修正。PR 上還有 <code>version-bump</code> GitHub Action 當備援，擋掉沒有本機 hook（例如 CI 環境）的貢獻者漏掉這一步。單次 commit 想跳過就用 <code>git commit --no-verify</code>。</p>
+  <div class="callout warn"><span class="co-title">為什麼不能直接改 agent-plugins/ 底下的副本</span>
+  <code>scripts/check.py</code> 的第 4 項檢查會比對 <code>agent-plugins/&lt;slug&gt;/skills/</code> 是否跟 <code>vertical-plugins/</code> 的來源一致，<span class="term" data-term="drift">drift</span>（兩邊內容走鐘）會直接擋下 commit（pre-commit hook 跑的就是它）。改錯地方等於改了一份下次 sync 就會被覆蓋掉的副本——白做工。
+  </div>
+
+  <p>最後是 commit。這一步有個自動化行為要先知道：pre-commit hook（<code>check.py</code> 首次執行時透過 <code>ensure_hooks_installed()</code> 幫你把 <code>git config core.hooksPath</code> 指過去的那個）會呼叫 <code>python3 scripts/version_bump.py --apply</code>，自動幫你改到的 plugin 把 <code>.claude-plugin/plugin.json</code> 的 <code>version</code> 加一個 patch 版號。為什麼重要：Claude Code 只有在 plugin 的 <code>version</code> 變了，才會把更新推送給已經安裝的使用者。忘記 bump 版本，銀行內部已裝好這支 agent 的同事就永遠收不到你的修正。</p>
+
+  <div class="adv" data-note="版本 bump 的邊角規則：冪等、只 bump 一次、CI 備援、怎麼跳過——遇到版號行為出乎意料再展開">
+    <p><code>version_bump.py --apply</code> 的精確行為：對這個分支上「有 staged 改動、而且版本還沒領先 <code>main</code>」的每個 plugin，把 <code>version</code> patch 一次（<code>base+1</code>）。它是<strong>冪等</strong>的——同一個 plugin 在分支上 commit 好幾次也只會 bump 一次，不會每次 commit 都加一版；一條分支最終剛好領先 <code>main</code> 一個 patch。PR 上另有 <code>version-bump</code> GitHub Action 當備援，擋掉沒有本機 hook（例如 CI 環境）的貢獻者漏掉這一步。單次 commit 想跳過 hook，用 <code>git commit --no-verify</code>。</p>
+  </div>
+
+  <p><strong>一句話總結：</strong>永遠只改 vertical-plugins 裡的真本，然後照「sync → check → commit」的順序走；版本號 hook 會自動處理，讓已安裝的同事收得到更新。</p>
 
   <h2 id="s6">3.6　第一天常見卡點</h2>
-  <p>以下是新加入的工程師最常在第一天卡住的地方，逐一攤開（點開看解法）：</p>
+  <p>以下是新加入的工程師最常在第一天卡住的地方。先看症狀（錯誤訊息長怎樣）、再看解法，逐一攤開（點開看細節）：</p>
 
   <details><summary>缺 <code>jq</code></summary>
-  <p><code>deploy-managed-agent.sh</code> 第 40 行會先檢查 <code>command -v jq</code>，找不到就印 <code>requires jq</code> 並結束碼 1。Windows 上用 Git Bash 的話，<code>jq</code> 不會隨 Git 附帶，要另外下載可執行檔放進 <code>PATH</code>；WSL 裡則是 <code>apt install jq</code> 或對應套件管理器裝一下即可。</p>
+  <p>症狀：跑部署腳本時直接印 <code>requires jq</code> 並結束。<code>deploy-managed-agent.sh</code> 第 40 行會先檢查 <code>command -v jq</code>，找不到就結束碼 1。Windows 上用 Git Bash 的話，<code>jq</code> 不會隨 Git 附帶，要另外下載可執行檔放進 <code>PATH</code>；WSL 裡則是 <code>apt install jq</code> 或對應套件管理器裝一下即可。</p>
   </details>
 
   <details><summary>缺 <code>pyyaml</code></summary>
-  <p><code>scripts/check.py</code> 一開頭 <code>import yaml</code> 失敗會印 <code>ERROR: requires pyyaml (pip install pyyaml)</code> 並結束碼 2；<code>deploy-managed-agent.sh</code> 第 41 行也會先探測 <code>python3 -c 'import yaml'</code>，沒有就印 <code>requires python3 + pyyaml</code>。兩支腳本各自獨立檢查，錯誤訊息都直接告訴你要裝什麼——照著 <code>pip install pyyaml</code> 就好。如果機器上有多個 Python（例如系統內建 + pyenv），要確認裝的環境跟 <code>python3</code> 指到的是同一個。</p>
+  <p>症狀：<code>scripts/check.py</code> 一開頭 <code>import yaml</code> 失敗，印 <code>ERROR: requires pyyaml (pip install pyyaml)</code> 並結束碼 2；<code>deploy-managed-agent.sh</code> 第 41 行也會先探測 <code>python3 -c 'import yaml'</code>，沒有就印 <code>requires python3 + pyyaml</code>。兩支腳本各自獨立檢查，錯誤訊息都直接告訴你要裝什麼——照著 <code>pip install pyyaml</code> 就好。一個常見陷阱：機器上有多個 Python（例如系統內建 + pyenv）時，要確認 <code>pip</code> 裝進去的環境跟 <code>python3</code> 指到的是同一個。</p>
   </details>
 
   <details><summary>Windows 路徑（反斜線 vs 正斜線）</summary>
@@ -217,34 +269,36 @@ export CAPIQ_MCP_URL=http://127.0.0.1:8007/mcp       # capiq        (market-rese
   </details>
 
   <details><summary>Port 佔用（8001–8009）</summary>
-  <p><code>mock-mcp/run_all_http.py</code> 固定把 9 支 server 綁在 <code>127.0.0.1:8001</code> 到 <code>8009</code>。如果本機已有其他服務占用同一段 port，該支 server 會啟動失敗——腳本的監控迴圈會偵測到子行程提早退出並印 <code>! &lt;name&gt; (:&lt;port&gt;) exited with code &lt;code&gt;</code>，但不會自動換 port（沒有這個功能）。這種情況下只能先找出誰佔用了該 port 並關掉，或者改用 <code>--only</code> 只起你需要的那幾支、避開衝突的那個。</p>
+  <p>症狀：起 mock 時某支印 <code>! &lt;name&gt; (:&lt;port&gt;) exited with code &lt;code&gt;</code>。原因：<code>mock-mcp/run_all_http.py</code> 固定把 9 支 server 綁在 <code>127.0.0.1:8001</code> 到 <code>8009</code>，如果本機已有其他服務占用同一段 port，該支 server 會啟動失敗——腳本的監控迴圈會偵測到子行程提早退出並印出上面那行，但不會自動換 port（沒有這個功能）。解法只有兩條：找出誰佔用了該 port 並關掉，或者改用 <code>--only</code> 只起你需要的那幾支、避開衝突的那個。</p>
   </details>
 
   <details><summary>marketplace name 撞到官方保留字</summary>
-  <p>本機用 <code>/plugin marketplace add</code> 加這個 repo 時，如果 <code>.claude-plugin/marketplace.json</code> 的 <code>name</code> 還是原本的 <code>claude-for-financial-services</code>，會直接報錯——這個名字是 Anthropic 官方保留的，只能從 <code>anthropics</code> GitHub 組織的來源使用。解法是把本機這份 <code>name</code> 改成別的（<code>docs/QuickStart.md</code> 用 <code>fsi-local</code> 當範例），且**這個改動不要 commit**，純粹是本機安裝用的繞道。</p>
+  <p>症狀：本機用 <code>/plugin marketplace add</code> 加這個 repo 時直接報錯。原因：<code>.claude-plugin/marketplace.json</code> 的 <code>name</code> 還是原本的 <code>claude-for-financial-services</code>——這個名字是 Anthropic 官方保留的，只能從 <code>anthropics</code> GitHub 組織的來源使用。解法是把本機這份 <code>name</code> 改成別的（<code>docs/QuickStart.md</code> 用 <code>fsi-local</code> 當範例），且<strong>這個改動不要 commit</strong>，純粹是本機安裝用的繞道。</p>
   </details>
 
   <details><summary>忘記先跑 mock 就跑 dry-run 部署，以為兩者有關聯</summary>
-  <p>容易搞混的一點：<code>--dry-run</code> 只驗證「manifest 能不能正確組成 API payload」，跟 mock MCP server 有沒有在跑**完全無關**——它甚至不需要網路。反過來，MCP server 的 URL 是跑起來後跟 agent 對話時才會真的被打，dry-run 階段看到的 payload 內容不含任何 MCP 呼叫結果。兩件事分別對應「部署設定對不對」和「執行時資料源接不接得到」，不要混為一談去除錯。</p>
+  <p>容易搞混的一點：<code>--dry-run</code> 只驗證「manifest 能不能正確組成 API payload」，跟 mock MCP server 有沒有在跑<strong>完全無關</strong>——它甚至不需要網路。反過來，MCP server 的 URL 是 agent 跑起來、跟它對話時才會真的被打，dry-run 階段看到的 payload 內容不含任何 MCP 呼叫結果。兩件事分別對應「部署設定對不對」和「執行時資料源接不接得到」，除錯時不要混為一談。</p>
   </details>
 
   <details><summary>ANTHROPIC_API_KEY 沒設就想真部署</summary>
-  <p><code>deploy-managed-agent.sh</code> 第 22 行只在非 dry-run 時才檢查：<code>[[ $DRY_RUN -eq 1 ]] || : "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"</code>。忘記設就會在腳本一開頭直接失敗、不會跑到一半才發現。先用 <code>--dry-run</code> 把 payload 確認好，是最省事的除錯順序：先確定「送什麼」，再處理「要不要真的送」。</p>
+  <p>症狀：拿掉 <code>--dry-run</code> 真部署時，腳本一開頭就失敗、提示 <code>ANTHROPIC_API_KEY must be set</code>。<code>deploy-managed-agent.sh</code> 第 22 行只在非 dry-run 時才檢查：<code>[[ $DRY_RUN -eq 1 ]] || : "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"</code>——不會跑到一半才發現。最省事的除錯順序：先用 <code>--dry-run</code> 把 payload 確認好，先確定「送什麼」，再處理「要不要真的送」。</p>
   </details>
+
+  <p><strong>一句話總結：</strong>第一天的卡點九成是「工具沒裝齊、路徑寫法、port 被占、名字撞保留字」這四類；每一種都有明確的錯誤訊息可以對號入座，照上面的解法處理即可。</p>
 
   <h2 id="s7">3.7　本章重點與檢核清單</h2>
 
   <div class="callout tip"><span class="co-title">本章重點</span>
-  這個 repo 的開發環境刻意做得很薄：沒有建置系統，只有 <code>git</code>／<code>python3+pyyaml</code>／<code>jq</code>／<code>bash</code> 四樣工具。<code>scripts/check.py</code> 是第一個要跑的指令，它同時完成「掛 pre-commit hook」與「lint 全倉庫交叉引用」兩件事。<code>mock-mcp/</code> 讓 10 支 agent 在沒有任何廠商金鑰、沒有內部系統存取權限的情況下就能離線跑通；<code>deploy-managed-agent.sh --dry-run</code> 讓你在花一次真實 API 呼叫之前，先確認 manifest 真的會被組成合法、depth-1、無 <code>output_schema</code> 外洩的 payload。日常改動永遠走「改 vertical-plugins → sync-agent-skills.py → check.py → commit」這個順序，commit 時 pre-commit hook 會自動幫改到的 plugin patch-bump 版本，讓已安裝的使用者收得到更新。
+  這個 repo 的開發環境刻意做得很薄：沒有建置系統，只有 <code>git</code>／<code>python3+pyyaml</code>／<code>jq</code>／<code>bash</code> 四樣工具。<code>scripts/check.py</code> 是第一個要跑的指令，它同時完成「掛 pre-commit hook」與「lint 全倉庫交叉引用」兩件事。<code>mock-mcp/</code> 讓 10 支 agent 在沒有任何廠商金鑰、沒有內部系統存取權限的情況下就能離線跑通；<code>deploy-managed-agent.sh --dry-run</code> 讓你在花一次真實 API 呼叫之前，先確認 manifest 真的會被組成合法、一層委派、無 <code>output_schema</code> 外洩的 payload。日常改動永遠走「改 vertical-plugins → sync-agent-skills.py → check.py → commit」這個順序，commit 時 pre-commit hook 會自動幫改到的 plugin patch-bump 版本，讓已安裝的使用者收得到更新。
   </div>
 
-  <p>第一天必完成事項：</p>
+  <p>第一天必完成事項（可以點擊打勾，進度會自動記住）：</p>
   <ul class="checklist">
     <li>裝好 <code>git</code>、<code>python3</code>（含 <code>pyyaml</code>）、<code>jq</code>，Windows 上確認能用 Git Bash 或 WSL 跑 <code>bash</code> 腳本</li>
     <li>Clone 後跑過一次 <code>python3 scripts/check.py</code>，確認乾淨、且 <code>core.hooksPath</code> 已指到 <code>.githooks</code></li>
     <li>跑過 <code>pip install -r mock-mcp/requirements.txt</code> 並成功用 <code>python3 mock-mcp/run_all_http.py</code> 起過全部 9 支 mock server</li>
     <li>跑過 <code>python3 mock-mcp/selftest.py</code>，確認 54 項檢查全過</li>
-    <li>對至少一支 agent（例如 <code>gl-reconciler</code>）跑過 <code>bash scripts/deploy-managed-agent.sh gl-reconciler --dry-run</code>，看懂輸出的 depth-1 結構</li>
+    <li>對至少一支 agent（例如 <code>gl-reconciler</code>）跑過 <code>bash scripts/deploy-managed-agent.sh gl-reconciler --dry-run</code>，看懂輸出的一層委派結構（subagent 在前、orchestrator 最後）</li>
     <li>跑過 <code>bash scripts/test-cookbooks.sh</code>，確認 10 支 cookbook 全部 dry-run 健檢通過</li>
     <li>知道 skill 真本在哪（<code>vertical-plugins/</code>）、改完要跑 <code>sync-agent-skills.py</code>，不能直接改 <code>agent-plugins/</code> 副本</li>
   </ul>

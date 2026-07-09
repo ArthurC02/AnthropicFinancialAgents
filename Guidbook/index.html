@@ -17,8 +17,9 @@
     padding: .85rem 1.2rem; margin: .5rem 0; transition: border-color .15s, transform .15s; }
   .ch-list a:hover { border-color: var(--accent); transform: translateX(4px); }
   .ch-list .no { font-weight: 800; color: var(--accent); min-width: 2.4em; font-size: .95rem; }
+  .ch-list .badge { flex: 0 0 auto; }
   .ch-list .desc { color: var(--fg-soft); font-size: .85rem; margin-left: auto; text-align: right;
-    max-width: 45%; }
+    max-width: 42%; }
   @media (max-width: 640px) { .ch-list .desc { display: none; } }
 </style>
 </head>
@@ -26,48 +27,91 @@
 <main>
   <div class="hero">
     <h1>Anthropic Financial Agents<br>完整開發指南</h1>
-    <p class="sub">從零開始，把 Claude Managed Agents（CMA）開發、整合、部署到銀行的 AWS 環境，並讓它安全地上線營運 — 一本寫給工程師的實戰手冊。</p>
+    <p class="sub">看懂、客製、部署 Anthropic 的 10 支金融 AI Agent——從零基礎的概念導讀，到把 Claude Managed Agents（CMA）安全地接進銀行系統上線營運。不管你是 PM、剛入行的工程師還是架構師，都有一條走得完的路。</p>
   </div>
 
   <div class="callout info"><span class="co-title">這本書怎麼讀</span>
-    第 1–3 章建立地基；第 4–6 章解決「10 個 agent 不夠用」的問題（客製、新開發、接銀行系統）；第 7–8 章上雲與編排；第 9–12 章讓它能在受監理的銀行環境長期活下去。附錄是速查工具。全書內容以本 repo 的 <code>managed-agent-cookbooks/</code> 與 <code>scripts/</code> 實際程式碼為準。
+    完全沒接觸過 AI agent？從<strong>第 0 章</strong>開始，20 分鐘建立所有必要概念。全書提供三個閱讀輔助：<strong>🌱 初學者模式</strong>（右上角，預設開啟——進階段落自動收合，主線更好讀）、<strong>點擊虛線術語</strong>即時看白話解釋、<strong>🔍 全文搜尋</strong>（快捷鍵 <code>/</code>）。內容以本 repo 的 <code>managed-agent-cookbooks/</code> 與 <code>scripts/</code> 實際程式碼為準。
   </div>
+
+  <div class="part-title">選一條路 — 依你的角色開始</div>
+  <div class="paths">
+    <div class="path">
+      <h4>🌱 我想搞懂這是什麼</h4>
+      <div class="who">PM／業務／法遵，不寫程式也能讀完</div>
+      <div class="route">
+        <a href="ch00-basics/index.html">第0章</a><span class="sep">→</span>
+        <a href="ch01-introduction/index.html">第1章</a><span class="sep">→</span>
+        <a href="ch09-security-compliance/index.html">第9章</a><span class="sep">→</span>
+        <a href="ch10-governance/index.html">第10章</a>
+        <br>開著初學者模式讀，程式碼區塊可整段跳過。
+      </div>
+    </div>
+    <div class="path">
+      <h4>🔧 我想動手跑起來</h4>
+      <div class="who">初級工程師，第一次接觸 agent 開發</div>
+      <div class="route">
+        <a href="ch00-basics/index.html">第0章</a><span class="sep">→</span>
+        <a href="ch01-introduction/index.html">第1章</a><span class="sep">→</span>
+        <a href="ch02-architecture/index.html">第2章</a><span class="sep">→</span>
+        <a href="ch03-getting-started/index.html">第3章</a>
+        <br>第 3 章用假資料零金鑰跑通第一支 agent；卡住查<a href="appendix/index.html#s3">附錄疑難排解</a>。
+      </div>
+    </div>
+    <div class="path">
+      <h4>🚀 我要客製與上線</h4>
+      <div class="who">中高級工程師／架構師</div>
+      <div class="route">
+        <a href="ch04-customizing/index.html">第4章</a><span class="sep">→</span>
+        <a href="ch05-new-agent/index.html">第5章</a><span class="sep">→</span>
+        <a href="ch06-bank-integration/index.html">第6章</a><span class="sep">→</span>
+        <a href="ch07-aws-deployment/index.html">第7章</a><span class="sep">→</span>
+        <a href="ch08-orchestration/index.html">第8章</a>
+        <br>上線前把 <a href="ch09-security-compliance/index.html">9</a>–<a href="ch12-testing-evals/index.html">12</a> 章當必修；建議切到完整模式。
+      </div>
+    </div>
+  </div>
+
+  <div class="part-title">Part 0 — 零基礎起點</div>
+  <ul class="ch-list">
+    <li><a href="ch00-basics/index.html"><span class="no">00</span>基礎概念：寫給第一次接觸 AI Agent 的你<span class="badge green">入門</span><span class="desc">LLM、agent、四塊積木、兩種上工方式</span></a></li>
+  </ul>
 
   <div class="part-title">Part I — 認識這套方案</div>
   <ul class="ch-list">
-    <li><a href="ch01-introduction/index.html"><span class="no">01</span>導論：Anthropic Financial Agents 是什麼<span class="desc">10 個 agent、Plugin vs CMA、銀行落點與缺口</span></a></li>
-    <li><a href="ch02-architecture/index.html"><span class="no">02</span>核心概念與 CMA 架構<span class="desc">agent.yaml 解剖、callable_agents、安全分層</span></a></li>
-    <li><a href="ch03-getting-started/index.html"><span class="no">03</span>開發環境與快速上手<span class="desc">mock-mcp 離線跑通、dry-run、開發循環</span></a></li>
+    <li><a href="ch01-introduction/index.html"><span class="no">01</span>導論：Anthropic Financial Agents 是什麼<span class="badge green">入門</span><span class="desc">10 個 agent、Plugin vs CMA、銀行落點與缺口</span></a></li>
+    <li><a href="ch02-architecture/index.html"><span class="no">02</span>核心概念與 CMA 架構<span class="badge amber">中階</span><span class="desc">agent.yaml 解剖、callable_agents、安全分層</span></a></li>
+    <li><a href="ch03-getting-started/index.html"><span class="no">03</span>開發環境與快速上手<span class="badge green">入門</span><span class="desc">mock-mcp 離線跑通、dry-run、開發循環</span></a></li>
   </ul>
 
   <div class="part-title">Part II — 開發：讓 Agent 符合你的業務</div>
   <ul class="ch-list">
-    <li><a href="ch04-customizing/index.html"><span class="no">04</span>客製化既有 Agent<span class="desc">改 prompt / skill / 模型的正確姿勢</span></a></li>
-    <li><a href="ch05-new-agent/index.html"><span class="no">05</span>從零開發一個新 Agent<span class="desc">授信覆核 Agent 完整 walkthrough</span></a></li>
-    <li><a href="ch06-bank-integration/index.html"><span class="no">06</span>整合銀行內部系統（MCP）<span class="desc">為核心帳務、徵信系統寫 MCP server</span></a></li>
+    <li><a href="ch04-customizing/index.html"><span class="no">04</span>客製化既有 Agent<span class="badge amber">中階</span><span class="desc">改 prompt / skill / 模型的正確姿勢</span></a></li>
+    <li><a href="ch05-new-agent/index.html"><span class="no">05</span>從零開發一個新 Agent<span class="badge red">進階</span><span class="desc">授信覆核 Agent 完整 walkthrough</span></a></li>
+    <li><a href="ch06-bank-integration/index.html"><span class="no">06</span>整合銀行內部系統（MCP）<span class="badge red">進階</span><span class="desc">為核心帳務、徵信系統寫 MCP server</span></a></li>
   </ul>
 
   <div class="part-title">Part III — 上雲與串接</div>
   <ul class="ch-list">
-    <li><a href="ch07-aws-deployment/index.html"><span class="no">07</span>部署：CMA 與 AWS 架構<span class="desc">deploy 腳本解析、VPC/Secrets/CI-CD 參考架構</span></a></li>
-    <li><a href="ch08-orchestration/index.html"><span class="no">08</span>編排與跨 Agent 協作<span class="desc">steering event、handoff、Step Functions 映射</span></a></li>
+    <li><a href="ch07-aws-deployment/index.html"><span class="no">07</span>部署：CMA 與 AWS 架構<span class="badge red">進階</span><span class="desc">deploy 腳本解析、VPC/Secrets/CI-CD 參考架構</span></a></li>
+    <li><a href="ch08-orchestration/index.html"><span class="no">08</span>編排與跨 Agent 協作<span class="badge red">進階</span><span class="desc">steering event、handoff、Step Functions 映射</span></a></li>
   </ul>
 
   <div class="part-title">Part IV — 治理與長期營運</div>
   <ul class="ch-list">
-    <li><a href="ch09-security-compliance/index.html"><span class="no">09</span>安全與金融合規<span class="desc">最小權限、PII、prompt injection、法遵對映</span></a></li>
-    <li><a href="ch10-governance/index.html"><span class="no">10</span>治理與模型風險管理<span class="desc">變更管理、模型升級、agent 台帳、HITL</span></a></li>
-    <li><a href="ch11-operations/index.html"><span class="no">11</span>維運、監控與成本<span class="desc">可觀測性、runbook、回滾、token 成本</span></a></li>
-    <li><a href="ch12-testing-evals/index.html"><span class="no">12</span>測試與評估<span class="desc">測試金字塔、steering-examples 即測試、評測集</span></a></li>
+    <li><a href="ch09-security-compliance/index.html"><span class="no">09</span>安全與金融合規<span class="badge amber">中階</span><span class="desc">最小權限、PII、prompt injection、法遵對映</span></a></li>
+    <li><a href="ch10-governance/index.html"><span class="no">10</span>治理與模型風險管理<span class="badge amber">中階</span><span class="desc">變更管理、模型升級、agent 台帳、HITL</span></a></li>
+    <li><a href="ch11-operations/index.html"><span class="no">11</span>維運、監控與成本<span class="badge amber">中階</span><span class="desc">可觀測性、runbook、回滾、token 成本</span></a></li>
+    <li><a href="ch12-testing-evals/index.html"><span class="no">12</span>測試與評估<span class="badge amber">中階</span><span class="desc">測試金字塔、steering-examples 即測試、評測集</span></a></li>
   </ul>
 
   <div class="part-title">附錄</div>
   <ul class="ch-list">
-    <li><a href="appendix/index.html"><span class="no">A</span>詞彙表・指令速查・疑難排解・上線總檢核<span class="desc">卡住先翻這裡</span></a></li>
+    <li><a href="appendix/index.html"><span class="no">A</span>詞彙表・指令速查・疑難排解・上線總檢核<span class="badge blue">工具書</span><span class="desc">卡住先翻這裡</span></a></li>
   </ul>
 
   <div class="callout tip"><span class="co-title">給趕時間的人</span>
-    只想先跑起來 → 第 3 章。要開發銀行自己的 agent → 第 5、6 章。AWS 架構師找你對齊 → 第 7 章。法遵/風管來問話 → 第 9、10 章。
+    只想先跑起來 → 第 3 章。要開發銀行自己的 agent → 第 5、6 章。AWS 架構師找你對齊 → 第 7 章。法遵/風管來問話 → 第 9、10 章。名詞忘了 → 附錄詞彙表，或按 <code>/</code> 直接搜。
   </div>
 </main>
 <script src="assets/book.js"></script>

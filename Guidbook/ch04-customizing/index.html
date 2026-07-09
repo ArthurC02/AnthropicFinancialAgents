@@ -6,10 +6,17 @@
 <title>第 4 章 — 客製化既有 Agent | Financial Agents 開發指南</title>
 <link rel="stylesheet" href="../assets/book.css">
 </head>
-<body data-chapter="ch04">
+<body data-chapter="ch04" data-level="中階">
 <main>
   <h1><span class="ch-no">Chapter 4</span>客製化既有 Agent</h1>
-  <p class="lead">大多數銀行第一次碰這個 repo,需求都不是「做一支全新的 agent」,而是「把現成的 gl-reconciler 改成我們家的科目表」或「kyc-screener 要加金管會名單」。這一章講清楚:什麼情況下改劇本就夠、改哪個檔案、改完要跑哪三道檢查,以及一份劇本同時餵給 Cowork 外掛和 Claude Managed Agent(CMA)雲端版是怎麼運作的。</p>
+  <p class="lead">大多數銀行第一次碰這個 <span class="term" data-term="repo">repo</span>(程式碼倉庫),需求都不是「做一支全新的 <span class="term" data-term="agent">agent</span>」,而是「把現成的 gl-reconciler 改成我們家的科目表」或「kyc-screener 要加金管會名單」。這一章講清楚:什麼情況下改劇本就夠、改哪個檔案、改完要跑哪三道檢查,以及一份劇本同時餵給 Cowork <span class="term" data-term="plugin">外掛(plugin)</span>和 Claude Managed Agent(<span class="term" data-term="cma">CMA</span>)雲端版是怎麼運作的。你可以把這章想成「幫既有員工換一本新的工作手冊」——不是招募新人,而是讓同一個人照你們家的規矩做事。</p>
+
+  <div class="callout info prereq"><span class="co-title">🔑 開始前,你需要先懂</span>
+    <ul>
+      <li><a href="../ch02-architecture/index.html">agent 的組成</a>(第 2 章:劇本、skill、工具是怎麼拼在一起的——本章要改的就是這些零件)</li>
+      <li><a href="../ch03-getting-started/index.html">先能跑起來</a>(第 3 章:先讓現成的 agent 在你手上動起來,再談客製,才有「改前 vs 改後」可以比)</li>
+    </ul>
+  </div>
 
   <div class="toc"><div class="toc-title">本章內容</div>
     <ol>
@@ -23,7 +30,8 @@
   </div>
 
   <h2 id="s1">1. 調整就夠,還是該開新 Agent?</h2>
-  <p>先講結論:<strong>「調整」改的是同一支 agent 的內容(系統提示、skill、模型、CMA 結構);「開新 agent」是另立一份 <code>agents/&lt;slug&gt;.md</code> 劇本、另一組信任邊界。</strong> 判斷不是看改動大小,是看下面三個問題有沒有變:</p>
+  <p>先講結論:<strong>「調整」改的是同一支 agent 的內容;「開新 agent」是另立一份劇本、另一組信任邊界。</strong>用銀行的話說:同一位行員換一本新的作業手冊,叫調整;要做的事根本是另一個職位,才需要招募新人。技術上,「調整」動的是系統提示(<span class="term" data-term="system-prompt">system prompt</span>)、<span class="term" data-term="skill">skill</span>、模型、CMA 結構;「開新 agent」則是另立一份 <code>agents/&lt;slug&gt;.md</code> 劇本。</p>
+  <p>怎麼判斷?<strong>不是看改動大小,是看下面三個問題有沒有變。</strong>沿著這個小小的決策樹點開來走一遍:</p>
 
   <details>
     <summary>問題 1:「What you produce」清單裡的東西,還是同一種嗎?</summary>
@@ -37,25 +45,26 @@
       </details>
       <details>
         <summary>→ 變了(要碰一種全新類型的外部文件/新工具),重新畫安全分層</summary>
-        <p>通常還不用整支開新 agent — 可以在同一支 agent 裡新增一個 reader 分層(新的 leaf worker,即第 2 章講過的「葉子工人」,一樣 Read/Grep only、無 MCP),沿用第 9 章的「碰髒資料的 worker 不給寫檔權」原則即可,不必離開這一章的範圍。</p>
+        <p>通常還不用整支開新 agent — 可以在同一支 agent 裡新增一個 reader 分層(新的 <span class="term" data-term="leaf-worker">leaf worker</span>,即第 2 章講過的「葉子工人」,一樣 Read/Grep only、無 <span class="term" data-term="mcp">MCP</span>),沿用第 9 章的「碰髒資料的 worker 不給寫檔權」原則即可,不必離開這一章的範圍。</p>
       </details>
     </details>
     <details>
       <summary>→ 不是同一種產出,開新 Agent(見第 5 章)</summary>
-      <p>另立 <code>agents/&lt;slug&gt;.md</code>、另一組 <code>tools:</code>、需要的話再開一份 CMA cookbook。不要把新產出硬塞進既有 agent 的 Workflow — 那樣會讓既有的安全分層(哪個 tier 碰髒資料)變得說不清楚。</p>
+      <p>另立 <code>agents/&lt;slug&gt;.md</code>、另一組 <code>tools:</code>、需要的話再開一份 CMA <span class="term" data-term="cookbook">cookbook</span>。不要把新產出硬塞進既有 agent 的 Workflow — 那樣會讓既有的安全分層(哪個 tier 碰髒資料)變得說不清楚。</p>
     </details>
   </details>
 
-  <p>docs/Customizing.md 把這句話寫成一句記法:<strong>「角色/流程/守則」改劇本(兩邊生效);「怎麼做一件事」改 SKILL.md(要 sync);「分工/權限/結構」改 CMA 的 yaml(只 CMA)。</strong>下一節就照這三類展開,另外加一層「模型」單獨講,因為它常被誤會成要改程式碼,其實多數時候只是換 prompt 裡的假設。</p>
+  <p>docs/Customizing.md 把這句話寫成一句記法:<strong>「角色/流程/守則」改劇本(兩邊生效);「怎麼做一件事」改 SKILL.md(要 sync);「分工/權限/結構」改 CMA 的 <span class="term" data-term="yaml">yaml</span>(只 CMA)。</strong>下一節就照這三類展開,另外加一層「模型」單獨講——它常被誤會成要改程式碼,其實多數時候只是換 <span class="term" data-term="prompt">prompt</span> 裡的假設。</p>
+  <p><strong>一句話總結:</strong>先問「產出的東西是不是同一種、信任邊界有沒有變」,兩個答案都是「沒變」就用本章的調整手法,不必開新 agent。</p>
 
   <h2 id="s2">2. 可調整的四個層面</h2>
-  <p>四個層面對應到四種檔案、兩種影響範圍(只影響 plugin 外掛版,還是 plugin + CMA 雲端版都動到)。先看總表,後面逐一展開。</p>
+  <p>四個層面對應到四種檔案、兩種影響範圍:有的改一次「外掛版和雲端版都生效」,有的「只動雲端版」。先看總表,後面逐一展開。看不懂表格裡的路徑沒關係,底下每一層都會用白話重講一次。</p>
 
   <div class="table-wrap">
     <table>
       <thead><tr><th>層面</th><th>動這個檔</th><th>影響範圍</th><th>要注意</th></tr></thead>
       <tbody>
-        <tr><td>① 系統提示</td><td><code>plugins/agent-plugins/&lt;slug&gt;/agents/&lt;slug&gt;.md</code></td><td><span class="badge blue">plugin + CMA</span></td><td>canonical 來源,CMA 的 <code>agent.yaml</code> 用 <code>system.file</code> 指回它</td></tr>
+        <tr><td>① 系統提示</td><td><code>plugins/agent-plugins/&lt;slug&gt;/agents/&lt;slug&gt;.md</code></td><td><span class="badge blue">plugin + CMA</span></td><td><span class="term" data-term="canonical">canonical</span>(唯一真本)來源,CMA 的 <code>agent.yaml</code> 用 <code>system.file</code> 指回它</td></tr>
         <tr><td>② Skill</td><td><code style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/&lt;vertical&gt;/skills/&lt;name&gt;/SKILL.md</code>(真本)</td><td><span class="badge blue">plugin + CMA</span></td><td>改完必須 <code>sync-agent-skills.py</code>,否則 <code>check.py</code> 擋</td></tr>
         <tr><td>③ 模型</td><td>視 Layer:SKILL.md(算法)/ agent.md 的 Skills 行(掛哪些)/ prompt(假設數字)</td><td><span class="badge blue">plugin + CMA</span> 或 <span class="badge amber">單次</span></td><td>多數需求其實是 Layer 3(換假設),在 prompt 講就好</td></tr>
         <tr><td>④ CMA 專屬結構</td><td><code>managed-agent-cookbooks/&lt;slug&gt;/agent.yaml</code>、<code>subagents/*.yaml</code>、<code>steering-examples.json</code></td><td><span class="badge amber">只 CMA</span></td><td>system.append、tools 開關、sub-agent 分工</td></tr>
@@ -64,36 +73,41 @@
   </div>
 
   <h3>① 系統提示 — 一份劇本兩邊生效</h3>
-  <p>以 <code>gl-reconciler</code> 為例,<code style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/gl-reconciler/agents/gl-reconciler.md</code> 是唯一的 canonical 系統提示,裡面有 <code>## Workflow</code>、<code>## Guardrails</code>、Skills 清單。CMA 版不會另外寫一份提示 — <code style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/gl-reconciler/agent.yaml</code> 直接指回它:</p>
+  <p>先講白話:系統提示就像一個職位的「職位說明書」。這份說明書只有一份正本;不管這位員工是坐在你電腦裡(plugin 外掛版)還是派駐雲端(CMA 版),看的都是同一份。</p>
+  <p>以 <code>gl-reconciler</code> 為例,<code style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/gl-reconciler/agents/gl-reconciler.md</code> 是唯一的 canonical 系統提示,裡面有 <code>## Workflow</code>、<code>## Guardrails</code>、Skills 清單。CMA 版不會另外寫一份提示 — <code style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/gl-reconciler/agent.yaml</code> 直接指回它。下面這段設定就是「指回去」的寫法:</p>
 
   <div class="code-title">managed-agent-cookbooks/gl-reconciler/agent.yaml</div>
   <pre><code>system:
   file: ../../plugins/agent-plugins/gl-reconciler/agents/gl-reconciler.md
   append: "You are running headless. Produce files in ./out/; do not assume an open Office document."</code></pre>
 
-  <p>所以改 Workflow 的某一步(例如把「人工停點」搬到別的步驟),或改 Guardrails 的某條守則,<strong>兩種殼(plugin 外掛、CMA 雲端版)都同時生效</strong>,不用兩邊各改一次。CMA 額外用 <code>append</code> 補一句「無頭模式」的行為差異 — 這是 CMA 專屬的微調,見第 ④ 層。</p>
+  <p>注意 <code>file:</code> 那行——它是一個相對路徑,直接指向 plugin 那份劇本,這就是「一份劇本兩邊生效」的機關。所以改 Workflow 的某一步(例如把「人工停點」搬到別的步驟),或改 Guardrails 的某條守則,<strong>兩種殼(plugin 外掛、CMA 雲端版)都同時生效</strong>,不用兩邊各改一次。CMA 額外用 <code>append</code> 補一句 <span class="term" data-term="headless">headless</span>(無頭模式,沒有人開著畫面看)的行為差異 — 這是 CMA 專屬的微調,見第 ④ 層。</p>
 
   <h3>② Skill — 真本→sync→check 鐵律</h3>
-  <p>Skill 的內容(門檻、公式、判斷規則)住在 <code style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/&lt;vertical&gt;/skills/&lt;name&gt;/SKILL.md</code>,agent 包底下的 <code>plugins/agent-plugins/&lt;slug&gt;/skills/&lt;name&gt;/</code> 只是「vendored copy(搬運副本)」。<code>scripts/sync-agent-skills.py</code> 的邏輯很直白:掃過所有 vertical 底下的 skill 目錄建索引,對每一個已存在的 agent 包 skill 目錄,<code>shutil.rmtree</code> 整個刪掉再 <code>shutil.copytree</code> 從真本重貼一次。</p>
-  <p>兩個容易踩的坑,都來自這個機制:</p>
-  <ul class="checklist">
-    <li>直接改 agent 包裡的副本(不是真本)— <code>check.py</code> 的 4b 步驟會用 <code>filecmp.dircmp</code> 逐檔比對真本與副本,有差異就擋 commit</li>
-    <li>指望 sync 會「新增」skill 到 agent 包 — 它只更新<em>已存在</em>的目錄;第一次要用的 skill,得先手動把真本整個資料夾複製進 agent 包一次,之後 sync 才會接手維護</li>
-  </ul>
-  <p>標準流程一定是這三步:</p>
+  <p>先用一個比喻把這套紀律講清楚。<strong>想像總行保管一份「作業手冊母版」,各分行手上放的是影印本。</strong>要改規定,永遠只改總行那份母版;改完由總務統一重新影印、發到各分行(這就是 sync);最後稽核逐頁比對「分行影本」和「母版」有沒有不一樣(這就是 check)。如果有分行自己拿筆改影本,下次稽核就會被抓——因為影本和母版對不起來。</p>
+  <p>對回技術上:skill 的內容(門檻、公式、判斷規則)住在 <code style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/&lt;vertical&gt;/skills/&lt;name&gt;/SKILL.md</code>,這是母版,repo 裡稱為「真本」;<span class="term" data-term="vertical">vertical</span> 指的是各業務垂直領域的資料夾(fund-admin、operations 這些)。而 agent 包底下的 <code>plugins/agent-plugins/&lt;slug&gt;/skills/&lt;name&gt;/</code> 只是「vendored copy(搬運副本)」——分行影本。標準流程一定是這三步,<strong>這是必要紀律,不能省:</strong></p>
 
   <div class="flow" data-animate>
     <div class="step"><span class="n">1</span><strong>改真本</strong><br><code style="white-space:normal;overflow-wrap:anywhere">vertical-plugins/&lt;vertical&gt;/skills/&lt;name&gt;/SKILL.md</code></div>
     <div class="arrow">→</div>
     <div class="step"><span class="n">2</span><strong>sync</strong><br><code>python3 scripts/sync-agent-skills.py</code> 把所有已存在的 agent 包副本重新同步</div>
     <div class="arrow">→</div>
-    <div class="step"><span class="n">3</span><strong>check</strong><br><code>python3 scripts/check.py</code> 驗 drift + 參照 + skill 是否真的在 agent 自己的 bundle 裡</div>
+    <div class="step"><span class="n">3</span><strong>check</strong><br><code>python3 scripts/check.py</code> 驗 <span class="term" data-term="drift">drift</span>(真本與副本的漂移)+ 參照 + skill 是否真的在 agent 自己的 bundle 裡</div>
   </div>
 
-  <p><code>check.py</code> 另有一條 4b2:凡是 <code>agents/&lt;slug&gt;.md</code> 用反引號提到的 skill 名稱,必須真的存在於該 agent 自己的 <code>skills/</code> 資料夾裡 — 這條就是為了讓「劇本掛了但沒 bundle 進去」這種半調子改動在本地就被抓到,不用等雲端部署才炸。</p>
+  <p>兩個容易踩的坑,都來自「母版→影印」這個機制:</p>
+  <ul class="checklist">
+    <li>直接改 agent 包裡的副本(不是真本)— check 階段會逐檔比對真本與副本,有差異就擋 commit。就像分行自己改影本,稽核一定抓到</li>
+    <li>指望 sync 會「新增」skill 到 agent 包 — 它只更新<em>已存在</em>的目錄;第一次要用的 skill,得先手動把真本整個資料夾複製進 agent 包一次,之後 sync 才會接手維護。就像總務只補發「原本就有訂閱這本手冊」的分行,新分行要先建檔</li>
+  </ul>
+
+  <div class="adv" data-note="sync 與 check 兩支腳本的內部機制——不影響你照三步驟操作,但想懂『為什麼副本碰不得』的人看這裡">
+    <p><code>scripts/sync-agent-skills.py</code> 的邏輯很直白:掃過所有 vertical 底下的 skill 目錄建索引,對每一個已存在的 agent 包 skill 目錄,<code>shutil.rmtree</code> 整個刪掉再 <code>shutil.copytree</code> 從真本重貼一次。也就是說副本上的任何手改,sync 一跑就整包蒸發——這是「只改真本」鐵律的技術根源。</p>
+    <p><code>check.py</code> 的 drift 檢查在 4b 步驟,用 <code>filecmp.dircmp</code> 逐檔比對真本與副本,有任何差異就擋。另有一條 4b2:凡是 <code>agents/&lt;slug&gt;.md</code> 用反引號提到的 skill 名稱,必須真的存在於該 agent 自己的 <code>skills/</code> 資料夾裡 — 這條就是為了讓「劇本掛了但沒 bundle 進去」這種半調子改動在本地就被抓到,不用等雲端部署才炸。</p>
+  </div>
 
   <h3>③ 模型 — 先分清楚要改哪一層</h3>
-  <p><code>docs/Models.md</code> 把「改模型」拆成三層,順序決定你要動多少檔案:</p>
+  <p>這裡的「模型」指的是財務模型(DCF、LBO 這類試算),不是 AI 模型。<code>docs/Models.md</code> 把「改模型」拆成三層,順序決定你要動多少檔案。先想想你要的到底是哪一種:改「公式本身」、改「這位員工會做哪幾種試算」,還是只是「這一次用不同的假設數字」?</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>層</th><th>改什麼</th><th>動哪裡</th><th>例子</th></tr></thead>
@@ -104,22 +118,28 @@
       </tbody>
     </table>
   </div>
-  <p>Models.md 特別點出兩支「repo 裡已經有原始碼、但沒有任何 agent 預設掛」的模型 — <code>merger-model</code>(併購 accretion/dilution,住 investment-banking vertical)和 <code>unit-economics</code>(SaaS 單位經濟,住 private-equity vertical)。要用不用重寫,照 Layer 2 的步驟掛進去就好。另外要注意「plugin 版有掛、CMA 版沒掛」的落差:<code>pitch-agent</code> 的 <code>comps-analysis</code>/<code>3-statement-model</code> 寫在共用劇本裡,plugin 版會用,但 CMA 的 <code>subagents/modeler.yaml</code> 只掛了 <code>dcf-model</code>/<code>lbo-model</code>;<code>valuation-reviewer</code> 的 <code>portfolio-monitoring</code> 也是同樣狀況,CMA 的 <code>subagents/valuation-runner.yaml</code> 只掛了 <code>returns-analysis</code>。換模型時如果雲端版也要跑,記得補進對應的 subagent yaml,別以為改了 <code>agents/&lt;slug&gt;.md</code> 就兩邊都到位 — 模型是唯一一個「劇本掛了、CMA 工人清單卻要另外補」的例外。</p>
+  <p>先給結論:<strong>多數銀行的需求其實是 Layer 3</strong>——「這次 WACC 用 9%」這種話,在對話裡講就好,一個檔案都不用動。真的要動檔案,才進 Layer 1 或 2。另外有一個模型層特有的坑:<strong>「plugin 版有掛、CMA 版沒掛」的落差。</strong>換模型時如果雲端版也要跑,記得把模型補進對應的 <span class="term" data-term="subagent">subagent</span>(子代理)yaml,別以為改了 <code>agents/&lt;slug&gt;.md</code> 就兩邊都到位 — 模型是唯一一個「劇本掛了、CMA 工人清單卻要另外補」的例外。</p>
+
+  <div class="adv" data-note="哪些模型還沒被任何 agent 掛用、哪兩支 agent 有 plugin/CMA 落差——要換模型的人再看,細節都在這">
+    <p>Models.md 特別點出兩支「repo 裡已經有原始碼、但沒有任何 agent 預設掛」的模型 — <code>merger-model</code>(併購 accretion/dilution,住 investment-banking vertical)和 <code>unit-economics</code>(SaaS 單位經濟,住 private-equity vertical)。要用不用重寫,照 Layer 2 的步驟掛進去就好。</p>
+    <p>落差的具體案例有兩個:<code>pitch-agent</code> 的 <code>comps-analysis</code>/<code>3-statement-model</code> 寫在共用劇本裡,plugin 版會用,但 CMA 的 <code>subagents/modeler.yaml</code> 只掛了 <code>dcf-model</code>/<code>lbo-model</code>;<code>valuation-reviewer</code> 的 <code>portfolio-monitoring</code> 也是同樣狀況,CMA 的 <code>subagents/valuation-runner.yaml</code> 只掛了 <code>returns-analysis</code>。這兩支的雲端版要用到完整模型清單時,務必補對應的 subagent yaml。</p>
+  </div>
 
   <h3>④ CMA 專屬 — agent.yaml 的三個開關</h3>
-  <p>CMA cookbook 有三處是純雲端結構,plugin 外掛完全不涉及:</p>
+  <p>CMA cookbook 有三處是純雲端結構,plugin 外掛完全不涉及。可以想成「派駐雲端」才需要的三樣東西:給駐外員工的補充指示、他的門禁卡權限、還有他值班時會收到的工單範例:</p>
   <ul>
     <li><strong><code>system.append</code></strong> — 在 canonical 系統提示後面補一段雲端專屬行為,像 gl-reconciler 的「headless 模式,產出寫到 ./out/」。</li>
-    <li><strong><code>tools:</code> 的 <code>agent_toolset_20260401</code> / <code>mcp_toolset</code> 開關</strong> — 每個工具預設關閉(<code>default_config: { enabled: false }</code>),逐一 <code>configs:</code> 白名單打開。kyc-screener 的 orchestrator 只開 <code>read/grep/glob</code> 三個內建工具 + <code>screening</code> 這個 MCP,其餘一律不給。</li>
-    <li><strong><code>steering-examples.json</code></strong> — 給雲端 session 的啟動事件範例,像 kyc-screener 的三筆:「Screen onboarding packet PKT-2026-00318」「Periodic refresh: client C-004921」「Re-screen UBOs only」。</li>
+    <li><strong><code>tools:</code> 的 <code>agent_toolset_20260401</code> / <code>mcp_toolset</code> 開關</strong> — 每個工具預設關閉(<code>default_config: { enabled: false }</code>),逐一 <code>configs:</code> 白名單打開。kyc-screener 的 <span class="term" data-term="orchestrator">orchestrator</span>(隊長)只開 <code>read/grep/glob</code> 三個內建工具 + <code>screening</code> 這個 MCP,其餘一律不給。</li>
+    <li><strong><code>steering-examples.json</code></strong> — 給雲端 <span class="term" data-term="session">session</span> 的啟動事件(<span class="term" data-term="steering-event">steering event</span>)範例,像 kyc-screener 的三筆:「Screen onboarding packet PKT-2026-00318」「Periodic refresh: client C-004921」「Re-screen UBOs only」。</li>
   </ul>
-  <p>要加減一個 sub-agent,改 <code>agent.yaml</code> 的 <code>callable_agents</code> 清單,另外寫一支 <code>subagents/&lt;name&gt;.yaml</code>(記得 <code>callable_agents</code> 只支援一層委派,orchestrator 叫得動 leaf worker,leaf worker 不能再叫下一層)。</p>
+  <p>要加減一個 sub-agent,改 <code>agent.yaml</code> 的 <span class="term" data-term="callable-agents">callable_agents</span> 清單,另外寫一支 <code>subagents/&lt;name&gt;.yaml</code>。記得 <code>callable_agents</code> 只支援一層委派:隊長叫得動 leaf worker,leaf worker 不能再叫下一層。</p>
+  <p><strong>一句話總結:</strong>四層各有各的檔案——系統提示與 skill 改一次兩邊生效、模型先分清楚是改公式還是換假設、CMA 結構只影響雲端版;其中 skill 永遠走「改真本→sync→check」。</p>
 
   <h2 id="s3">3. 實戰:改成台灣銀行情境</h2>
   <p>用兩個真實存在的 agent 示範「改前(repo 現況)」→「改後(客製示範)」。改後的內容是<strong>示範用途</strong>,實際科目編碼、法條依據上線前務必請會計/法遵覆核 — 這正是 Customizing.md 提醒的「業務門檻要 sign off」。</p>
 
   <h3>範例一:gl-reconciler 加台灣銀行科目表 mapping 規則</h3>
-  <p>真本在 <code style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/fund-admin/skills/gl-recon/SKILL.md</code>。現況的 Step 3 只把「科目對應錯誤」列成一種抽象的 break 原因,沒有具體科目表:</p>
+  <p>gl-reconciler 做的是總帳(<span class="term" data-term="gl">GL</span>)對帳:找出兩邊帳對不起來的地方(break),並判斷原因。真本在 <code style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/fund-admin/skills/gl-recon/SKILL.md</code>。現況的 Step 3 只把「科目對應錯誤」列成一種抽象的 break 原因,沒有具體科目表——我們要做的,就是把「本行的科目表長什麼樣」教給它。點兩個頁籤比對改前改後:</p>
 
   <div class="tabs">
     <div class="tab-bar"><button>改前(repo 現況)</button><button>改後(客製示範)</button></div>
@@ -144,14 +164,14 @@
 | 損益類科目 | 5xx/6xx | fee/accrual break |
 
 科目代碼由 GL extract 的 `account` 欄位前兩碼判斷大類;命中「買匯貼現及放款」
-且變異金額 < 1,000 元,優先標記為 mapping,不是 data quality。</code></pre>
+且變異金額 &lt; 1,000 元,優先標記為 mapping,不是 data quality。</code></pre>
     </div>
   </div>
 
-  <p>改完真本後,依序跑 <code>python3 scripts/sync-agent-skills.py</code>(把 <code style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/gl-reconciler/skills/gl-recon/</code> 這份副本同步)、<code>python3 scripts/check.py</code>(確認 drift 清空、參照仍完整),就能用 <code>/plugin install gl-reconciler@fsi-local</code> 本地跑一次驗證行為。</p>
+  <p>「改後」版本重點看最後一段:它告訴 agent「怎麼用這張表」——用科目代碼前兩碼判斷大類,而且給了一條明確的優先順序規則,agent 判斷 break 原因時才不會憑感覺。改完真本後,依序跑 <code>python3 scripts/sync-agent-skills.py</code>(把 <code style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/gl-reconciler/skills/gl-recon/</code> 這份副本同步)、<code>python3 scripts/check.py</code>(確認 drift 清空、參照仍完整),就能用 <code>/plugin install gl-reconciler@fsi-local</code> 本地跑一次驗證行為。</p>
 
   <h3>範例二:kyc-screener 加金管會/洗錢防制法名單來源</h3>
-  <p>真本在 <code style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/operations/skills/kyc-rules/SKILL.md</code>。現況的風險評分表(Step 1)只把司法管轄區風險寫成通用的一列:</p>
+  <p>kyc-screener 做的是 <span class="term" data-term="kyc">KYC</span>(認識你的客戶)審查與洗錢防制(<span class="term" data-term="aml">AML</span>)名單掃描。真本在 <code style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/operations/skills/kyc-rules/SKILL.md</code>。現況的風險評分表(Step 1)只把司法管轄區風險寫成通用的一列,我們要補上台灣法遵實際引用的名單來源:</p>
 
   <div class="tabs">
     <div class="tab-bar"><button>改前(repo 現況)</button><button>改後(客製示範)</button></div>
@@ -179,23 +199,33 @@
     </div>
   </div>
 
-  <p>同樣是改真本 → sync → check 三步。因為 <code>kyc-screener</code> 的 <code>tools:</code> 只開了 <code>read/grep/glob</code> + <code>screening</code> 這個 MCP,加名單來源只是換 <code>kyc-rules</code> 裡「怎麼判斷」的邏輯,不需要動 <code>agent.yaml</code> 的工具開關 — 這也印證了第 2 節的判斷:同一種產出、信任邊界沒變,調整 Skill 就夠,不必碰 CMA 結構。</p>
+  <p>「改後」版本做了三件事:管轄區風險多了 FATF 高風險地區名單、PEP 認定明確引用洗錢防制法第 7 條、新增一列制裁名單比對規則。同樣是改真本 → sync → check 三步。因為 <code>kyc-screener</code> 的 <code>tools:</code> 只開了 <code>read/grep/glob</code> + <code>screening</code> 這個 MCP,加名單來源只是換 <code>kyc-rules</code> 裡「怎麼判斷」的邏輯,不需要動 <code>agent.yaml</code> 的工具開關 — 這也印證了第 2 節的判斷:同一種產出、信任邊界沒變,調整 Skill 就夠,不必碰 CMA 結構。</p>
+  <p><strong>一句話總結:</strong>科目表、法規名單這類在地化需求,都是「改 skill 真本、跑 sync、跑 check」三步搞定,連 CMA 的設定檔都不用碰。</p>
 
   <h2 id="s4">4. 三道安全閘:改完別急著 push</h2>
-  <p>這裡講的是「改動有沒有守規矩」的閘,跟第 10 章 agent 執行期的能力閘/schema 閘/交棒閘是不同層次的三道閘 — 這三道閘管的是「你這次改動能不能進 <code>main</code>」。</p>
+  <p>先講結論:改動要進 <code>main</code>(正式版程式碼)之前,會過三道閘,像出貨前的三關品管。這裡講的是「改動有沒有守規矩」的閘,跟第 10 章 agent 執行期的能力閘/<span class="term" data-term="schema">schema</span> 閘/交棒閘是不同層次的三道閘 — 這三道閘管的是「你這次改動能不能進 <code>main</code>、能不能送到已安裝使用者手上」。</p>
 
   <div class="table-wrap">
     <table>
       <thead><tr><th>閘</th><th>誰執行</th><th>擋什麼</th></tr></thead>
       <tbody>
         <tr><td><strong>① check.py 的 drift 檢查</strong></td><td><code>scripts/check.py</code> 4b 步驟,<code>filecmp.dircmp</code> 逐檔比對</td><td>agent 包的 skill 副本跟 vertical 真本內容不一致(忘了 sync,或直接改了副本)</td></tr>
-        <tr><td><strong>② pre-commit 版本 bump</strong></td><td><code>.githooks/pre-commit</code> 呼叫 <code>scripts/version_bump.py --apply</code></td><td>plugin 改了卻沒帶版號往前走 — 每次 commit 自動幫你把改動到的 plugin patch-bump 到「比 <code>main</code> 上的版本恰好多 1」,同一分支重複 commit 只會 bump 一次(idempotent),不會每 commit 疊加</td></tr>
+        <tr><td><strong>② pre-commit 版本 bump</strong></td><td><code>.githooks/pre-commit</code> 呼叫 <code>scripts/version_bump.py --apply</code></td><td>plugin 改了卻沒帶版號往前走 — 每次 commit 自動幫你把改動到的 plugin patch-bump 到「比 <code>main</code> 上的版本恰好多 1」</td></tr>
         <tr><td><strong>③ version 是更新遞送的閘</strong></td><td><code>.claude-plugin/plugin.json</code> 的 <code>version</code> 欄位本身</td><td>Claude Code 只有在偵測到 <code>version</code> 變了,才會把新內容重新推給已安裝的使用者 — 沒 bump 版號,劇本改對了,已安裝的銀行同仁也收不到更新</td></tr>
       </tbody>
     </table>
   </div>
 
-  <div class="callout warn"><span class="co-title">version-bump 沒有一次到位</span>第一次跑 <code>check.py</code> 時它會自己執行 <code>git config core.hooksPath .githooks</code> 把 hook 接上,所以「忘了裝 hook」這個問題只會發生在還沒跑過一次 <code>check.py</code> 的全新 checkout。<code>.github/workflows/version-bump.yml</code> 這個 GitHub Action 是後備閘 — 沒裝 hook 的 contributor 到了 PR 階段一樣會被攔下來。要跳過單次 commit 的 hook 用 <code>git commit --no-verify</code>,但這只跳過 bump,不代表 CI 的 <code>--check</code> 也會放行。</div>
+  <p>用白話再走一遍:第一關檢查「影本和母版有沒有對齊」;第二關自動幫你蓋「版本章」;第三關是遞送機制本身——版本號沒變,已經裝了外掛的同事就收不到你的修改,改得再對也是白改。</p>
+
+  <div class="callout warn"><span class="co-title">跳過 hook 不等於過關</span>要跳過單次 commit 的 hook 可以用 <code>git commit --no-verify</code>,但這只跳過本機的版本 bump,不代表 CI 的 <code>--check</code> 也會放行 — <code>.github/workflows/version-bump.yml</code> 這個 GitHub Action 是後備閘,沒 bump 的 PR 一樣會被攔下來。</div>
+
+  <div class="adv" data-note="pre-commit hook 怎麼裝上、為什麼重複 commit 不會版本亂跳——想懂 bump 機制的人看這裡">
+    <p>「忘了裝 hook」這個問題其實只會發生在還沒跑過一次 <code>check.py</code> 的全新 checkout:第一次跑 <code>check.py</code> 時它會自己執行 <code>git config core.hooksPath .githooks</code> 把 hook 接上,不用 Husky、不用 Node。</p>
+    <p>bump 邏輯住在 <code>scripts/version_bump.py</code>:它的目標是讓分支上的版本「比 <code>main</code> 恰好多 1 個 patch」,所以同一分支重複 commit 只會 bump 一次(idempotent),不會每 commit 疊加——你不用擔心多改幾次版本號就跳到天上去。</p>
+  </div>
+
+  <p><strong>一句話總結:</strong>drift 檢查保「影本沒偏離母版」、pre-commit 保「版本號有前進」、version 欄位保「使用者收得到更新」——三關都過,改動才算真的送到人手上。</p>
 
   <h2 id="s5">5. 銀行常見客製清單</h2>
   <p>把前面四層對照到銀行實際會遇到的客製需求,一次列表方便查:</p>
@@ -213,12 +243,14 @@
     </table>
   </div>
 
+  <p><strong>一句話總結:</strong>遇到客製需求先查這張表,對出「哪一層、哪個檔」,再套第 2 節的流程動手,九成的在地化需求不出這五種。</p>
+
   <div class="callout tip">
     <span class="co-title">本章重點</span>
     <ul>
       <li>先問「產出的東西是不是同一種、信任邊界有沒有變」再決定調整還是開新 agent — 不是看改動大小。</li>
       <li>四個可調層面:系統提示(<code>agents/&lt;slug&gt;.md</code>,兩邊生效)、Skill(<code>vertical-plugins/</code> 真本 → sync → check)、模型(Layer 1/2/3,多數需求只是 Layer 3 換假設)、CMA 專屬結構(<code>agent.yaml</code> 的 append/tools/steering-examples)。</li>
-      <li>改 Skill 永遠是真本→sync→check 三步,直接改 agent 包副本會被 <code>check.py</code> 的 drift 檢查擋下。</li>
+      <li>改 Skill 永遠是真本→sync→check 三步:母版只有一份,影本由 sync 重印、由 check 稽核;直接改 agent 包副本會被 <code>check.py</code> 的 drift 檢查擋下。</li>
       <li>plugin 版有掛、CMA 版沒掛是模型層特有的落差,補 subagent yaml 才會兩邊一致。</li>
       <li>三道安全閘(drift / pre-commit 版本 bump / version 遞送閘)管的是「改動能不能進 main、能不能送到已安裝使用者手上」,跟執行期的能力閘/schema 閘/交棒閘是兩回事。</li>
     </ul>

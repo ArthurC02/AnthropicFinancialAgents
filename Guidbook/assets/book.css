@@ -77,9 +77,76 @@ body {
 .book-header .home span { color: var(--accent); }
 .book-header .chapter-label { color: var(--fg-soft); font-size: .85rem; flex: 1; min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#theme-toggle { border: 1px solid var(--border); background: var(--bg-card); color: var(--fg);
+#theme-toggle, #mode-toggle, #search-toggle {
+  border: 1px solid var(--border); background: var(--bg-card); color: var(--fg);
   border-radius: 20px; padding: .25rem .8rem; cursor: pointer; font-size: .85rem; }
-#theme-toggle:hover { border-color: var(--accent); }
+#theme-toggle:hover, #mode-toggle:hover, #search-toggle:hover { border-color: var(--accent); }
+#mode-toggle.on { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+
+/* ---- 頁面資訊列（閱讀時間・難度・進階段落數） ---- */
+.page-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: center;
+  color: var(--fg-soft); font-size: .85rem; margin: .4rem 0 1rem; }
+.page-meta .lv { border-radius: 999px; padding: .05em .7em; font-weight: 700; font-size: .78rem; }
+.page-meta .lv-e { background: var(--green-soft); color: var(--green); }
+.page-meta .lv-m { background: var(--amber-soft); color: var(--amber); }
+.page-meta .lv-h { background: var(--red-soft);   color: var(--red); }
+
+/* ---- 先備知識框（章首「開始前，你需要先懂」） ---- */
+.callout.prereq { background: var(--bg-inset); border-color: var(--accent); }
+.callout.prereq ul { margin: .3rem 0 0; }
+
+/* ---- 術語（點擊看白話解釋） ---- */
+.term { border-bottom: 2px dotted var(--accent); cursor: pointer; }
+.term:hover, .term:focus { background: var(--accent-soft); outline: none; border-radius: 3px; }
+#term-tip { position: absolute; z-index: 200; background: var(--bg-card); color: var(--fg);
+  border: 1px solid var(--accent); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: .8rem 1rem; font-size: .88rem; line-height: 1.6; }
+#term-tip .tt-head { font-weight: 700; margin-bottom: .25rem; }
+#term-tip .tt-en { display: block; font-weight: 400; color: var(--fg-soft); font-size: .8rem; }
+#term-tip .tt-body { color: var(--fg); }
+#term-tip .tt-more { display: inline-block; margin-top: .45rem; font-size: .8rem; }
+
+/* ---- 進階區塊（div.adv → 由 book.js 轉為可收合 details.adv-details） ---- */
+details.adv-details { border-left: 4px solid var(--amber); }
+details.adv-details summary { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.adv-badge { background: var(--amber-soft); color: var(--amber); border-radius: 999px;
+  padding: .02em .7em; font-size: .78rem; font-weight: 700; }
+.adv-note { color: var(--fg-soft); font-weight: 400; font-size: .85rem; }
+details.adv-details .adv-body { padding: 0 1.1rem .6rem; }
+
+/* ---- 全文搜尋 ---- */
+#search-overlay { position: fixed; inset: 0; z-index: 300;
+  background: color-mix(in srgb, var(--bg) 60%, rgba(0,0,0,.4));
+  backdrop-filter: blur(3px); padding: 8vh 1rem 0; }
+#search-overlay .search-box { max-width: 640px; margin: 0 auto; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  overflow: hidden; display: flex; flex-direction: column; max-height: 74vh; }
+.search-input-row { display: flex; border-bottom: 1px solid var(--border); }
+#search-input { flex: 1; border: none; background: transparent; color: var(--fg);
+  font-size: 1rem; padding: .9rem 1.1rem; outline: none; font-family: inherit; }
+#search-close { border: none; background: transparent; color: var(--fg-soft);
+  font-size: 1rem; padding: 0 1rem; cursor: pointer; }
+#search-hint { color: var(--fg-soft); font-size: .8rem; padding: .5rem 1.1rem; }
+#search-results { overflow-y: auto; }
+.sr-item { display: block; padding: .7rem 1.1rem; text-decoration: none; color: var(--fg);
+  border-top: 1px solid var(--border); }
+.sr-item:hover { background: var(--bg-inset); }
+.sr-ch { font-size: .8rem; color: var(--accent); font-weight: 700; margin-bottom: .15rem; }
+.sr-snip { font-size: .87rem; color: var(--fg-soft); }
+.sr-snip mark { background: var(--amber-soft); color: var(--amber); border-radius: 3px; padding: 0 .1em; }
+.sr-empty { padding: 1rem 1.1rem; color: var(--fg-soft); font-size: .9rem; }
+
+/* ---- 學習路徑卡（總目錄用） ---- */
+.paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1.2rem 0; }
+.path { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1rem 1.2rem; box-shadow: var(--shadow); }
+.path h4 { margin: 0 0 .3rem; font-size: 1rem; }
+.path .who { color: var(--fg-soft); font-size: .82rem; margin-bottom: .5rem; }
+.path .route { font-size: .9rem; line-height: 2; }
+.path .route a { display: inline-block; background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0 .5em; text-decoration: none; color: var(--fg); font-weight: 600; }
+.path .route a:hover { border-color: var(--accent); color: var(--accent); }
+.path .route .sep { color: var(--fg-soft); margin: 0 .15em; }
 
 /* ---- 版面 ---- */
 main { max-width: var(--maxw); margin: 0 auto; padding: 2rem 1.4rem 4rem; }
@@ -247,6 +314,8 @@ pre.diagram { background: var(--bg-inset); border-style: dashed; font-size: .8re
 .chapter-nav a:hover { border-color: var(--accent); transform: translateY(-2px); }
 .chapter-nav .dir { font-size: .78rem; color: var(--fg-soft); display: block; }
 .chapter-nav .next { text-align: right; }
+.chapter-nav .toc-link { flex: 0 0 auto; min-width: 0; text-align: center; align-self: stretch;
+  display: flex; flex-direction: column; justify-content: center; }
 
 footer.book-footer { text-align: center; color: var(--fg-soft); font-size: .8rem;
   padding: 2rem 1rem 3rem; border-top: 1px solid var(--border); }

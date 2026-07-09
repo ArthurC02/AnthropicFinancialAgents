@@ -6,10 +6,17 @@
 <title>第 11 章 — 維運、監控與成本 | Financial Agents 開發指南</title>
 <link rel="stylesheet" href="../assets/book.css">
 </head>
-<body data-chapter="ch11">
+<body data-chapter="ch11" data-level="中階">
 <main>
   <h1><span class="ch-no">Chapter 11</span>維運、監控與成本</h1>
-  <p class="lead">CMA（Claude Managed Agents，Claude 託管代理）上線之後，「跑得動」跟「能維運」是兩回事。這一章處理的是：agent 半夜跑壞了，誰的手機會響？token 帳單暴增，怎麼查是哪支 agent、哪一步燒的？改一版 skill，怎麼在不停掉現有服務的前提下換血？讀完你應該能畫出自己銀行版本的維運界線圖、接上三層可觀測性、算出 per-agent 成本歸因，並且手上有一份能直接照抄的事件應變 runbook。</p>
+  <p class="lead"><span class="term" data-term="cma">CMA</span>（Claude Managed Agents，Claude 託管代理）上線之後，「跑得動」跟「能維運」是兩回事。這一章處理三個很實際的問題：<span class="term" data-term="agent">agent</span> 半夜跑壞了，誰的手機會響？<span class="term" data-term="token">token</span> 帳單暴增，怎麼查出是哪支 agent、哪一步燒的？改一版 <span class="term" data-term="skill">skill</span>，怎麼在不停掉現有服務的前提下換血？讀完本章，你應該能畫出自己銀行版本的維運界線圖、接上三層可觀測性、算出每支 agent 的成本歸因，手上還有一份能直接照抄的事件應變 runbook（應變手冊）。</p>
+
+  <div class="callout info prereq"><span class="co-title">🔑 開始前，你需要先懂</span>
+    <ul>
+      <li><a href="../ch07-aws-deployment/index.html">AWS 部署架構</a>（第 7 章）——<span class="term" data-term="mcp-server">MCP servers</span>、編排器這些「周邊系統」<span class="term" data-term="deploy">部署</span>在銀行 AWS 帳號的哪裡。本章的維運責任切分就建立在那張架構圖上。</li>
+      <li><a href="../ch08-orchestration/index.html">多代理協作與事件流</a>（第 8 章）——CMA 用 <span class="term" data-term="sse">SSE</span> 事件流即時回報執行過程。本章的監控與稽核，原料全部來自這條事件流。</li>
+    </ul>
+  </div>
 
   <div class="toc"><div class="toc-title">本章內容</div>
     <ol>
@@ -24,7 +31,9 @@
   </div>
 
   <h2 id="s1">1. 維運界線：Anthropic 管什麼、銀行管什麼</h2>
-  <p>第 2 章談過「外掛靠人把關、CMA 靠架構把關」的安全哲學；維運上有一條同等重要、卻常被搞混的界線：<strong>CMA 本身（模型推論、agent 執行環境）跑在 Anthropic 雲端，用 <code>POST /v1/agents</code>（beta header <code>managed-agents-2026-04-01</code>）呼叫；但「部署在 AWS」講的是周邊系統</strong>——呼叫端後端、MCP servers、編排器（<code>scripts/orchestrate.py</code>）、資料源，全部在銀行自己的 AWS 帳號裡。這條界線決定了「誰的 on-call 手機會響」：模型推論本身掛了，是 Anthropic 的 SLA（Service Level Agreement，服務等級協議）；MCP server 掛了、編排器卡住、密鑰過期，是銀行自己的 SLA。</p>
+  <p>維運的第一件事，是先畫清楚「誰管哪一段」。你可以把整套系統想成用電：<strong>Anthropic 像電力公司，負責供電到你家電表；電表以後的配線、開關、電器，是你家自己的事</strong>。電力公司不會因為你家跳電而派人來修配線。</p>
+  <p>換成技術上精確的說法：<strong>CMA 本身（模型推論、agent 執行環境）跑在 Anthropic 雲端</strong>，透過 Anthropic 的 <span class="term" data-term="api">API</span>（應用程式介面）呼叫——具體來說是 <code>POST /v1/agents</code>，帶 beta header <code>managed-agents-2026-04-01</code>。而大家常說的「部署在 AWS」，指的是<strong>周邊系統</strong>：呼叫端後端、MCP servers、<span class="term" data-term="orchestrator">編排器</span>（<code>scripts/orchestrate.py</code>）、資料源、密鑰與 <span class="term" data-term="vpc">VPC</span> 網路，全部在銀行自己的 AWS 帳號裡。</p>
+  <p>這條線直接決定「誰的 on-call 手機會響」。模型推論掛了，算 Anthropic 的 <span class="term" data-term="sla">SLA</span>（Service Level Agreement，服務等級協議）；MCP server 掛了、編排器卡住、密鑰過期，算銀行自己的 SLA。兩邊都要有人扛，缺一邊就是沒人接的半夜警報。</p>
 
   <pre class="diagram">┌────────────────────────────────────────────────────────────────┐
 │  Anthropic 雲端 —— Anthropic 的維運責任                          │
@@ -47,51 +56,71 @@
 │  └────────────┘ └────────────┘ └──────────────┘ └─────────────┘ │
 └────────────────────────────────────────────────────────────────┘</pre>
 
-  <div class="callout warn"><span class="co-title">SLA 思維：兩份，不是一份</span>簽 Anthropic 的 SLA 只保證「模型推論可用、agent 執行環境正常」；MCP server 的可用率、編排器的處理延遲、密鑰輪替，這些都是銀行自己 AWS 帳號裡的資源，出問題不會有 Anthropic 的告警幫你叫醒值班工程師。第 7 章的 AWS 部署架構跟這裡是同一組資源，維運責任也在同一邊。</div>
+  <div class="callout warn"><span class="co-title">SLA 思維：兩份，不是一份</span>簽 Anthropic 的 SLA，只保證「模型推論可用、agent 執行環境正常」。MCP server 的可用率、編排器的處理延遲、密鑰輪替，這些都是銀行自己 AWS 帳號裡的資源。出問題時，不會有 Anthropic 的告警幫你叫醒值班工程師。第 7 章的 AWS 部署架構跟這裡是同一組資源，維運責任也在同一邊。</div>
+
+  <p><strong>一句話總結：</strong>維運責任是兩份合約——模型推論歸 Anthropic，AWS 上的周邊系統（MCP、編排器、密鑰、網路）歸銀行，值班表要照這條線各排各的。</p>
 
   <h2 id="s2">2. 可觀測性三層</h2>
-  <p>一個 run 從觸發到交付，會經過三層系統，每一層要看的指標完全不同。混在一起看儀表板，通常是「模型很正常、業務卻悄悄劣化」這種事故被漏掉的主因。</p>
+  <p>可觀測性（observability）聽起來抽象，其實就是「值班室牆上要掛哪幾面儀表板」。一個 run 從觸發到交付會經過三層系統，每一層要看的指標完全不同：<strong>機台面板</strong>（agent 這次執行發生了什麼）、<strong>水電管線</strong>（AWS 上的周邊系統健不健康）、<strong>成品抽檢</strong>（產出的東西還對不對）。三面板混在一起看，最常見的後果就是「技術指標全綠、業務結果卻悄悄劣化」這種事故被漏掉。</p>
 
   <div class="tabs">
     <div class="tab-bar"><button>① Agent 執行層</button><button>② AWS 基礎層</button><button>③ 業務層</button></div>
     <div class="tab-panel">
-      <p>這一層看「這一次 run 到底發生了什麼」。CMA 的回傳管道是 SSE（Server-Sent Events，伺服器推送事件）事件流，<code>scripts/orchestrate.py</code> 就是消費這條事件流的參考實作：</p>
-      <div class="code-title">scripts/orchestrate.py</div>
-      <pre><code>with client.beta.agents.sessions.stream(session_id=source_session_id) as stream:  # type: ignore[attr-defined]
+      <p>這一層是「機台的即時面板」：看這一次 run 到底發生了什麼。CMA 的回傳管道是 SSE（Server-Sent Events，伺服器推送事件）事件流，以一個 <span class="term" data-term="session">session</span>（工作階段）為單位，把工具呼叫、中間輸出、最終輸出一路推回來。</p>
+      <p>先講結論：<strong>repo 附的 <code>scripts/orchestrate.py</code> 只是參考實作，不能直接當監控上線</strong>。它的檔頭寫明「<strong>REFERENCE ONLY</strong> — replace with your firm's workflow engine（Temporal、Airflow、Guidewire event bus）」。它示範的是事件迴圈的「形狀」，不含落地與告警。銀行要在這個迴圈外面自己補三件事：<strong>① 落地</strong>（每個事件原樣存檔，供覆核與稽核）、<strong>② 狀態機</strong>（判斷 run 有沒有正常走完，逾時本身就是異常）、<strong>③ 失敗告警</strong>（失敗的 run 要主動叫人，不能靜靜結束）。<span class="term" data-term="kyc">KYC</span> 開戶審查、<span class="term" data-term="gl">總帳</span>對帳這種 🔴 高風險 agent，一個失敗的 run 不該無聲無息地消失——它代表某一批交易或某一個開戶案件卡在了流程裡。</p>
+      <div class="adv" data-note="事件迴圈程式碼與三件落地實作的工程細節；跳過不影響主線，但要動手接監控的人必讀">
+        <p>參考實作消費事件流的核心長這樣：</p>
+        <div class="code-title">scripts/orchestrate.py</div>
+        <pre><code>with client.beta.agents.sessions.stream(session_id=source_session_id) as stream:  # type: ignore[attr-defined]
     for event in stream:
         if event.type != "message_delta" or not getattr(event, "text", None):
             continue
         handoff = extract_handoff(event.text)
         ...</code></pre>
-      <p>要注意：這支腳本檔頭寫明「<strong>REFERENCE ONLY</strong> — replace with your firm's workflow engine（Temporal、Airflow、Guidewire event bus）」，它示範的是事件迴圈的形狀，不是一份可以直接上線的落地/告警實作。銀行要在這個迴圈外面自己補三件事：<strong>①</strong> 每個事件（工具呼叫、中間輸出、最終輸出）原樣落地到 <a href="https://aws.amazon.com/tw/s3/" target="_blank" rel="noopener noreferrer">S3</a>（長期歸檔、供覆核與稽核）與 <a href="https://docs.aws.amazon.com/zh_tw/cloudwatch/" target="_blank" rel="noopener noreferrer">CloudWatch Logs</a>（短期查詢、接告警規則）；<strong>②</strong> 對 <code>event.type</code> 做完整的狀態機判斷，不是只挑 <code>message_delta</code>——一個 run 沒有在預期時間內收到「結束」事件，本身就是異常；<strong>③</strong> run 失敗（逾時、工具呼叫連續出錯、回傳格式驗證失敗）要送出告警，而不是靜靜結束。KYC 開戶審查、總帳對帳這種 🔴 高風險 agent，失敗的 run 不該無聲無息地消失——它代表某一批交易或某一個開戶案件卡在了流程裡。</p>
+        <p>注意它只挑 <code>message_delta</code> 這一種事件、其他全部略過——這正是它不能直接當監控的原因。三件事的落地建議：<strong>①</strong> 每個事件（工具呼叫、中間輸出、最終輸出）原樣寫進 <a href="https://aws.amazon.com/tw/s3/" target="_blank" rel="noopener noreferrer">S3</a>（長期歸檔、供覆核與稽核）與 <a href="https://docs.aws.amazon.com/zh_tw/cloudwatch/" target="_blank" rel="noopener noreferrer">CloudWatch Logs</a>（短期查詢、接告警規則）；<strong>②</strong> 對 <code>event.type</code> 做完整的狀態機判斷，不是只挑 <code>message_delta</code>——一個 run 沒有在預期時間內收到「結束」事件，本身就要視為異常；<strong>③</strong> run 失敗（逾時、工具呼叫連續出錯、回傳格式驗證失敗）要送出告警，而不是靜靜結束。</p>
+      </div>
       <figure class="book-figure">
         <img src="../assets/illustrations/ch11-sse-observability.svg" alt="CMA SSE 事件流應由正式工作流引擎落地到 S3 與 CloudWatch，並經狀態機判斷逾時與失敗告警。">
         <figcaption>SSE 事件流是稽核原料；正式維運要把它分流到歸檔、查詢、狀態判斷與告警。</figcaption>
       </figure>
     </div>
     <div class="tab-panel">
-      <p>這一層看「銀行自己 AWS 帳號裡的周邊系統是不是健康」，跟 CMA 本身無關。<code>mock-mcp/run_all_http.py</code> 這支開發用啟動器把九個 MCP server 各自綁一個固定 port：</p>
-      <div class="code-title">mock-mcp/run_all_http.py</div>
-      <pre><code>SERVERS = {
+      <p>這一層是「水電管線」：看銀行自己 AWS 帳號裡的周邊系統健不健康，跟 CMA 本身無關。重點監控對象是各個 <span class="term" data-term="mcp">MCP</span> server——agent 對接行內系統的轉接頭，管線塞住了，機台再正常也做不了事。</p>
+      <p>正式環境的標準組合有三樣：<strong>① 健康檢查</strong>——<a href="https://docs.aws.amazon.com/zh_tw/elasticloadbalancing/latest/application/introduction.html" target="_blank" rel="noopener noreferrer">ALB</a>（Application Load Balancer）對每個 MCP server 做 target health check；<strong>② 延遲與錯誤率</strong>——CloudWatch 量測回應時間與 5xx 錯誤率；<strong>③ 佇列深度</strong>——編排器那一側排隊中的 run 數量。佇列深度是「MCP 變慢但還沒完全掛掉」的先行指標，比等到錯誤率飆高才發現要早得多。另外，對帳類 agent 一次 run 通常要連續打很多次查詢，所以總帳類 MCP 要盯的不只是「活著」，還有「回應時間有沒有拉長」。</p>
+      <div class="adv" data-note="本機開發用的 mock 啟動器程式碼、port 對照與 agent.yaml 標注細節；只看維運主線可跳過">
+        <p>本機開發時，MCP servers 是一組 <span class="term" data-term="mock">mock</span>（假資料替身），由 <code>mock-mcp/run_all_http.py</code> 這支啟動器統一拉起，九個 server 各自綁一個固定 port：</p>
+        <div class="code-title">mock-mcp/run_all_http.py</div>
+        <pre><code>SERVERS = {
     "internal-gl": 8001, "subledger": 8002, "portfolio": 8003, "nav": 8004,
     "crm": 8005, "screening": 8006, "capiq": 8007, "factset": 8008, "daloopa": 8009,
 }</code></pre>
-      <p>本機開發時，這支腳本自己用 <code>p.poll()</code> 檢查每個子行程有沒有意外退出。正式上線後，這些 server 換成部署在 AWS 上的真實服務（<a href="https://aws.amazon.com/tw/ecs/" target="_blank" rel="noopener noreferrer">ECS</a>/<a href="https://docs.aws.amazon.com/zh_tw/eks/" target="_blank" rel="noopener noreferrer">EKS</a> 上的容器，或直接接供應商網址），對應的監控就換成 CloudWatch 的標準組合：<a href="https://docs.aws.amazon.com/zh_tw/elasticloadbalancing/latest/application/introduction.html" target="_blank" rel="noopener noreferrer">ALB</a>（Application Load Balancer）對每個 MCP server 做 target health check、CloudWatch 量測延遲與 5xx 錯誤率、以及編排器那一側的佇列深度（排隊中的 run 數量——這是「MCP 變慢但還沒完全掛掉」的先行指標，比等到錯誤率飆高才發現更早）。<code>gl-reconciler</code> 的 <code>agent.yaml</code> 裡 <code>internal-gl</code>／<code>subledger</code> 兩個 MCP 都標注 <code>enabled: true # read-only server</code>——這兩個是總帳類系統，健康檢查要盯的不只是「活著」，還有「回應時間有沒有拉長」，因為對帳類 agent 一次 run 通常要連續打很多次查詢。</p>
+        <p>這支腳本自己用 <code>p.poll()</code> 檢查每個子行程有沒有意外退出——這就是開發環境等級的「健康檢查」。正式上線後，這些 server 換成部署在 AWS 上的真實服務（<a href="https://aws.amazon.com/tw/ecs/" target="_blank" rel="noopener noreferrer">ECS</a>/<a href="https://docs.aws.amazon.com/zh_tw/eks/" target="_blank" rel="noopener noreferrer">EKS</a> 上的容器，或直接接供應商網址），監控就換成上面說的 CloudWatch 組合。另一個細節：<code>gl-reconciler</code> 的 <code>agent.yaml</code> 裡，<code>internal-gl</code>／<code>subledger</code> 兩個 MCP 都標注 <code>enabled: true # read-only server</code>——這兩個是總帳類系統，也就是主線說的「延遲比死活更早示警」的典型對象。</p>
+      </div>
     </div>
     <div class="tab-panel">
-      <p>這一層看「產出的東西是不是還對」，是三層裡最容易被忽略、卻最先反映問題的一層。技術層全綠，不代表業務結果正常——模型行為可能因為上游資料格式微調、skill 版本更新後的邊界案例、或者單純提示詞漂移（prompt drift）而悄悄變差。建議至少盯三個數字：<strong>每日處理件數</strong>（跟歷史基準比，忽然掉一半通常是上游資料源或觸發流程壞了，不是 agent 的問題）、<strong>handoff 率</strong>（第 8 章談的 <code>handoff_request</code> 觸發頻率，忽然飆高可能代表某個 agent 開始把它本來能處理的案子都往外推）、<strong>人審駁回率</strong>（🔴 高風險 agent 產出的 <code>./out/</code> 報告被覆核人員退回的比例——這是品質劣化最敏感的先行指標，通常比「模型出錯」的告警還早幾天亮起來）。</p>
+      <p>這一層是「成品抽檢」：看產出的東西是不是還對。它是三層裡最容易被忽略、卻最先反映問題的一層。技術層全綠，不代表業務結果正常——模型行為可能因為上游資料格式微調、skill 版本更新後的邊界案例，或是 <span class="term" data-term="prompt">prompt</span> 沒動、行為卻慢慢<span class="term" data-term="drift">漂移</span>（prompt drift）而悄悄變差。</p>
+      <p>建議至少盯三個數字。<strong>每日處理件數</strong>：跟歷史基準比，忽然掉一半通常是上游資料源或觸發流程壞了，不是 agent 的問題。<strong><span class="term" data-term="handoff">handoff</span> 率</strong>：第 8 章談的 <code>handoff_request</code> 觸發頻率，忽然飆高可能代表某個 agent 開始把它本來能處理的案子都往外推。<strong><span class="term" data-term="hitl">人審</span>駁回率</strong>：🔴 高風險 agent 產出的 <code>./out/</code> 報告被覆核人員退回的比例——這是品質劣化最敏感的先行指標，通常比「模型出錯」的告警還早幾天亮起來。</p>
     </div>
   </div>
 
+  <p><strong>一句話總結：</strong>值班室要掛三面儀表板——agent 執行層（SSE 事件落地＋狀態機＋告警）、AWS 基礎層（MCP 健康、延遲、佇列深度）、業務層（件數、handoff 率、人審駁回率），缺一面就會漏掉一種事故。</p>
+
   <h2 id="s3">3. 成本管理：token 歸因與模型選擇</h2>
-  <p>CMA 的帳單是照 token 用量算的，多代理架構下最容易踩的坑是「只看得到總帳單，看不出是哪支 agent、哪一次 run、哪一個葉子工人燒的」。歸因至少要拆到兩個維度：<strong>per-agent</strong>（哪支 named agent 的月度 token 用量最高）與 <strong>per-run</strong>（同一支 agent 裡，是不是某幾次 run 異常地長——例如 <code>gl-reconciler</code> 的 <code>critic</code> 子代理如果陷入重複覆核循環，單次 run 的 token 用量會遠高於正常值）。這兩個維度都可以從第 2 節「Agent 執行層」落地的事件流回推——只要落地時把 <code>run_id</code>、<code>agent slug</code>、<code>callable_agent</code> 名稱一起記進 CloudWatch Logs 的結構化欄位，之後就能用查詢語言直接切維度算總量，不需要另外建一套計量系統。</p>
+  <p>先講結論：<strong>帳單要能拆到「每支 agent、每次 run」，否則暴增時查不出兇手</strong>。CMA 的帳單照 token 用量算——token 是 <span class="term" data-term="llm">LLM</span>（大型語言模型）計費的基本單位，模型每讀寫一段文字都在跳表，就像水電表的度數。多代理架構下最容易踩的坑，是整棟大樓只裝一顆總表：只看得到總帳單，看不出是哪支 agent、哪一次 run、哪一個<span class="term" data-term="leaf-worker">葉子工人</span>燒的。</p>
+  <p>歸因至少要拆兩個維度，等於幫每層樓、每個房間裝分表。<strong>per-agent</strong>：哪支 <span class="term" data-term="named-agent">named agent</span> 的月度 token 用量最高。<strong>per-run</strong>：同一支 agent 裡，是不是某幾次 run 異常地長——例如 <code>gl-reconciler</code> 的 <code>critic</code> <span class="term" data-term="subagent">子代理</span>若陷入重複覆核循環，單次 run 的 token 用量會遠高於正常值。做法不用另建一套計量系統：沿用第 2 節「Agent 執行層」落地的事件流，落地時把 <code>run_id</code>、agent slug、callable_agent 名稱一起記進 CloudWatch Logs 的結構化欄位，之後用查詢語言就能直接切維度算總量。</p>
 
-  <p>模型選擇是成本槓桿裡最直接的一項。目前這份 repo 裡全部十支 named agent、以及底下所有 <code>subagents/*.yaml</code> 的葉子工人，<code>model:</code> 欄位一致寫死 <code>claude-opus-4-7</code>——包括 <code>gl-reconciler/subagents/reader.yaml</code> 這種只做「讀取未受信任文件、吐出 schema 驗證過的 JSON」的窄任務工人。這其實留了一塊沒動用的省錢空間：<code>model:</code> 是每個 yaml 檔各自的欄位，不是全域設定，理論上可以只把某個葉子工人换成較小/較便宜的模型單獨測試，不影響其他子代理。哪些工人是候選？看兩個特徵：<strong>①</strong> 輸出有 <code>output_schema</code> 把關（像 <code>reader.yaml</code> 那樣，<code>scripts/validate.py</code> 會在 orchestrator（主代理）看到之前先做長度與字元類別校驗）——就算換小模型輸出品質有落差，schema 驗證這道閘還在，壞掉的輸出進不了下一步；<strong>②</strong> 任務本身是窄範圍抽取/分類，不需要跨文件的長鏈推理。<code>doc-reader</code>（KYC）、<code>reader</code>（GL 對帳）、<code>ledger-reader</code>（月結）這類「讀取＋結構化輸出」的葉子工人都符合這兩個特徵，是換模型實驗最該優先試的對象；反過來，<code>escalator</code>／<code>resolver</code> 這種唯一持有 Write 權限、要綜合多方結果做最終判斷的工人，不建議急著降規格。</p>
+  <p>模型選擇是成本槓桿裡最直接的一項。目前這份 <span class="term" data-term="repo">repo</span> 裡，全部十支 named agent、以及底下所有 <code>subagents/*.yaml</code> 的葉子工人，<code>model:</code> 欄位一致寫死 <code>claude-opus-4-7</code>。這留了一塊沒動用的省錢空間：<code>model:</code> 是每個 <span class="term" data-term="yaml">yaml</span> 檔各自的欄位，不是全域設定。理論上可以只把某個葉子工人換成較小、較便宜的模型單獨測試，不影響其他子代理。哪些工人是候選？看兩個特徵：<strong>①</strong> 輸出有 <code>output_schema</code> 把關——就算換小模型品質有落差，驗證這道閘還在，壞掉的輸出進不了下一步；<strong>②</strong> 任務本身是窄範圍抽取或分類，不需要跨文件的長鏈推理。反過來，要綜合多方結果做最終判斷、又唯一持有 Write 權限的工人，不建議急著降規格。</p>
 
-  <div class="callout info"><span class="co-title">預算告警怎麼設</span>沿用第 2 節同一條資料管道：run 落地時記下 token 用量，用 CloudWatch 的 metric filter 從結構化日誌抽出每小時/每日總量，對「per-agent 日用量」與「全域月用量」各設一條告警門檻。門檻抓法建議用「過去 4 週同期均值 × 倍數」而不是寫死一個絕對值——業務量本來就有月結、季底的自然波動，寫死門檻只會逼你三不五時手動調整或乾脆忽略告警。</div>
+  <div class="adv" data-note="逐一點名哪些葉子工人適合換小模型、schema 驗證這道閘實際由哪支腳本執行；要做降本實驗的人再展開">
+    <p>以 <code>gl-reconciler/subagents/reader.yaml</code> 為例：這個工人只做「讀取未受信任文件、吐出 <span class="term" data-term="schema">schema</span> 驗證過的 <span class="term" data-term="json">JSON</span>」，而且 <code>scripts/validate.py</code> 會在 orchestrator（主代理）看到輸出之前，先做長度與字元類別校驗——完全符合上面兩個特徵。同類型的還有 <code>doc-reader</code>（KYC）、<code>ledger-reader</code>（月結）：這批「讀取＋結構化輸出」的葉子工人，是換模型實驗最該優先試的對象。相反地，<code>escalator</code>／<code>resolver</code> 這種唯一持有 Write 權限、要做最終判斷的工人，就是主線說的「不建議急著降規格」那一類。</p>
+  </div>
+
+  <div class="callout info"><span class="co-title">預算告警怎麼設</span>沿用第 2 節同一條資料管道：run 落地時記下 token 用量，用 CloudWatch 的 metric filter 從結構化日誌抽出每小時／每日總量，對「per-agent 日用量」與「全域月用量」各設一條告警門檻。門檻抓法建議用「過去 4 週同期均值 × 倍數」，而不是寫死一個絕對值——業務量本來就有月結、季底的自然波動，寫死門檻只會逼你三不五時手動調整，或乾脆忽略告警。</div>
+
+  <p><strong>一句話總結：</strong>把 token 當水電度數管——per-agent、per-run 兩層分表從事件流落地欄位免費長出來；<code>model:</code> 是逐檔欄位，窄任務、有 schema 把關的葉子工人是換小模型的優先候選。</p>
 
   <h2 id="s4">4. 更新與發布維運</h2>
-  <p>第 2 章與 <code>docs/TechSummary.md</code> 第四節談過的維護紀律（改真本 → sync → check）是開發期流程；上生產環境要在後面再接四步，變成一條完整的七步發布線：</p>
+  <p>第 2 章與 <code>docs/TechSummary.md</code> 第四節談過的維護紀律——改<span class="term" data-term="canonical">真本</span> → sync → check——是開發期流程；其中 check 這一步會驗出 agent 包副本與真本之間的漂移（drift）。上生產環境要在後面再接四步，變成一條完整的七步發布線：</p>
 
   <div class="flow" data-animate>
     <div class="step"><span class="n">1</span><strong>改真本</strong><br>編輯 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/&lt;skill&gt;/SKILL.md</code></div>
@@ -109,7 +138,13 @@
     <div class="step"><span class="n">7</span><strong>切換</strong><br>把呼叫端的 slug→agent_id 映射指到新 id，舊 id 先保留不刪</div>
   </div>
 
-  <p>第 4 步的 <code>--dry-run</code> 是這條線上最便宜的保險：<code>deploy-managed-agent.sh</code> 在 dry-run 模式下會把 skill 上傳、子代理建立都改成假值（<code>DRYRUN_&lt;name&gt;</code>），只把展開後、真正要送給 <code>POST /v1/agents</code> 的 JSON 印出來，不觸發任何真實 API 呼叫。發布前用它確認：<code>system</code> 有沒有正確內嵌新版 SKILL.md 的內容、<code>callable_agents</code> 的委派結構有沒有跟預期一致，比等到正式部署完才發現載荷不對划算得多。</p>
+  <p>第 4 步是這條線上最便宜的保險。<span class="term" data-term="dry-run">dry-run</span>（演練模式）就像上線前先「試印一張申請書」：把最後要送出的東西完整印出來看，但不真的送件。發布前用它確認兩件事：<code>system</code>（<span class="term" data-term="system-prompt">系統提示</span>）有沒有正確內嵌新版 SKILL.md 的內容；<code>callable_agents</code> 的委派結構有沒有跟預期一致。這比等到正式部署完才發現載荷不對，划算得多。第 6 步的驗證，則是拿每支 agent <span class="term" data-term="cookbook">cookbook</span> 附的範例 <span class="term" data-term="steering-event">steering event</span>（轉向事件）實跑一輪，讓人核對結果。</p>
+
+  <div class="adv" data-note="dry-run 模式在腳本內部怎麼避開真實 API 呼叫；好奇實作機制的人再展開">
+    <p><code>deploy-managed-agent.sh</code> 在 dry-run 模式下，會把 skill 上傳、子代理建立這些會打真實 API 的步驟，全部改成回傳假值（<code>DRYRUN_&lt;name&gt;</code>），然後只把展開後、真正要送給 <code>POST /v1/agents</code> 的 JSON 印出來——整個過程不觸發任何真實 API 呼叫，所以隨便跑、不用錢也不留痕。</p>
+  </div>
+
+  <p>正式部署前，還要先 export 兩類<span class="term" data-term="env-var">環境變數</span>：API 金鑰，以及各 MCP server 的網址佔位。這段是可以直接照抄的操作範例：</p>
 
   <div class="code-title">deploy-managed-agent.sh 用法</div>
   <pre><code># 先看載荷，不送出
@@ -121,10 +156,13 @@ export GL_MCP_URL=... SUBLEDGER_MCP_URL=...
 scripts/deploy-managed-agent.sh gl-reconciler
 # 輸出：deployed / agent id: &lt;id&gt; / cookbook: &lt;repo&gt;/gl-reconciler / console 連結</code></pre>
 
-  <p><strong>回滾策略</strong>建立在這支腳本一個容易被忽略的事實上：它每次執行都是對 <code>/v1/agents</code> 發一次全新的 <code>POST</code>，不是「更新既有 agent」，所以每次部署都會拿到一個新的 agent id；只要你沒有主動棄用，<strong>舊 id 會一直保持可呼叫</strong>。這代表回滾不需要任何「復原版本」的操作——你唯一要管理的狀態是自己那一層 slug→agent_id 的對照表（就是 <code>scripts/orchestrate.py</code> 裡 <code>agent_ids: dict[str, str]</code> 那個映射的生產版本）。新版本驗證有問題，直接把映射切回舊 id，呼叫端完全無感；等新版本確認穩定，再考慮汰除舊 id。這比「在同一個 agent 上做版本回退」簡單很多，代價是你要自己維護這份映射表，並且記得舊 id 何時可以真正棄用。</p>
+  <p>跑完你會拿到一個新的 agent id——注意，是「新的」。這正是回滾策略的根基。</p>
+  <p><strong>回滾策略</strong>建立在這支腳本一個容易被忽略的事實上：它每次執行都是對 <code>/v1/agents</code> 發一次全新的 <code>POST</code>，不是「更新既有 agent」。所以每次部署都會拿到一個新的 agent id；只要你沒有主動棄用，<strong>舊 id 會一直保持可呼叫</strong>。這代表回滾不需要任何「復原版本」的操作。你唯一要管理的狀態，是自己那一層 slug→agent_id 的對照表——就是 <code>scripts/orchestrate.py</code> 裡 <code>agent_ids: dict[str, str]</code> 那個映射的生產版本。新版本驗證有問題？直接把映射切回舊 id，呼叫端完全無感。等新版本確認穩定，再考慮汰除舊 id。這比「在同一個 agent 上做版本回退」簡單很多；代價是你要自己維護這份映射表，並且記得舊 id 何時可以真正棄用。</p>
+
+  <p><strong>一句話總結：</strong>生產發布是七步線（改真本 → sync → check → dry-run → deploy → 驗證 → 切換）；每次 deploy 都產生新 agent id，回滾就是把自己那層 slug→agent_id 映射切回舊 id，不是版本復原。</p>
 
   <h2 id="s5">5. 事件應變 Runbook 骨架</h2>
-  <p>以下四種事件是 CMA 生產環境最常見的異常類型，各給一份可以直接照抄、再依銀行自己的工具鏈填空的處置骨架。</p>
+  <p>以下四種事件是 CMA 生產環境最常見的異常類型。每一種都給一份可以直接照抄、再依銀行自己的工具鏈填空的處置骨架。共通原則只有一條：先止血（暫停觸發、縮小影響），再查因，最後回填補跑——順序不要顛倒。</p>
 
   <details>
     <summary>🔴 MCP server 掛了（例如 internal-gl 連不上）</summary>
@@ -160,15 +198,17 @@ scripts/deploy-managed-agent.sh gl-reconciler
   <details>
     <summary>🔴 疑似資料外洩（未受信任文件夾帶指令、或輸出出現不該有的敏感內容）</summary>
     <ol>
-      <li>立即動作：暫停相關 agent 的觸發；<code>scripts/orchestrate.py</code> 檔頭已明確點出風險——「讀未受信任文件的 agent，其輸出裡如果字面上出現一段 <code>handoff_request</code> JSON，理論上可能被誤當成真正的委派指令執行」，先確認這條路徑沒有被觸發。</li>
-      <li>核對防線是否生效：<code>ALLOWED_TARGETS</code> 白名單、<code>HANDOFF_PAYLOAD_SCHEMA</code> 的 <code>jsonschema.validate</code> 是否攔下了異常 payload——正常情況下，格式不符或目標不在白名單，事件會被直接丟棄，不會路由出去。</li>
-      <li>調閱該次 run 完整的落地事件記錄，確認實際造成的影響範圍——依第 2 章的安全分層，只碰未受信任文件的 worker（如 <code>doc-reader</code>、<code>reader</code>）本身沒有 Write 也沒有 MCP，能造成的最大傷害有結構性上限，先確認這個上限是否被突破。</li>
+      <li>立即動作：暫停相關 agent 的觸發。這類「文件夾帶指令」的手法就是<span class="term" data-term="prompt-injection">提示注入</span>（prompt injection）；<code>scripts/orchestrate.py</code> 檔頭已明確點出風險——「讀未受信任文件的 agent，其輸出裡如果字面上出現一段 <code>handoff_request</code> JSON，理論上可能被誤當成真正的委派指令執行」，先確認這條路徑沒有被觸發。</li>
+      <li>核對防線是否生效：<code>ALLOWED_TARGETS</code> <span class="term" data-term="allowlist">白名單</span>、<code>HANDOFF_PAYLOAD_SCHEMA</code> 的 <code>jsonschema.validate</code> 是否攔下了異常 payload——正常情況下，格式不符或目標不在白名單，事件會被直接丟棄，不會路由出去。</li>
+      <li>調閱該次 run 完整的落地事件記錄，確認實際造成的影響範圍（例如是否含客戶個資 <span class="term" data-term="pii">PII</span>）——依第 2 章的<span class="term" data-term="security-tier">安全分層</span>，只碰未受信任文件的 worker（如 <code>doc-reader</code>、<code>reader</code>）本身沒有 Write 也沒有 MCP，能造成的最大傷害有結構性上限，先確認這個上限是否被突破。</li>
       <li>知會合規／資安團隊，依銀行既有的資料外洩應變流程（而非本 runbook）走正式通報與調查程序——本節只涵蓋 agent 維運側的第一時間止血。</li>
     </ol>
   </details>
 
+  <p><strong>一句話總結：</strong>四類事件各有骨架——MCP 掛了先停觸發再回填、平台異常靠退避與人工把關、品質劣化先切回舊 id 再查因、疑似外洩先止血並核對白名單與 schema 防線，最後都要回填與通報。</p>
+
   <h2 id="s6">6. 日常維運節奏</h2>
-  <p>把上面三層可觀測性跟成本歸因落成日常習慣，不是每次都從頭想「今天要看什麼」：</p>
+  <p>把三層可觀測性跟成本歸因落成固定節奏，就像分行的日常：每天軋帳、每週盤點、每月結帳。有了固定清單，值班的人不用每次從頭想「今天要看什麼」，交接班也不會漏。</p>
 
   <p><strong>每日</strong></p>
   <ul class="checklist">
@@ -190,6 +230,8 @@ scripts/deploy-managed-agent.sh gl-reconciler
     <li>盤點可以棄用的舊 agent id（已確認新版本穩定超過一個觀察週期）</li>
     <li>檢討當月事件應變記錄，更新 runbook 裡過時或不準確的步驟</li>
   </ul>
+
+  <p><strong>一句話總結：</strong>日看業務數字與失敗 run、週看 token 趨勢與密鑰效期、月對帳單並清舊 id——把儀表板變成例行清單，異常才會在變成事故之前被看到。</p>
 
   <h2 id="s7">本章重點</h2>
   <div class="callout tip">

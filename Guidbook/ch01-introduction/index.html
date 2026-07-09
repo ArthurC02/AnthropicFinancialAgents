@@ -8,11 +8,19 @@
   <link rel="stylesheet" href="../assets/book.css">
 </head>
 
-<body data-chapter="ch01">
+<body data-chapter="ch01" data-level="入門">
   <main>
     <h1><span class="ch-no">Chapter 1</span>導論：從 10 個金融 Agent 到你的銀行系統</h1>
-    <p class="lead">這本書要回答一個銀行工程師會問的實際問題：Anthropic 這套 <code>financial-services</code> repo
-      給了什麼、能不能直接用在我的銀行、以及哪裡還得自己補。本章先把「一套方案、兩種跑法」的架構講清楚，再誠實列出這 10 支 agent 對映到銀行業務的落點與缺口，最後給出全書 12 章的導讀地圖。</p>
+    <p class="lead">這本書要回答一個銀行團隊會問的實際問題：Anthropic 這套 <code>financial-services</code>
+      <span class="term" data-term="repo">repo</span>（程式碼倉庫）到底給了什麼、能不能直接用在我的銀行、哪裡還得自己補。本章先把「一套方案、兩種跑法」講清楚，
+      再誠實列出這 10 支 <span class="term" data-term="agent">agent</span> 對映到銀行業務的落點與缺口，最後給出全書 12 章的導讀地圖。</p>
+
+    <div class="callout info prereq"><span class="co-title">🔑 開始前，你需要先懂</span>
+      <ul>
+        <li><a href="../ch00-basics/index.html#s2">agent 是什麼</a>（第 0 章第 2 節）——如果「AI agent」對你還是個模糊的詞，先花五分鐘讀這一節。</li>
+        <li><a href="../ch00-basics/index.html#s4">兩種上工方式</a>（第 0 章第 4 節）——本章第二節會大量用到「有人盯著跑」與「無人值守」這組對比。</li>
+      </ul>
+    </div>
 
     <div class="toc">
       <div class="toc-title">本章內容</div>
@@ -27,12 +35,15 @@
     </div>
 
     <h2 id="s1">一、這套方案是什麼：10 個金融具名代理（Named Agent）</h2>
-    <p>Anthropic 這個 repo（<code>README.md</code>）提供的不是一堆零散工具，而是 10
-      支「<strong>具名代理</strong>」——每支都命名為一個完整的工作流程 <strong>投資銀行</strong>（investment banking）、<strong>證券研究</strong>（equity
-      research）、<strong>私募股權</strong>（private
-      equity）、<strong>財富管理</strong>（wealth management）四個垂直領域的日常工作），從頭到尾自己跑完一件事：讀資料、做分析、產出草稿，然後停下來等人簽核。每支 agent
-      plugin
-      都是<strong>自包含（self-contained）</strong>的，把它用到的 skills 一起打包，裝一個 agent 就是全部需要的東西。</p>
+    <p><strong>先講結論：這個 repo 給你的不是一堆零散工具，而是 10 位「已經受過職前訓練的數位新進員工」。</strong>
+      技術上的正式名稱是「<span class="term" data-term="named-agent">具名代理</span>」（named agent）——每支 agent
+      都以它負責的那一條工作流程命名，工作內容取材自<strong>投資銀行</strong>（investment banking）、<strong>證券研究</strong>（equity
+      research）、<strong>私募股權</strong>（private equity）、<strong>財富管理</strong>（wealth management）這四個<span class="term"
+        data-term="vertical">垂直領域</span>的日常業務。每支 agent 會從頭到尾自己跑完一件事：讀資料、做分析、產出草稿，然後<strong>停下來等人簽核</strong>——這種「機器做工、人守關卡」的做法，行話叫<span
+        class="term" data-term="hitl">人工把關（HITL，human-in-the-loop）</span>。</p>
+    <p>另外一個重點：每支 agent <span class="term" data-term="plugin">plugin</span>（外掛套件）都是<strong>自包含</strong>（self-contained）的。
+      意思是它把自己會用到的 <span class="term" data-term="skill">skills</span>（技能包——可以想成塞給新進員工的 SOP 手冊）一起打包好了。
+      裝一個 agent，就等於拿到它需要的全部東西，不必再東拼西湊。</p>
 
     <div class="table-wrap">
       <table>
@@ -53,35 +64,36 @@
           </tr>
           <tr>
             <td>pitch-agent（投行提案）</td>
-            <td>comps（可比公司分析，comparable companies analysis）、precedents（先例交易分析，precedent transactions）、LBO（槓桿收購，leveraged
-              buyout）→ 估值（valuation，估算一家公司值多少錢）模型＋品牌提案簡報</td>
+            <td>做三種估值分析——comps（可比公司分析，comparable companies analysis：拿同業的行情來比價）、precedents（先例交易分析，precedent
+              transactions：參考過去類似交易的成交價）、LBO（槓桿收購，leveraged buyout：評估「借錢買下這家公司」的划算程度）——產出估值模型與掛上品牌版型的提案簡報。所謂估值（valuation），就是估算一家公司值多少錢</td>
             <td><span class="badge amber">🟡 中</span></td>
           </tr>
           <tr>
             <td rowspan="3">研究與建模（前台）</td>
             <td>market-researcher（市場研究）</td>
-            <td>產業/主題 → 概況、競爭格局、同業比較、標的清單</td>
+            <td>給定產業或主題 → 產出概況、競爭格局、同業比較、標的清單</td>
             <td><span class="badge amber">🟡 中</span></td>
           </tr>
           <tr>
             <td>earnings-reviewer（財報追蹤）</td>
-            <td>法說會＋財報 → 更新模型 → 觀點筆記草稿</td>
+            <td>讀法說會與財報 → 更新模型 → 產出觀點筆記草稿</td>
             <td><span class="badge amber">🟡 中</span></td>
           </tr>
           <tr>
             <td>model-builder（估值建模）</td>
-            <td>從零建 DCF（現金流折現法，discounted cash flow）、LBO、三大報表、comps，落地成 Excel</td>
+            <td>從零建立 DCF（現金流折現法，discounted cash flow：把公司未來會賺的現金換算成今天的價值）、LBO、三大報表與 comps 模型，最後落地成 Excel 檔</td>
             <td><span class="badge amber">🟡 中</span></td>
           </tr>
           <tr>
             <td rowspan="4">基金行政與財務（後台）</td>
             <td>valuation-reviewer（估值複核）</td>
-            <td>吃 GP（基金管理人，general partner）估值包、跑估值模板、備妥 LP（出資人，limited partner）報告</td>
+            <td>接收 <span class="term" data-term="lp-gp">GP</span>（基金管理人，general partner）送來的估值包、跑估值模板，備妥給
+              LP（出資人，limited partner）的報告</td>
             <td><span class="badge red">🔴 高</span></td>
           </tr>
           <tr>
             <td>gl-reconciler（總帳對帳）</td>
-            <td>找出總帳（GL，general ledger，公司整體的帳務紀錄）與明細帳（subledger，各筆交易的細項紀錄）的差異、追根因、送簽核</td>
+            <td>找出<span class="term" data-term="gl">總帳</span>（GL，general ledger，公司整體帳務的總紀錄）與明細帳（subledger，一筆一筆交易的細項紀錄）之間的差異、追出根本原因、送人簽核</td>
             <td><span class="badge red">🔴 高</span></td>
           </tr>
           <tr>
@@ -91,63 +103,78 @@
           </tr>
           <tr>
             <td>statement-auditor（對帳單稽核）</td>
-            <td>對帳單寄出前逐欄核對基金淨值（NAV，net asset value，基金資產減負債後的每單位價值）</td>
+            <td>對帳單寄給客戶之前，逐欄核對基金淨值（<span class="term" data-term="nav">NAV</span>，net asset
+              value：基金資產減掉負債之後，每一單位值多少錢）</td>
             <td><span class="badge red">🔴 高</span></td>
           </tr>
           <tr>
             <td>開戶審查（中台）</td>
             <td>kyc-screener（開戶審查）</td>
-            <td>解析開戶文件、跑規則引擎，標出缺口交合規</td>
+            <td>解析開戶文件、跑規則引擎，把缺漏標出來交給合規人員</td>
             <td><span class="badge red">🔴 高</span></td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <p>這張表的分組（客戶經營與顧問、研究與建模、基金行政與財務、開戶審查）直接對應 <code>README.md</code>「Agents」表格的四個功能列；風險標記 🟢🟡🔴 則來自
-      <code>docs/AgentSummary.md</code>「一、十個助理一覽」——原則很簡單：<strong>越靠近「錢」跟「法規」，風險越高、把關越嚴</strong>。前台產出的是內部草稿，有人 review
-      就能攔錯；後台碰的是帳目與出資人交代，錯不得。
+    <p>這張表的分組（客戶經營與顧問、研究與建模、基金行政與財務、開戶審查）直接對應 <code>README.md</code>「Agents」表格的四個功能列。
+      🟢🟡🔴 的<span class="term" data-term="security-tier">風險分層</span>則來自
+      <code>docs/AgentSummary.md</code>「一、十個助理一覽」。分層原則很簡單：<strong>越靠近「錢」跟「法規」，風險越高、把關越嚴</strong>。
+      前台產出的是內部草稿，有人 review 就能攔錯；後台碰的是帳目與對出資人的交代，錯不得。
     </p>
 
     <div class="callout info"><span class="co-title">名稱不等於範圍</span>「pitch-agent」「gl-reconciler」這些名字對應的是<em>這套 repo
         預設的工作流程</em>，不是「投行部門」或「對帳部門」的全部工作。<code>docs/AgentSummary.md</code> 開頭就講明：這是把「贏得客戶 → 開戶 → 基金日常營運 → 對出資人交代」這條
       pipeline 串起來的一套班底，而不是銀行全業務的覆蓋圖。</div>
 
+    <p><strong>一句話總結：</strong>這套 repo 給你 10 支各自負責一條完整工作流程的具名代理，而且越靠近錢和法規的那幾支，風險分級越高、人工把關越嚴。</p>
+
     <h2 id="s2">二、一個來源、兩種輸出：Plugin vs CMA</h2>
-    <p><code>README.md</code> 第一段講的原則是這本書的技術主軸：「Everything here is available two ways from one source」——同一份
-      <code>agents/&lt;slug&gt;.md</code> 系統提示詞、同一批 skills，你決定它跑在哪裡。<code>managed-agent-cookbooks/README.md</code>
-      說得更直白：「Same agent, same skills — pick your surface.」
+    <p><strong>先講結論：同一支 agent，可以「坐在你旁邊上班」，也可以「在雲端值夜班」——用的是同一份大腦。</strong>
+      <code>README.md</code> 第一段講的原則是這本書的技術主軸：「Everything here is available two ways from one source」。
+      也就是同一份 <code>agents/&lt;slug&gt;.md</code> <span class="term" data-term="system-prompt">系統提示詞</span>（system
+      prompt——agent 的「職位說明書」，定義它是誰、能做什麼、規矩是什麼）、同一批 skills，由你決定它跑在哪裡。
+      <code>managed-agent-cookbooks/README.md</code> 說得更直白：「Same agent, same skills — pick your surface.」
     </p>
 
     <div class="tabs">
       <div class="tab-bar"><button>Plugin（Cowork / Claude Code）</button><button>CMA（Claude Managed Agents）</button>
       </div>
       <div class="tab-panel">
-        <p><strong>誰在盯著它跑</strong>：人。分析師在 Cowork 介面裡點開 agent、看它一步步做事，隨時可以插話、中止、要求改方向。</p>
-        <p><strong>怎麼裝</strong>：Cowork 裡 Settings → Plugins → Add plugin，貼 repo URL 或上傳 zip；Claude Code 則是加 marketplace
-          後逐一 <code>claude plugin install</code>。</p>
+        <p><strong>誰在盯著它跑</strong>：人。分析師在 Cowork 介面裡點開 agent、看它一步步做事，隨時可以插話、中止、要求改方向。就像新人坐在你隔壁，你隨時能探頭看一眼。</p>
+        <p><strong>怎麼裝</strong>：Cowork 裡走 Settings → Plugins → Add plugin，貼 repo URL 或上傳 zip；Claude Code 則是先加
+          <span class="term" data-term="marketplace">marketplace</span>（插件市集），再逐一 <code>claude plugin install</code>。</p>
+        <p>下面這段指令做的事，就是「把市集加進來，然後裝三個套件」。非工程讀者可以直接跳過，不影響後面閱讀。</p>
         <div class="code-title">Claude Code — 安裝核心 skills 與 agent</div>
         <pre><code>claude plugin marketplace add anthropics/financial-services
 
 claude plugin install financial-analysis@claude-for-financial-services
 claude plugin install gl-reconciler@claude-for-financial-services
 claude plugin install market-researcher@claude-for-financial-services</code></pre>
-        <p>裝完後 agent 出現在 Cowork dispatch 裡，skills 在相關時機自動觸發，slash
-          command（<code>/comps</code>、<code>/dcf</code>、<code>/earnings</code>…）在 session 裡可直接叫用。</p>
+        <p>裝完之後，agent 會出現在 Cowork 的 dispatch 清單裡；skills 會在相關時機自動觸發；<span class="term"
+            data-term="slash-command">slash command</span>（斜線指令，例如 <code>/comps</code>、<code>/dcf</code>、<code>/earnings</code>）則可以在
+          <span class="term" data-term="session">session</span>（工作階段）裡直接叫用。</p>
       </div>
       <div class="tab-panel">
-        <p><strong>誰在盯著它跑</strong>：沒有人即時盯——無人值守（headless），由你自己的後端在特定事件發生時呼叫。</p>
-        <p><strong>怎麼跑</strong>：<code>managed-agent-cookbooks/&lt;slug&gt;/agent.yaml</code> 是部署清單（deploy
-          manifest），直接引用同一份 plugin 目錄下的系統提示詞與 skills，跑 <code>scripts/deploy-managed-agent.sh &lt;slug&gt;</code> 就會把
-          skills 上傳、建好 leaf-worker subagents，再用真正的 <code>POST /v1/agents</code> 欄位把 orchestrator（主代理，負責調度 leaf worker
-          的那一支）建起來。</p>
+        <p><strong>誰在盯著它跑</strong>：沒有人即時盯。<span class="term" data-term="cma">CMA</span>（Claude Managed
+          Agents）是<span class="term" data-term="headless">無人值守</span>（headless）模式——由你自己的後端系統在特定事件發生時透過
+          <span class="term" data-term="api">API</span>（應用程式介面——系統之間互相呼叫的標準窗口）呼叫它。</p>
+        <p><strong>怎麼跑</strong>：<span class="term" data-term="cookbook">cookbook</span>（部署食譜）目錄裡的
+          <code>managed-agent-cookbooks/&lt;slug&gt;/agent.yaml</code> 是<span class="term"
+            data-term="deploy">部署</span>清單（deploy manifest），直接引用同一份 plugin 目錄下的系統提示詞與 skills。
+          執行 <code>scripts/deploy-managed-agent.sh &lt;slug&gt;</code>，腳本會把 skills 上傳、建好 leaf-worker
+          <span class="term" data-term="subagent">subagents</span>（子代理——主代理底下分工的小幫手），
+          再用真正的 <code>POST /v1/agents</code> 欄位把 <span class="term" data-term="orchestrator">orchestrator</span>（主代理，負責調度
+          <span class="term" data-term="leaf-worker">leaf worker</span> 的那一支）建起來。</p>
+        <p>下面兩行是實際的部署指令：第一行設定 API 金鑰，第二行部署 gl-reconciler 這支 agent。</p>
         <div class="code-title">部署一支 CMA</div>
         <pre><code>export ANTHROPIC_API_KEY=sk-ant-...
 scripts/deploy-managed-agent.sh gl-reconciler</code></pre>
-        <p class="lead" style="font-size:inherit;margin:0.5em 0;">關鍵事實：CMA 實際運算跑在 <strong>Anthropic
+        <div class="callout warn"><span class="co-title">關鍵事實：運算在誰家？</span>CMA 的實際運算跑在 <strong>Anthropic
             雲端</strong>（<code>POST /v1/agents</code>，beta header <code>managed-agents-2026-04-01</code>）。你的銀行 AWS
-          帳號裡放的是<em>周邊系統</em>——呼叫端後端、MCP（Model Context Protocol，模型情境協定——agent
-          用來連外部資料源如總帳、CRM、行情庫的標準介面）servers、編排器（<code>scripts/orchestrate.py</code>）、資料源，不是 agent 本身的運算。</p>
+          帳號裡放的是<em>周邊系統</em>——呼叫端後端、<span class="term" data-term="mcp">MCP</span>（Model Context
+          Protocol，模型情境協定——你可以把它想成 agent 接外部系統的標準插座，用來連總帳、CRM、行情庫這類資料源）servers、編排器（<code>scripts/orchestrate.py</code>）與資料源。放在
+          AWS 的是這些配套，不是 agent 本身的運算。</div>
         <figure class="book-figure">
           <img src="../assets/illustrations/ch01-cma-boundary.svg"
             alt="CMA 運算在 Anthropic Cloud，銀行 AWS 只放工作流引擎、MCP servers、資料源與編排器。">
@@ -156,15 +183,20 @@ scripts/deploy-managed-agent.sh gl-reconciler</code></pre>
       </div>
     </div>
 
-    <p><code>managed-agent-cookbooks/README.md</code> 給了 <code>agent.yaml</code>
-      的欄位對照：<code>system: {file: ..., append: "..."}</code> 會被解析成完整系統提示詞字串；<code>skills: [{from_plugin: ...}]</code>
-      會把整個 plugin 目錄下的 skills 上傳成
-      <code>{type: custom, skill_id: ...}</code>；<code>callable_agents: [{manifest: ./subagents/x.yaml}]</code> 則建出對應的
-      leaf worker。實際看一支範例：
-    </p>
+    <p>那份 <span class="term" data-term="agent-yaml">agent.yaml</span> 部署清單長什麼樣？主線讀者只要知道：它就是一張「到職單」，
+      寫明這支 agent 用哪份職位說明書（系統提示詞）、帶哪些 SOP（skills）、底下編制哪些小幫手（leaf workers）。想逐欄看懂的人，展開下面的進階區塊。</p>
 
-    <div class="code-title">managed-agent-cookbooks/pitch-agent/agent.yaml（節錄）</div>
-    <pre><code>name: pitch-agent
+    <div class="adv" data-note="逐欄解剖 agent.yaml：system / skills / callable_agents 三個欄位各自會被解析成什麼。想自己改部署清單再展開，跳過不影響主線。">
+      <p><code>managed-agent-cookbooks/README.md</code> 給了 <span class="term"
+          data-term="yaml">YAML</span>（一種給人讀也給機器讀的設定檔格式）欄位對照：
+        <code>system: {file: ..., append: "..."}</code> 會被解析成完整系統提示詞字串；<code>skills: [{from_plugin: ...}]</code>
+        會把整個 plugin 目錄下的 skills 上傳成
+        <code>{type: custom, skill_id: ...}</code>；<span class="term"
+          data-term="callable-agents">callable_agents</span>（可呼叫代理清單）裡每一筆 <code>{manifest: ./subagents/x.yaml}</code>
+        則建出對應的 leaf worker。實際看一支範例：
+      </p>
+      <div class="code-title">managed-agent-cookbooks/pitch-agent/agent.yaml（節錄）</div>
+      <pre><code>name: pitch-agent
 model: claude-opus-4-7
 
 system:
@@ -182,39 +214,47 @@ callable_agents:
   - { manifest: ./subagents/researcher.yaml }
   - { manifest: ./subagents/modeler.yaml }
   - { manifest: ./subagents/deck-writer.yaml }   # only leaf with Write</code></pre>
+    </div>
 
-    <p>注意 <code>mcp_servers</code> 用 <code>${CAPIQ_MCP_URL}</code> 這種環境變數佔位——CMA 版本上線時只換這裡的 URL（從 mock
-      換成真實供應商），<strong>不改 agent 裡的 server 名稱</strong>，因為 MCP 是以「名字」解析的。</p>
+    <p>有一件事必須留在主線講：上面清單裡的 <code>mcp_servers</code> 用了 <code>${CAPIQ_MCP_URL}</code> 這種<span class="term"
+        data-term="env-var">環境變數</span>（environment variable——部署時才填入的可替換參數）佔位。CMA 版本上線時<strong>只換這裡的
+        URL</strong>——從 <span class="term" data-term="mock">mock</span>（假資料的模擬服務，供開發測試用）換成真實供應商——<strong>不改
+        agent 裡的 server 名稱</strong>。因為 MCP 是以「名字」解析的：agent 只認得「capiq」這個名字，名字背後接誰，由部署清單決定。</p>
+
+    <p><strong>一句話總結：</strong>Plugin 與 CMA 用的是同一份系統提示詞和同一批 skills，差別只在跑的地方和誰在盯著——Plugin 有人看著跑，CMA
+      由後端自動呼叫、運算在 Anthropic 雲端。</p>
 
     <h2 id="s3">三、為什麼銀行場景選 CMA</h2>
-    <p>Plugin 模式的前提是「有個人坐在 Cowork 前面」，這對投行分析師、研究員很自然。但銀行的核心系統整合場景——授信審核排程、夜間批次對帳、事件觸發的爭議調查——沒有人會為了每一筆案件手動點開一個
-      agent。銀行工程師要的是能被自己的<strong>工作流引擎</strong>（Temporal、Airflow、或既有的 Guidewire 事件匯流排）當成一個可呼叫的服務接進去。這正是 CMA
+    <p><strong>先講結論：銀行的核心整合場景沒有人會替每一筆案件手動點開視窗，所以要選能被系統呼叫的 CMA。</strong>
+      Plugin 模式的前提是「有個人坐在 Cowork 前面」，這對投行分析師、研究員很自然。但授信審核排程、夜間批次對帳、事件觸發的爭議調查，都是機器對機器的流程。
+      銀行工程師要的是一個能被自己的<strong>工作流引擎</strong>（Temporal、Airflow，或既有的事件匯流排）當成服務接進去的東西。這正是 CMA
       的定位：<code>managed-agent-cookbooks/README.md</code> 說 CMA 是「your platform team deploys behind your own workflow
-      engine」。</p>
+      engine」——由你的平台團隊部署在自家工作流引擎後面。</p>
 
     <p>三個具體理由：</p>
     <div class="cards">
       <div class="card">
         <h4>1. 後端驅動，不需要人守著</h4>
-        <p>事件（一筆撥款申請、一批對帳資料落地）觸發 API 呼叫，agent 跑完寫結果、發 webhook，全程不需要分析師開視窗盯著。</p>
+        <p>事件發生（一筆撥款申請進來、一批對帳資料落地）就觸發 API 呼叫；agent 跑完寫結果、發 <span class="term"
+            data-term="webhook">webhook</span>（回呼通知——跑完主動回報你的系統，而不是要你一直去問）。全程不需要分析師開視窗盯著。</p>
       </div>
       <div class="card">
         <h4>2. 能掛進既有工作流引擎</h4>
-        <p>CMA 是一個 API 端點，不是一個桌面 App——可以被排程系統、事件匯流排、既有的核心銀行系統當一個步驟呼叫，銜接你原本就有的簽核、記錄、重試機制。</p>
+        <p>CMA 是一個 API 端點，不是一個桌面 App。它可以被排程系統、事件匯流排、既有的核心銀行系統當成「其中一個步驟」呼叫，銜接你原本就有的簽核、記錄、重試機制。</p>
       </div>
       <div class="card">
         <h4>3. 權限靠架構鎖死，不是靠信任</h4>
-        <p><code>callable_agents</code> 目前只支援<strong>一層</strong>委派——orchestrator 能呼叫 leaf worker，leaf worker 不能再往下叫；而且每支
-          agent 的 leaf worker 裡只有<strong>一個</strong>有 <code>Write</code>
+        <p><code>callable_agents</code> 目前只支援<strong>一層</strong>委派：orchestrator 能呼叫 leaf worker，leaf
+          worker 不能再往下叫。而且每支 agent 的 leaf worker 裡只有<strong>一個</strong>有 <code>Write</code>
           權限（<code>managed-agent-cookbooks/README.md</code> 表格用粗體標出，例如 gl-reconciler 是
-          <code>resolver</code>）。誰能寫、誰只能讀，寫在部署清單裡，不是靠 prompt 裡一句「請小心」。
-        </p>
+          <code>resolver</code>）。誰能寫、誰只能讀，白紙黑字寫在部署清單裡，不是靠提示詞裡一句「請小心」。</p>
       </div>
     </div>
 
-    <p>具名代理之間也不會互相呼叫。一支 agent 需要另一支接手時，它在輸出裡吐一個 <code>handoff_request</code>，由
-      <code>scripts/orchestrate.py</code>（或銀行自己的事件匯流排）把它路由成新的 steering event 送到目標 session——這個參考腳本會硬性 allowlist 目標、對
-      payload 做 schema 驗證。用一個流程圖看實際發生順序：
+    <p>具名代理之間也<strong>不會互相呼叫</strong>。可以想成部門之間不准直接塞單子，一律走公文交換中心。一支 agent 需要另一支接手時，它在輸出裡吐出一筆
+      <span class="term" data-term="handoff">交棒訊號（handoff）</span>——欄位名是 <code>handoff_request</code>——由
+      <code>scripts/orchestrate.py</code>（或銀行自己的事件匯流排）把它路由成一個新的 <span class="term"
+        data-term="steering-event">steering event</span>（觸發 agent 上工的事件訊息），送到目標 session。用一個流程圖看實際發生順序：
     </p>
 
     <div class="flow" data-animate>
@@ -227,13 +267,23 @@ callable_agents:
       <div class="step"><span class="n">3</span><strong>handoff_request</strong><br>需要另一支 agent 接手時，輸出裡吐出 handoff
         訊號，自己不直接呼叫別的 agent</div>
       <div class="arrow">→</div>
-      <div class="step"><span class="n">4</span><strong>orchestrate.py 路由</strong><br>allowlist 目標＋驗證 payload，轉成新
-        steering event 送給下一支 agent</div>
+      <div class="step"><span class="n">4</span><strong><span class="term" data-term="orchestrate-py">orchestrate.py</span>
+          路由</strong><br>allowlist 目標＋驗證 payload，轉成新 steering event 送給下一支 agent</div>
     </div>
 
+    <div class="adv" data-note="orchestrate.py 這支參考腳本內部做了哪兩道檢查。想理解交棒路由的安全設計再展開。">
+      <p>這支參考腳本在路由 handoff 時做兩件事：第一，硬性比對 <span class="term"
+          data-term="allowlist">allowlist</span>（白名單——只有名單上的目標 agent 收得到交棒，不在名單上的一律拒絕）；第二，對交棒帶的 payload 做
+        <span class="term" data-term="schema">schema</span>（資料格式規格書）驗證，欄位不合格式就擋下來。也就是說，即使某支 agent
+        的輸出被污染、想把工作丟給不該收的對象，路由層也不會放行。完整的路由設計在第 8 章展開。</p>
+    </div>
+
+    <p><strong>一句話總結：</strong>銀行選 CMA，是因為它能被既有工作流引擎當成服務呼叫，而且「誰能寫、誰能叫誰」是寫死在部署清單裡的架構限制，不是口頭承諾。</p>
+
     <h2 id="s4">四、10 個 Agent 對映銀行業務：落點與缺口</h2>
-    <p>誠實地看：這 10 支 agent 是從投資銀行、證券研究、私募股權、財富管理四個垂直（<code>README.md</code>「Vertical Plugins」表）長出來的，服務的是投行前台、研究部、PE
-      基金行政、財富管理顧問——不是零售或商業銀行的核心放貸與清算業務。對映到銀行工程師實際要顧的業務，落點大致是：</p>
+    <p><strong>先講結論：這 10 支對投行、研究、基金行政、財富管理的覆蓋很好；對零售與商業銀行的核心業務，目前是空白。</strong>
+      誠實地看：這 10 支 agent 是從投資銀行、證券研究、私募股權、財富管理四個垂直（<code>README.md</code>「Vertical
+      Plugins」表）長出來的，服務的是投行前台、研究部、PE 基金行政、財富管理顧問——不是零售或商業銀行的核心放貸與清算業務。對映到銀行實際要顧的業務，落點大致是：</p>
 
     <div class="table-wrap">
       <table>
@@ -266,7 +316,8 @@ callable_agents:
             <td>中高——邏輯相通，但銀行總帳科目表跟基金不同，需客製</td>
           </tr>
           <tr>
-            <td>私人銀行客戶開戶 KYC（認識你的客戶，know your customer）／AML（洗錢防制，anti-money laundering）</td>
+            <td>私人銀行客戶開戶 <span class="term" data-term="kyc">KYC</span>（認識你的客戶，know your customer——開戶前確認客戶身分與資金來源的審查程序）／<span
+                class="term" data-term="aml">AML</span>（洗錢防制，anti-money laundering）</td>
             <td>kyc-screener</td>
             <td>中——規則引擎框架可用，但零售銀行開戶規則、名單來源跟基金 LP 審查不同</td>
           </tr>
@@ -274,7 +325,7 @@ callable_agents:
       </table>
     </div>
 
-    <p>而下面這些銀行工程師天天要處理的業務，<strong>這 10 支 agent 裡沒有一支直接對應</strong>：</p>
+    <p>而下面這些銀行天天要處理的業務，<strong>這 10 支 agent 裡沒有一支直接對應</strong>：</p>
 
     <ul class="checklist">
       <li>授信審核（企業/個人貸款的信用評估與核貸建議）</li>
@@ -284,13 +335,16 @@ callable_agents:
       <li>分行臨櫃客戶服務（存款帳戶異動、爭議交易查詢）</li>
     </ul>
 
-    <p>這個缺口不是 repo 的疏漏，而是它從一開始就鎖定的範圍——但也正是這本書後半段要處理的：<strong>第 4 章「客製」</strong>教你怎麼把 gl-reconciler、kyc-screener 這類已有的
-      agent 骨架（reader → critic/rules-engine → 唯一有 Write 的 leaf）換上銀行自己的科目表、規則、名單來源；<strong>第 5 章「打造新
-        Agent」</strong>則教你當現有 10 支都對不上——例如要做一支信用卡爭議調查 agent——怎麼從零仿照這套「髒 reader 隔離、schema 鎖
-      enum、驗證方式對抗任務性質」的設計模式，長出屬於銀行自己的第 11 支 agent。</p>
+    <p>這個缺口不是 repo 的疏漏，而是它從一開始就鎖定的範圍。但這也正是本書後半段要處理的：<strong>第 4 章「客製」</strong>教你怎麼把
+      gl-reconciler、kyc-screener 這類已有的 agent 骨架（reader → critic/rules-engine → 唯一有 Write 的
+      leaf）換上銀行自己的科目表、規則、名單來源；<strong>第 5 章「打造新 Agent」</strong>則教你當現有 10 支都對不上——例如要做一支信用卡爭議調查
+      agent——怎麼從零仿照這套「髒 reader 隔離、schema 鎖 enum、驗證方式對抗任務性質」的設計模式，長出屬於銀行自己的第 11 支 agent。</p>
+
+    <p><strong>一句話總結：</strong>這 10 支 agent 覆蓋投行、研究、基金行政與財富管理場景；授信、卡務、房貸這些零售核心業務沒有現成的，要靠第 4、5 章的客製與新建自己補上。</p>
 
     <h2 id="s5">五、本書導讀地圖</h2>
-    <p>全書 12 章 + 附錄，順序大致沿著「看懂架構 → 上手裝機 → 客製與新建 → 接銀行系統 → 部署維運 → 治理與測試」走：</p>
+    <p>全書 12 章加附錄，順序大致沿著「看懂架構 → 上手裝機 → 客製與新建 → 接銀行系統 → 部署維運 → 治理與測試」走。不必從頭讀到尾：PM
+      與法遵讀者建議走 1 → 2 → 9 → 10；工程師照順序走即可。</p>
 
     <style>
       .cards a.card {
@@ -335,7 +389,7 @@ callable_agents:
       </a>
       <a class="card" href="../ch09-security-compliance/index.html">
         <h4>Ch.9 安全與合規</h4>
-        <p>髒 reader 隔離、prompt injection 防禦、schema 鎖 enum 的完整原理。</p>
+        <p>髒 reader 隔離、<span class="term" data-term="prompt-injection">prompt injection</span> 防禦、schema 鎖 enum 的完整原理。</p>
       </a>
       <a class="card" href="../ch10-governance/index.html">
         <h4>Ch.10 治理</h4>
@@ -354,6 +408,8 @@ callable_agents:
         <p>指令速查、常見錯誤、名詞對照表。</p>
       </a>
     </div>
+
+    <p><strong>一句話總結：</strong>全書照「看懂 → 上手 → 客製 → 整合 → 部署 → 治理與測試」的順序排，依你的角色挑該讀的章即可，不必逐章硬啃。</p>
 
     <h2 id="s6">六、本章重點</h2>
     <div class="callout tip"><span class="co-title">本章重點</span>這套 repo 是 10 支「具名代理」，同一份系統提示詞與 skills 能以 Plugin（人監督，裝在

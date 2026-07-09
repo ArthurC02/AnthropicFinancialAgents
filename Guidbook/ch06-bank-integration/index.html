@@ -6,10 +6,17 @@
 <title>第 6 章 — 整合銀行內部系統：MCP | Financial Agents 開發指南</title>
 <link rel="stylesheet" href="../assets/book.css">
 </head>
-<body data-chapter="ch06">
+<body data-chapter="ch06" data-level="進階">
 <main>
   <h1><span class="ch-no">Chapter 6</span>整合銀行內部系統 — MCP</h1>
-  <p class="lead">前面幾章談的都是 agent「怎麼想」；這章談 agent「怎麼讀資料」。十支 agent 沒有一支是憑空生成報告的 —— 它們全部靠 MCP（Model Context Protocol，模型情境協定）去接總帳、CRM、行情、徵信資料。這章拆開一支 mock MCP server 看它長什麼樣，再帶你為銀行自己的核心帳務（core banking）與徵信系統寫一支同樣形狀的 server，最後講清楚「mock 換真實來源」那一刀該怎麼切。</p>
+  <p class="lead">前面幾章談的都是 <span class="term" data-term="agent">agent</span>「怎麼想」；這章談 agent「怎麼讀資料」。十支 agent 沒有一支是憑空生成報告的 —— 它們全部靠 <span class="term" data-term="mcp">MCP</span>（Model Context Protocol，模型情境協定）去接<span class="term" data-term="gl">總帳</span>、CRM、行情、徵信資料。這章先把「MCP 用名字接線」這個核心觀念講透，再拆開一支 <span class="term" data-term="mock">mock</span> <span class="term" data-term="mcp-server">MCP server</span> 看它長什麼樣，接著帶你為銀行自己的核心帳務（core banking）與徵信系統寫一支同樣形狀的 server，最後講清楚「mock 換真實來源」那一刀該怎麼切。</p>
+
+  <div class="callout info prereq"><span class="co-title">🔑 開始前，你需要先懂</span>
+    <ul>
+      <li><a href="../ch00-basics/index.html#s3">MCP 是什麼——agent 的四塊積木之一</a>（第 0 章第 3 節）：本章會一直用到「標準插座」這個比喻，先回去看一眼會順很多。</li>
+      <li><a href="../ch03-getting-started/index.html">先用 mock 把 agent 跑通一次</a>（第 3 章）：本章解剖的 mock server，就是你在第 3 章按下去就會動的那幾支。跑過一次再讀，體感完全不同。</li>
+    </ul>
+  </div>
 
   <div class="toc"><div class="toc-title">本章內容</div>
     <ol>
@@ -23,7 +30,10 @@
   </div>
 
   <h2 id="s1">6.1　MCP 是什麼：標準插座與名字解析</h2>
-  <p>MCP（Model Context Protocol，模型情境協定）是「讓 agent 接到外部系統（總帳、CRM、行情、徵信）的標準插座」。agent 的系統提示只宣告要用哪些 <code>mcp__&lt;server&gt;__*</code> 工具，不管這個 server 實際跑在哪裡、是誰維護的。舉 `gl-reconciler` 這支 agent 的 frontmatter 為例（<code style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/gl-reconciler/agents/gl-reconciler.md</code>）：</p>
+  <p>先講結論：<strong>agent 只記得資料來源的「名字」，不記得它的網址</strong>。這一句話是全章的地基。</p>
+  <p>MCP（Model Context Protocol，模型情境協定）是「讓 agent 接到外部系統（總帳、CRM、行情、徵信）的標準插座」。agent 的<span class="term" data-term="system-prompt">系統提示</span>只宣告要用哪些 <code>mcp__&lt;server&gt;__*</code> 工具。這個 server 實際跑在哪台機器、是誰維護的，agent 完全不管。</p>
+  <p>用一個銀行日常的比喻：<strong>公司總機的分機號碼</strong>。你要找總帳組，永遠撥「分機 8001」。總帳組換了辦公室、換了承辦人、甚至整組搬到別棟大樓，你手上的分機號碼都不用改——改的是總機那張「分機 8001 → 轉接到哪支話機」的轉接表。在 MCP 的世界裡，agent 記的是分機號碼（server 的名字），<code>.mcp.json</code> 就是總機的轉接表（名字 → 網址）。換話機後面接的人，不換分機號碼。</p>
+  <p>看實例。<code>gl-reconciler</code> 這支 agent 的 frontmatter（<code style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/gl-reconciler/agents/gl-reconciler.md</code>）：</p>
 
   <div class="code-title">plugins/agent-plugins/gl-reconciler/agents/gl-reconciler.md（節錄）</div>
   <pre><code>---
@@ -31,12 +41,15 @@ name: gl-reconciler
 tools: Read, Grep, Glob, mcp__internal-gl__*, mcp__subledger__*
 ---</code></pre>
 
-  <p>這行只寫了兩個「名字」：<code>internal-gl</code> 和 <code>subledger</code>。這兩個名字實際指到哪個網址、是本機假伺服器還是銀行正式核心系統，是在別的檔案（`.mcp.json` 或 CMA 的環境變數）裡設定的，跟這份系統提示完全脫鉤。</p>
+  <p>這行只寫了兩個「名字」：<code>internal-gl</code> 和 <code>subledger</code>。就這樣，沒有任何網址。這兩個名字實際指到哪裡——是本機假伺服器、還是銀行正式核心系統——是在別的檔案設定的：外掛用 <code>.mcp.json</code>，<span class="term" data-term="cma">CMA</span>（Claude Managed Agents，託管代理）用<span class="term" data-term="env-var">環境變數</span>。這份設定跟系統提示完全脫鉤。</p>
 
-  <div class="callout info"><span class="co-title">名字解析原則：改 URL 不改名</span>MCP 是按「名字」在 session 範圍解析的。上線的意思是把同名 server 的 <code>url</code> 從本機假位址改成銀行真實系統的位址 —— <strong>永遠不改 agent frontmatter 裡的 server 名稱</strong>。這一條規則貫穿本章所有內容：mock 換真實來源，是換插座另一端接的電器，不是換插座的形狀。</div>
+  <div class="callout info"><span class="co-title">名字解析原則：改 URL 不改名</span>MCP 是按「名字」在 <span class="term" data-term="session">session</span> 範圍解析的。上線的意思是：把同名 server 的 <code>url</code> 從本機假位址改成銀行真實系統的位址——<strong>永遠不改 agent frontmatter 裡的 server 名稱</strong>。這一條規則貫穿本章所有內容：mock 換真實來源，是換插座另一端接的電器，不是換插座的形狀；是改總機的轉接表，不是要求全公司換一個新分機號碼。</div>
+
+  <p><strong>一句話總結：</strong>agent 認名字、不認網址；上線換的是名字背後的 URL，agent 那邊一個字都不用動。</p>
 
   <h2 id="s2">6.2　兩類插座：真實廠商 vs 本機 mock</h2>
-  <p>Repo 裡的 MCP server 定義在各 vertical 的 <code>.mcp.json</code>。這些名字全部已經在某支 vertical 裡定義好，沒有一個是「查無此名」——差別只在它現在指到哪裡：</p>
+  <p>先講結論：<span class="term" data-term="repo">repo</span> 裡每個 MCP 名字都已經定義好了，差別只在「這個名字現在指到哪裡」。有的指到真實廠商的正式網址，有的指到你電腦上的假伺服器。</p>
+  <p>這些 server 定義在各 <span class="term" data-term="vertical">vertical</span>（垂直領域包）的 <code>.mcp.json</code>。沒有一個名字是「查無此名」，可以分成兩類：</p>
 
   <div class="cards">
     <div class="card"><h4>🌐 真實廠商（12 個）</h4><p>如 <code>factset</code>、<code>daloopa</code>、<code>moodys</code>、<code>lseg</code>、<code>pitchbook</code> 等，<code>.mcp.json</code> 已經填好供應商的正式網址，只差你自己的訂閱金鑰。</p></div>
@@ -80,7 +93,7 @@ tools: Read, Grep, Glob, mcp__internal-gl__*, mcp__subledger__*
   </table>
   </div>
 
-  <p>對銀行工程師來說最相關的是 <code>internal-gl</code>／<code>subledger</code>／<code>nav</code> 這三支：它們定義在 <code style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/fund-admin/.mcp.json</code>，撐起 gl-reconciler（每日總帳對子帳）與 month-end-closer（月結試算表）這兩支後台 agent。這份 <code>.mcp.json</code> 目前長這樣：</p>
+  <p>對銀行工程師來說，最相關的是 <code>internal-gl</code>／<code>subledger</code>／<code>nav</code> 這三支。它們定義在 <code style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/fund-admin/.mcp.json</code>，撐起 gl-reconciler（每日總帳對子帳）與 month-end-closer（月結試算表）這兩支後台 agent。這份 <code>.mcp.json</code> 目前長這樣——就是上一節說的「總機轉接表」本人：</p>
 
   <div class="code-title">plugins/vertical-plugins/fund-admin/.mcp.json</div>
   <pre><code>{
@@ -104,8 +117,10 @@ tools: Read, Grep, Glob, mcp__internal-gl__*, mcp__subledger__*
   }
 }</code></pre>
 
+  <p><strong>一句話總結：</strong>19 個 MCP 名字全部已定義好，12 個指真實廠商、7 個指本機 mock，同一張轉接表裡真假並存。</p>
+
   <h2 id="s3">6.3　解剖一個 mock MCP server：internal-gl</h2>
-  <p>要幫銀行核心系統寫 MCP server，最快的辦法是先看一個「已經寫好、能跑」的範本長什麼形狀。<code>mock-mcp/internal-gl/</code> 就是這樣一支 server —— 頂替 gl-reconciler／month-end-closer 要接的總帳系統，餵假資料但工具介面跟真實系統要提供的一模一樣。</p>
+  <p>要幫銀行核心系統寫 MCP server，最快的辦法不是從零設計，而是先看一個「已經寫好、能跑」的範本長什麼形狀。<code>mock-mcp/internal-gl/</code> 就是這樣一支 server——它頂替 gl-reconciler／month-end-closer 要接的總帳系統，餵的是假資料，但工具介面跟真實系統要提供的一模一樣。</p>
 
   <div class="flow" data-animate>
     <div class="step"><span class="n">1</span><strong>data/*.csv</strong><br>假的試算表、傳票、GL 部位</div>
@@ -123,7 +138,7 @@ tools: Read, Grep, Glob, mcp__internal-gl__*, mcp__subledger__*
     <figcaption><code>internal-gl</code> mock server 的結構很小：server 定義工具，CSV 提供固定假資料，README 說明工具與埋雷。</figcaption>
   </figure>
 
-  <p><code>server.py</code> 用官方 <code>mcp</code> SDK 的 <code>FastMCP</code>，把每個工具宣告成一個有 docstring 的 Python function，SDK 自動把 docstring 轉成給 agent 看的工具說明。五個工具分兩層：先讓 agent「探索」有哪些 entity／period 可查，再依需要往下鑽：</p>
+  <p><code>server.py</code> 用官方 <code>mcp</code> <span class="term" data-term="sdk">SDK</span> 的 <code>FastMCP</code>，把每個工具宣告成一個有 docstring（函式開頭的說明文字）的 Python function。SDK 會自動把 docstring 轉成給 agent 看的工具說明——工程師寫給人看的註解，直接變成 agent 讀的使用手冊。五個工具分兩層：先讓 agent「探索」有哪些 entity／period 可查，再依需要往下鑽：</p>
 
   <div class="table-wrap">
   <table>
@@ -138,10 +153,11 @@ tools: Read, Grep, Glob, mcp__internal-gl__*, mcp__subledger__*
   </table>
   </div>
 
-  <p>核心工具的實作，直接讀 CSV、轉型別、算衍生欄位，沒有資料庫、沒有 ORM：</p>
+  <p>核心工具在做的事，一句話就能講完：<strong>收到 agent 的查詢，讀 CSV、挑出符合條件的列、算好衍生欄位，回一包乾淨的 <span class="term" data-term="json">JSON</span></strong>。沒有資料庫、沒有 ORM，非工程讀者記到這裡就夠了。想看程式碼長什麼樣、每一行在做什麼，展開下面的進階區塊：</p>
 
-  <div class="code-title">mock-mcp/internal-gl/server.py（節錄）</div>
-  <pre><code>mcp = FastMCP("internal-gl", host="127.0.0.1", port=DEFAULT_PORT)
+  <div class="adv" data-note="get_trial_balance 原始碼走讀——跳過不影響主線，但要動手寫 server 的人該看每一行怎麼對應到設計原則">
+    <div class="code-title">mock-mcp/internal-gl/server.py（節錄）</div>
+    <pre><code>mcp = FastMCP("internal-gl", host="127.0.0.1", port=DEFAULT_PORT)
 
 @mcp.tool()
 def get_trial_balance(entity: str, period: str) -&gt; dict:
@@ -157,20 +173,24 @@ def get_trial_balance(entity: str, period: str) -&gt; dict:
     return {"entity": entity, "period": period, "status": "pre-close",
             "lines": out, "total_debits": total_dr, "total_credits": total_cr,
             "balanced": abs(diff) &lt; 0.01}</code></pre>
+    <p>逐行看重點：第一行 <code>FastMCP("internal-gl", ...)</code> 的第一個參數就是「名字」——跟 <code>.mcp.json</code> 裡的 key、agent frontmatter 裡 <code>mcp__internal-gl__*</code> 的中段，三處必須一致。<code>@mcp.tool()</code> 裝飾器把一個普通 Python function 註冊成 MCP 工具；docstring 原封不動變成 agent 看到的工具說明。函式本體只做三件事：用 <code>_raw()</code> 讀 CSV、用 list comprehension 篩 entity 與 period、回傳時把 <code>movement</code>／<code>movement_pct</code>／<code>balanced</code> 這些衍生欄位一起算好附上。最後那行 <code>abs(diff) &lt; 0.01</code> 是借貸平衡檢查——容忍一分錢以內的浮點誤差。</p>
+  </div>
 
   <p>三個設計重點，是你為銀行系統寫 server 時要照抄的：</p>
   <ul>
-    <li><strong>docstring 就是給 agent 看的 API 文件。</strong>參數意思、可接受的值、回傳結構全部寫在 docstring 裡（例如 <code>source</code> 可以是 <code>"Payroll"</code>、<code>"AP"</code>、<code>"Billing"</code>、<code>"Manual"</code>、<code>"Bank"</code>），agent 靠這段文字決定怎麼呼叫。</li>
-    <li><strong>唯讀由設計保證，不是靠說明文件。</strong>整支 server 沒有任何一個會寫回資料的工具 —— README 明講：「Read-only — no posting tools」。這比在系統提示裡叮嚀「不要寫入」可靠得多：工具集裡根本沒有寫入的入口。</li>
+    <li><strong>docstring 就是給 agent 看的 <span class="term" data-term="api">API</span> 文件。</strong>參數意思、可接受的值、回傳結構全部寫在 docstring 裡（例如 <code>source</code> 可以是 <code>"Payroll"</code>、<code>"AP"</code>、<code>"Billing"</code>、<code>"Manual"</code>、<code>"Bank"</code>），agent 靠這段文字決定怎麼呼叫。</li>
+    <li><strong>唯讀由設計保證，不是靠說明文件。</strong>整支 server 沒有任何一個會寫回資料的工具 —— README 明講：「Read-only — no posting tools」。這比在系統提示裡叮嚀「不要寫入」可靠得多：工具集裡根本沒有寫入的入口。就像出納櫃檯的查詢終端機，鍵盤上根本沒有「過帳」這顆鍵。</li>
     <li><strong>回傳結構化 JSON，帶入商業邏輯的衍生欄位。</strong>不是把 CSV 原樣丟給 agent，而是先算好 movement、movement_pct、balanced 這些欄位 —— 讓 agent 少做一步容易出錯的心算。</li>
   </ul>
 
   <div class="callout tip"><span class="co-title">埋雷是故意的</span><code>gl_positions.csv</code> 的部位跟 <code>subledger/</code> 的子帳資料刻意兜不起來（<code>EQ-VRT</code> 數量 50,000 vs 52,500、<code>FI-XYZ</code> 面額 2,000 萬 vs 1,900 萬），目的是讓 gl-reconciler 真的有斷點可抓、可驗證 agent 的把關有沒有生效。你在寫銀行自己的測試資料時，也該刻意埋幾筆已知異常，而不是全部乾淨資料。</div>
 
-  <h2 id="s4">6.4　為銀行核心系統寫自己的 MCP server</h2>
-  <p>internal-gl 頂替的是「總帳」。銀行工程師真正要接的往往是兩類系統：<strong>核心帳務（core banking，如 Temenos、FIS、自建核心）</strong>查存款帳戶餘額與交易明細，以及<strong>徵信系統</strong>查信用評等與徵信報告。用官方 MCP SDK（Python 或 TypeScript 皆有）寫法跟 internal-gl 一模一樣：<code>FastMCP</code>／<code>McpServer</code> 起殼，每個查詢動作宣告成一個工具，docstring 講清楚輸入輸出，底層不是讀 CSV，而是呼叫核心系統既有的查詢 API 或唯讀資料庫視圖。</p>
+  <p><strong>一句話總結：</strong>一支 mock server 就是「CSV 假資料 ＋ 幾個有清楚 docstring 的唯讀查詢工具」，而這個形狀正是你要照抄的範本。</p>
 
-  <p>設計工具時，先想清楚 agent 需要「查什麼」，再對應成最小的一組工具 —— 不要為了「完整」而把整套核心系統 API 都包出來：</p>
+  <h2 id="s4">6.4　為銀行核心系統寫自己的 MCP server</h2>
+  <p>internal-gl 頂替的是「總帳」。銀行工程師真正要接的往往是兩類系統：<strong>核心帳務（core banking，如 Temenos、FIS、自建核心）</strong>查存款帳戶餘額與交易明細，以及<strong>徵信系統</strong>查信用評等與徵信報告——例如 <span class="term" data-term="kyc">KYC</span> 或授信審查流程要用的那些資料。好消息是：寫法跟 internal-gl 一模一樣。用官方 MCP SDK（Python 或 TypeScript 皆有）：<code>FastMCP</code>／<code>McpServer</code> 起殼，每個查詢動作宣告成一個工具，docstring 講清楚輸入輸出。唯一的差別在底層——不是讀 CSV，而是呼叫核心系統既有的查詢 API 或唯讀資料庫視圖。</p>
+
+  <p>設計工具時，先想清楚 agent 需要「查什麼」，再對應成最小的一組工具 —— 不要為了「完整」而把整套核心系統 API 都包出來。就像分行櫃員的權限：辦存匯業務的櫃員，系統裡就只開存匯查詢的畫面，不會順便把放款審批畫面也開給他：</p>
 
   <div class="table-wrap">
   <table>
@@ -183,10 +203,11 @@ def get_trial_balance(entity: str, period: str) -&gt; dict:
   </table>
   </div>
 
-  <p>Python 版骨架（沿用官方 <code>mcp</code> SDK，跟 internal-gl 同一支 <code>FastMCP</code> 類別）：</p>
+  <p>Python 版骨架在做的事：宣告一支叫 <code>core-banking</code> 的 server，裡面放一個唯讀工具 <code>get_account_balance</code>——收帳號和日期、去核心系統查餘額、把帳號遮罩成末四碼後回傳。完整程式碼與逐行說明在進階區塊：</p>
 
-  <div class="code-title">mock-mcp/core-banking/server.py（範例骨架，非 repo 現有檔案）</div>
-  <pre><code>from mcp.server.fastmcp import FastMCP
+  <div class="adv" data-note="Python 版 core-banking server 完整骨架——要自己動手寫的人看這裡；只想懂概念可跳過">
+    <div class="code-title">mock-mcp/core-banking/server.py（範例骨架，非 repo 現有檔案）</div>
+    <pre><code>from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("core-banking", host="127.0.0.1", port=8010)
 
@@ -209,11 +230,14 @@ def get_account_balance(account_no: str, as_of: str) -&gt; dict:
 
 # 沒有 post_transaction()、沒有 update_account() —— 唯讀由設計保證，
 # 跟 internal-gl 一樣：寫入能力不存在於工具集裡，不是靠 prompt 叮嚀。</code></pre>
+    <p>要注意的三行：<code>FastMCP("core-banking", ...)</code> 的名字之後會出現在 <code>.mcp.json</code> 與 agent frontmatter，取了就別再改；<code>core_db.query_balance(...)</code> 是你接自家系統的地方——換成核心系統的查詢 API 或唯讀 view；<code>mask_account(...)</code> 把遮罩做在 server 端回傳之前，agent 從頭到尾拿不到完整帳號。檔案最底部那段註解也是重點：整個工具集裡刻意不存在任何寫入函式。</p>
+  </div>
 
-  <p>TypeScript 版本用官方 <code>@modelcontextprotocol/sdk</code> 的 <code>McpServer</code>，形狀完全對應（工具名、schema、回傳結構都相同）：</p>
+  <p>偏好 TypeScript 的團隊有完全對應的寫法：官方 <code>@modelcontextprotocol/sdk</code> 的 <code>McpServer</code>，工具名、<span class="term" data-term="schema">schema</span>（輸入格式定義）、回傳結構都跟 Python 版相同。細節同樣收進進階區塊：</p>
 
-  <div class="code-title">core-banking/server.ts（範例骨架，非 repo 現有檔案）</div>
-  <pre><code>import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+  <div class="adv" data-note="TypeScript 版同一支 server——用 zod 宣告輸入 schema，形狀與 Python 版一一對應">
+    <div class="code-title">core-banking/server.ts（範例骨架，非 repo 現有檔案）</div>
+    <pre><code>import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 const server = new McpServer({ name: "core-banking", version: "1.0.0" });
@@ -222,7 +246,7 @@ server.tool(
   "get_account_balance",
   "查詢存款帳戶在指定日期的可用餘額（唯讀）",
   { account_no: z.string(), as_of: z.string() },
-  async ({ account_no, as_of }) => {
+  async ({ account_no, as_of }) =&gt; {
     const row = await coreDb.queryBalance(account_no, as_of);
     if (!row) return { content: [{ type: "text", text: "account not found" }] };
     return { content: [{ type: "text", text: JSON.stringify({
@@ -231,28 +255,34 @@ server.tool(
     }) }] };
   }
 );</code></pre>
+    <p>對照重點：Python 用 docstring 描述工具，TypeScript 把說明文字當作 <code>server.tool()</code> 的第二個參數；輸入格式用 <code>zod</code>（<code>z.string()</code>）宣告，SDK 據此擋掉格式不對的呼叫；回傳要包成 MCP 的 <code>content</code> 陣列，實際資料用 <code>JSON.stringify</code> 塞在 text 欄位裡。遮罩一樣做在 server 端（<code>maskAccount</code>）。</p>
+  </div>
 
   <div class="callout warn"><span class="co-title">唯讀優先原則</span>internal-gl／subledger／nav 三支 mock 全部沒有寫入工具，README 明講「Read-only — no posting tools」。幫核心帳務或徵信系統寫 MCP server 時，同樣的規矩要用同樣的方式落實：工具集裡只放查詢，過帳、放款核准、額度調整這類動作，不做成 MCP 工具 —— 就算未來要做，也要走另一支獨立、權限更嚴的 server，並且有人工核准介面卡在中間，不能讓 agent 一個 tool call 直接觸發。</div>
 
   <details>
     <summary>徵信報告要不要整份丟給 agent？</summary>
-    <p>不要。<code>get_credit_report</code> 應該回傳「agent 這個任務需要的欄位」（評等、負債比、逾期摘要），而不是整份 PDF 或原始資料庫紀錄。徵信報告常含大量 PII（個資），欄位遮罩要做在 server 這一層，agent 拿到的已經是脫敏過的結構化資料 —— 詳見下一節。</p>
+    <p>不要。<code>get_credit_report</code> 應該回傳「agent 這個任務需要的欄位」（評等、負債比、逾期摘要），而不是整份 PDF 或原始資料庫紀錄。徵信報告常含大量 <span class="term" data-term="pii">PII</span>（個資），欄位遮罩要做在 server 這一層，agent 拿到的已經是脫敏過的結構化資料 —— 詳見下一節。</p>
   </details>
 
+  <p><strong>一句話總結：</strong>接銀行核心系統不用發明新架構——照 internal-gl 的形狀，把「讀 CSV」換成「呼叫核心系統唯讀 API」，工具愈少愈好、一律唯讀。</p>
+
   <h2 id="s5">6.5　認證與安全：最小權限、遮罩、稽核</h2>
-  <p>Mock server 為了本機開發方便，完全沒有認證 —— <code>http://127.0.0.1:8001/mcp</code> 誰連得到就能查。銀行內部系統絕對不能這樣上線。四件事要在寫 server 的當下就做，不是上線前才補：</p>
+  <p>先講結論：mock 的「零認證」只能活在你自己的電腦上。Mock server 為了本機開發方便，完全沒有認證 —— <code>http://127.0.0.1:8001/mcp</code> 誰連得到就能查。銀行內部系統絕對不能這樣上線。四件事要在寫 server 的當下就做，不是上線前才補：</p>
 
   <div class="cards">
-    <div class="card"><h4>認證方式</h4><p>API 金鑰或 OAuth 2.0 client-credentials，用服務帳號（service account）而非個人帳號驗證。金鑰放在部署環境的密鑰管理服務（如 AWS Secrets Manager），不寫進程式碼或 <code>.mcp.json</code>。</p></div>
+    <div class="card"><h4>認證方式</h4><p>API 金鑰或 OAuth 2.0 client-credentials，用服務帳號（service account）而非個人帳號驗證。金鑰放在<span class="term" data-term="deploy">部署</span>環境的密鑰管理服務（如 AWS Secrets Manager），不寫進程式碼或 <code>.mcp.json</code>。</p></div>
     <div class="card"><h4>最小權限</h4><p>服務帳號只給這支 server 需要的查詢權限（例如只能讀存款帳戶餘額表，不能讀放款額度表），不要圖方便給一個萬用的資料庫帳號。</p></div>
     <div class="card"><h4>PII 欄位遮罩</h4><p>身分證字號、完整帳號、地址等欄位在 server 回傳前就遮罩或截斷（如上節範例只回帳號末四碼），不要指望 agent 自己記得不要外洩。</p></div>
     <div class="card"><h4>Audit log</h4><p>每次工具呼叫記錄「誰（哪個 agent/session）、查了什麼（帳號/客戶 ID）、什麼時候」，供事後稽核——這對接觸客戶資料的查詢尤其重要，銀行的資安與合規審查通常會要求這份紀錄。</p></div>
   </div>
 
-  <p>這四件事都做在 MCP server 這一層，而不是指望 agent 系統提示裡的文字約束——跟 6.4 節「唯讀由設計保證」是同一個原則：安全要靠架構擋住，不是靠叮嚀。</p>
+  <p>這四件事都做在 MCP server 這一層，而不是指望 agent 系統提示裡的文字約束。跟 6.4 節「唯讀由設計保證」是同一個原則：安全要靠架構擋住，不是靠叮嚀。用銀行的話說——金庫靠的是門禁與雙人開鎖的制度設計，不是門口貼一張「請勿擅入」。</p>
+
+  <p><strong>一句話總結：</strong>認證、最小權限、PII 遮罩、audit log 四件事全部做在 server 這一層，讓「agent 想犯錯也沒有入口」。</p>
 
   <h2 id="s6">6.6　mock → 真實來源：兩種殼怎麼切</h2>
-  <p>同一個 agent 有兩種殼（外掛／CMA），MCP 上線的改法也對應兩種：</p>
+  <p>先講結論：不管哪種殼，上線都只是「把名字指向的網址換掉」。同一個 agent 有兩種殼（<span class="term" data-term="plugin">外掛（Plugin）</span>／CMA），MCP 上線的改法也對應兩種：</p>
 
   <figure class="book-figure">
     <img src="../assets/illustrations/ch06-mcp-name-url.svg" alt="同一個 internal-gl MCP 名稱在 plugin 與 CMA 中分別由 .mcp.json 或環境變數解析到不同 URL。">
@@ -274,7 +304,7 @@ server.tool(
       <p>server 名稱 <code>internal-gl</code>／<code>subledger</code>／<code>nav</code> 一個字都不動，gl-reconciler frontmatter 裡的 <code>mcp__internal-gl__*</code> 也不用改。也可以不改這份檔案，改用 <code>claude mcp add</code> 在專案根用同名 server 覆蓋——一次定義、整個 session 共享。</p>
     </div>
     <div class="tab-panel">
-      <p>CMA 的 <code>agent.yaml</code> 一開始就用 <code>${..._MCP_URL}</code> 佔位，不用改 yaml，改部署時的環境變數即可。repo 附的 <code>mock-mcp/mock.env</code> 就是本機 mock 版本，可以直接當「上線要設哪些變數」的範本：</p>
+      <p>CMA 的 <code>agent.yaml</code> 一開始就用 <code>${..._MCP_URL}</code> 佔位，不用改 <span class="term" data-term="yaml">yaml</span>，改部署時的環境變數即可。repo 附的 <code>mock-mcp/mock.env</code> 就是本機 mock 版本，可以直接當「上線要設哪些變數」的範本：</p>
       <div class="code-title">mock-mcp/mock.env（本機開發版，上線改成真實網址）</div>
       <pre><code>export GL_MCP_URL=http://127.0.0.1:8001/mcp          # internal-gl
 export SUBLEDGER_MCP_URL=http://127.0.0.1:8002/mcp   # subledger
@@ -288,11 +318,11 @@ export CAPIQ_MCP_URL=http://127.0.0.1:8007/mcp       # capiq
 # 要離線測試才解除以下註解、換成本機 mock：
 # export FACTSET_MCP_URL=http://127.0.0.1:8008/mcp
 # export DALOOPA_MCP_URL=http://127.0.0.1:8009/mcp</code></pre>
-      <p>上線時把同幾個變數指到銀行真實系統即可，例如 <code>export GL_MCP_URL=https://gl.bank.internal/mcp</code>。<code>scripts/deploy-managed-agent.sh</code> 對環境變數代換有白名單防護（值只允許 <code>[A-Za-z0-9._/:@-]</code>），奇怪字元會直接被拒絕。</p>
+      <p>上線時把同幾個變數指到銀行真實系統即可，例如 <code>export GL_MCP_URL=https://gl.bank.internal/mcp</code>。<code>scripts/deploy-managed-agent.sh</code> 對環境變數代換有<span class="term" data-term="allowlist">白名單</span>防護（值只允許 <code>[A-Za-z0-9._/:@-]</code>），奇怪字元會直接被拒絕。</p>
     </div>
   </div>
 
-  <p>不管走哪一種殼，記住 <code>docs/TechSummary.md</code> 第三節那條鐵則：<strong>兩種都不需要去改 agent frontmatter 的 server 名稱</strong>。你是把同一把名字指到不同網址，不是換名字。</p>
+  <p>不管走哪一種殼，記住 <code>docs/TechSummary.md</code> 第三節那條鐵則：<strong>兩種都不需要去改 agent frontmatter 的 server 名稱</strong>。你是把同一把名字指到不同網址，不是換名字——分機號碼從頭到尾都是那一個，換的只是總機轉接表上填的話機。</p>
 
   <ul class="checklist">
     <li>已確認要接的 agent 在 frontmatter 宣告了哪些 <code>mcp__&lt;name&gt;__*</code></li>
@@ -304,7 +334,9 @@ export CAPIQ_MCP_URL=http://127.0.0.1:8007/mcp       # capiq
     <li>上線只改 <code>.mcp.json</code> 的 url 或 CMA 的 <code>${..._MCP_URL}</code>，agent frontmatter 完全沒動</li>
   </ul>
 
-  <div class="callout tip"><span class="co-title">本章重點</span>MCP 是 agent 接外部系統的標準插座，用「名字」解析——上線永遠是換插座另一端的網址，不是換名字。Repo 裡 7 個本機 mock（capiq/crm/screening/internal-gl/subledger/nav/portfolio）跟 12 個真實廠商連接器共存在同一批 <code>.mcp.json</code> 裡。寫給銀行核心系統或徵信系統的 MCP server，形狀跟 <code>mock-mcp/internal-gl/</code> 一樣：FastMCP／McpServer 起殼、每個查詢包成一個有清楚 docstring 的唯讀工具、PII 在 server 端就遮罩掉。上線只改兩處：外掛改 <code>.mcp.json</code> 的 <code>url</code>，CMA 改 <code>${..._MCP_URL}</code> 環境變數。</div>
+  <p><strong>一句話總結：</strong>外掛改 <code>.mcp.json</code> 的 url、CMA 改 <code>${..._MCP_URL}</code> 環境變數——兩條路殊途同歸，agent frontmatter 的名字永遠不動。</p>
+
+  <div class="callout tip"><span class="co-title">本章重點</span>MCP 是 agent 接外部系統的標準插座，用「名字」解析——上線永遠是換插座另一端的網址，不是換名字（分機號碼不變，換的是話機後面接的人）。Repo 裡 7 個本機 mock（capiq/crm/screening/internal-gl/subledger/nav/portfolio）跟 12 個真實廠商連接器共存在同一批 <code>.mcp.json</code> 裡。寫給銀行核心系統或徵信系統的 MCP server，形狀跟 <code>mock-mcp/internal-gl/</code> 一樣：FastMCP／McpServer 起殼、每個查詢包成一個有清楚 docstring 的唯讀工具、PII 在 server 端就遮罩掉。上線只改兩處：外掛改 <code>.mcp.json</code> 的 <code>url</code>，CMA 改 <code>${..._MCP_URL}</code> 環境變數。</div>
 
   <div class="quiz" data-answer="2">
     <div class="q">Q：gl-reconciler 要接的 GL 系統，現在從本機 mock 換成銀行真實核心總帳系統上線，下列哪個做法正確？</div>

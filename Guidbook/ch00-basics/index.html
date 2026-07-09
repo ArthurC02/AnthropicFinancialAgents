@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 0 章 — 基礎概念：寫給第一次接觸 AI Agent 的你 | Financial Agents 開發指南</title>
+<link rel="stylesheet" href="../assets/book.css">
+</head>
+<body data-chapter="ch00" data-level="入門">
+<main>
+  <h1><span class="ch-no">Chapter 0</span>基礎概念：寫給第一次接觸 AI Agent 的你</h1>
+  <p class="lead">這一章不需要任何技術背景。讀完之後，你會知道 AI agent 是什麼、它跟一般 AI 聊天有什麼不同、這本書講的「金融 agent」由哪幾塊積木組成，以及全書反覆出現的十幾個詞到底在說什麼。已經熟悉 AI 開發的讀者可以直接跳到<a href="../ch01-introduction/index.html">第 1 章</a>——但如果「MCP」「無人值守」這些詞對你還很陌生，先花二十分鐘讀完這章，後面每一章都會輕鬆很多。</p>
+
+  <div class="toc"><div class="toc-title">本章內容</div>
+    <ol>
+      <li><a href="#s1">AI 與 LLM：聊天機器人背後是什麼</a></li>
+      <li><a href="#s2">從「會聊天」到「會做事」：什麼是 agent</a></li>
+      <li><a href="#s3">拆開一支金融 agent：四塊積木</a></li>
+      <li><a href="#s4">兩種上工方式：有人陪跑 vs 無人值守</a></li>
+      <li><a href="#s5">先認識這 10 個技術詞，全書無障礙</a></li>
+      <li><a href="#s6">你是哪種讀者？三條建議路線</a></li>
+      <li><a href="#s7">本章重點</a></li>
+    </ol>
+  </div>
+
+  <h2 id="s1">一、AI 與 LLM：聊天機器人背後是什麼</h2>
+  <p>你大概用過 Claude 或類似的 AI 聊天工具：打一段字進去，它回一段有模有樣的答案。背後的技術叫 <span class="term" data-term="llm">LLM</span>（Large Language Model，大型語言模型）。它的原理說穿了很簡單：讀過海量的文字之後，它非常擅長判斷「接下來最合理的字是什麼」。因為讀得夠多，這種「接話」能力累積成了理解、歸納、翻譯、寫作、甚至推理的本事。</p>
+  <p>你打給它的那段字，行話叫 <span class="term" data-term="prompt">提示詞</span>（prompt）。一個好記的比喻：LLM 像一位讀遍全行文件、記性極好的新進同事——你交辦得越清楚，他做得越到位；你只丟一句「幫我看一下這個」，他就只能猜。</p>
+  <p>但「會聊天」有個天生的限制：它只出一張嘴。你問它「這兩份帳對不對得起來」，它能講方法、能教你步驟，卻不能自己打開檔案、跑比對、把結果寫成報告。要讓 AI 從「顧問」變成「動手做事的人」，就需要下一節的主角。</p>
+  <p><strong>一句話總結：</strong>LLM 是聊天 AI 背後的引擎，很會讀寫與推理，但它本身只能「說」，不能「做」。</p>
+
+  <h2 id="s2">二、從「會聊天」到「會做事」：什麼是 agent</h2>
+  <p><span class="term" data-term="agent">agent</span>（智慧代理）＝ LLM ＋ 工具 ＋ 自主的多步驟執行。差別在三件事：</p>
+  <div class="cards">
+    <div class="card"><h4>1. 會用工具</h4><p>不只回答，還能實際查資料庫、讀寫檔案、呼叫其他系統——就像同事不只給建議，還會自己打開系統查帳。</p></div>
+    <div class="card"><h4>2. 會拆任務</h4><p>接到「把 3 月 15 日的總帳對一遍」這種大目標，它自己拆成查帳、比對、找差異、寫報告等小步驟，一步步做完。</p></div>
+    <div class="card"><h4>3. 會停在該停的地方</h4><p>設計良好的金融 agent 做到「待簽核」就停，把最後的放行留給人——這不是能力不足，而是刻意的安全設計。</p></div>
+  </div>
+  <p>用一個對帳的例子看 agent 實際怎麼跑：</p>
+  <div class="flow" data-animate>
+    <div class="step"><span class="n">1</span><strong>接任務</strong><br>「核對 3/15 總帳與明細帳」</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">2</span><strong>查資料</strong><br>用工具向帳務系統調出兩邊的紀錄</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">3</span><strong>找差異</strong><br>逐筆比對，列出對不起來的項目與可能原因</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">4</span><strong>寫報告</strong><br>產出差異報告與調整建議</div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="n">5</span><strong>等人簽核</strong><br>停下來，把「要不要照建議調帳」交給人決定</div>
+  </div>
+  <p>本書的主角，是 Anthropic 在 financial-services 這個 <span class="term" data-term="repo">repo</span>（程式碼儲存庫——一個專案的所有檔案與修改歷史）裡提供的 <strong>10 支<span class="term" data-term="named-agent">具名代理</span></strong>（named agent）。「具名」的意思是：每一支都有名字、有明確職掌，像一個個虛擬的專職員工——例如 <code>gl-reconciler</code> 專管總帳對帳、<code>kyc-screener</code> 專管開戶文件初審、<code>meeting-prep-agent</code> 專門幫理專準備客戶會議資料。</p>
+  <div class="callout info"><span class="co-title">agent ≠ 全自動放行</span>這套方案裡風險越高的 agent，人的把關越嚴。對帳、審計這類會碰到「錢」和「法規」的 agent，一律停在「差異報告與建議」，過帳、送出這些動作永遠留給人。第 9、10 章會詳細講這套把關設計。</div>
+  <p><strong>一句話總結：</strong>agent 是「會用工具、會自己拆步驟做完一件事、並在關鍵處停下來等人」的 AI；本書講的是 10 支各有專職的金融 agent。</p>
+
+  <h2 id="s3">三、拆開一支金融 agent：四塊積木</h2>
+  <p>把一支 agent 想成一位派駐到你部門的新員工，它的「配備」正好對應四塊積木：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>積木</th><th>比喻</th><th>白話說明</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="term" data-term="system-prompt">系統提示詞</span><br>（system prompt）</td>
+          <td>職位說明書</td>
+          <td>一份固定的長指示，定義這支 agent 是誰、負責什麼、規矩是什麼、什麼情況要停下來。agent 每次上工都先讀它。</td>
+        </tr>
+        <tr>
+          <td><span class="term" data-term="skill">skill</span>（技能）</td>
+          <td>SOP 工作手冊</td>
+          <td>一份份針對特定任務的操作說明（例如「同業比較怎麼做」「估值模板怎麼填」）。遇到相關任務時，agent 自動翻出對應手冊照著做。</td>
+        </tr>
+        <tr>
+          <td><span class="term" data-term="mcp">MCP</span><br>（Model Context Protocol）</td>
+          <td>標準插座／內線總機</td>
+          <td>agent 連接外部系統（總帳、CRM、行情庫、制裁名單）的標準介面。系統只要提供 MCP 接口，agent 就能即插即用，不必為每套系統另寫程式。</td>
+        </tr>
+        <tr>
+          <td><span class="term" data-term="subagent">子代理</span>（subagent）</td>
+          <td>手下的工讀生</td>
+          <td>主 agent 把小段工作（讀文件、算數字）分派給權限更小的子代理，做完回報。分工同時也是安全隔離——下一段會講為什麼。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>子代理的分工有一套固定的形狀：一支 agent 裡有一個 <span class="term" data-term="orchestrator">編排者</span>（orchestrator）當主腦，負責接任務、派工、彙整；實際動手的是幾個 <span class="term" data-term="leaf-worker">葉子工人</span>（leaf worker）。兩條硬規則值得現在就記住，因為全書會反覆出現：</p>
+  <ul>
+    <li><strong>只有一層</strong>：編排者可以叫工人，工人不能再往下叫別人。組織圖永遠只有兩層，出事時責任一目了然。</li>
+    <li><strong>只有一個工人能寫檔</strong>：每支 agent 裡，只有一個 leaf worker 有寫入權限。負責讀外來髒資料的工人沒有筆，有筆的工人不碰髒資料——就算文件裡藏了惡意指令（這種攻擊叫<span class="term" data-term="prompt-injection">提示詞注入</span>），它也拿不到能造成傷害的權限。</li>
+  </ul>
+  <div class="adv" data-note="想看這四塊積木在 repo 裡分別是哪些實體檔案，展開這段；只想懂概念可跳過。">
+    <p>對應到 repo 的實際檔案：系統提示詞是 <code>plugins/agent-plugins/&lt;slug&gt;/agents/&lt;slug&gt;.md</code>（每支 agent 一份、全 repo 唯一<span class="term" data-term="canonical">真本</span>）；skill 是一個個含 <code>SKILL.md</code> 的資料夾，真本放在 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/</code>，再同步副本進各 agent 包；MCP 連線設定在外掛模式寫在各 vertical 的 <code>.mcp.json</code>、CMA 模式寫在 <code>agent.yaml</code> 的 <code>mcp_servers</code> 欄位；子代理的分工與權限則宣告在 <code>managed-agent-cookbooks/&lt;slug&gt;/subagents/*.yaml</code>。第 2 章會逐一解剖這些檔案。</p>
+  </div>
+  <p><strong>一句話總結：</strong>一支 agent ＝ 職位說明書（系統提示詞）＋ SOP 手冊（skills）＋ 標準插座（MCP）＋ 兩層分工的工讀生（subagents），權限是用結構鎖死的，不是用嘴巴約定的。</p>
+
+  <h2 id="s4">四、兩種上工方式：有人陪跑 vs 無人值守</h2>
+  <p>同一支 agent（同一份職位說明書、同一批手冊）可以用兩種方式上工。這是全書最重要的分岔，幾乎每一章都會提到：</p>
+  <div class="tabs">
+    <div class="tab-bar"><button>外掛模式（Plugin）— 有人陪跑</button><button>CMA 模式 — 無人值守</button></div>
+    <div class="tab-panel">
+      <p><span class="term" data-term="plugin">外掛</span>（plugin）模式：把 agent 安裝進 Cowork 或 Claude Code 這類有畫面的工具，<strong>人坐在螢幕前</strong>看著它一步步做，隨時可以插話、修正、喊停。</p>
+      <p>適合：分析師的日常工作（研究、建模、提案）、試用與評估、開發時的測試。你可以把它想成「新人試用期」——有前輩全程盯著。</p>
+    </div>
+    <div class="tab-panel">
+      <p><span class="term" data-term="cma">CMA</span>（Claude Managed Agents，Claude 託管代理）模式：agent 部署在 Anthropic 雲端，<strong>沒有畫面、沒有人盯</strong>（行話叫<span class="term" data-term="headless">無人值守</span>，headless），由銀行自己的後端程式在事件發生時透過 <span class="term" data-term="api">API</span>（程式對程式的呼叫窗口）叫它起來做事。</p>
+      <p>適合：夜間批次對帳、月結、開戶文件排隊審查——這些場景沒有人會替每一筆案件手動開視窗。你可以把它想成「轉正式的員工」——照制度自動上工，靠流程與權限把關。</p>
+      <div class="callout warn"><span class="co-title">一個常見誤解，先在這裡拆掉</span>本書常說「部署到銀行的 AWS 環境」。要分清楚：<strong>agent 本身的運算跑在 Anthropic 雲端</strong>；放在銀行 AWS（Amazon 的雲端服務）帳號裡的，是「周邊系統」——呼叫 agent 的後端程式、MCP 連接器、資料來源。第 7 章會畫清楚這條責任邊界。</div>
+    </div>
+  </div>
+  <p>「一套原始碼、兩種輸出」正是這套方案的核心設計：你不必為兩種模式維護兩套 agent。通常的導入路徑也很自然——先用外掛模式讓業務單位試用、驗證它做得對，再把驗證過的同一支 agent 用 CMA 模式接進正式流程。</p>
+  <p><strong>一句話總結：</strong>外掛模式＝人盯著跑（試用、日常輔助）；CMA＝無人值守、由系統呼叫（批次、正式流程）。同一支 agent，兩種上工方式。</p>
+
+  <h2 id="s5">五、先認識這 10 個技術詞，全書無障礙</h2>
+  <p>後面章節難免出現工程詞彙。其實高頻的就這 10 個，現在花三分鐘認識它們，之後看到就不會卡住。（全書任何帶虛線底線的詞都可以<strong>點一下</strong>看白話解釋；更完整的對照在<a href="../appendix/index.html#s1">附錄詞彙表</a>。）</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>詞</th><th>一句白話</th></tr></thead>
+      <tbody>
+        <tr><td><span class="term" data-term="api">API</span></td><td>程式跟程式對話的窗口；「呼叫 API」＝程式向服務送出請求、拿回結果，全程不用人操作。</td></tr>
+        <tr><td><span class="term" data-term="json">JSON</span> / <span class="term" data-term="yaml">YAML</span></td><td>兩種給程式讀的資料格式。JSON 長得像 <code>{"名字": "值"}</code>；YAML 用縮排排版、更好讀，本書的設定檔多用它。</td></tr>
+        <tr><td><span class="term" data-term="terminal">終端機</span></td><td>打字下指令的黑視窗。本書所有 <code>python3 ...</code> 開頭的指令都在這裡執行。</td></tr>
+        <tr><td><span class="term" data-term="deploy">部署</span></td><td>把做好的東西搬上正式環境開始服務。部署前先在測試環境演練是基本紀律。</td></tr>
+        <tr><td><span class="term" data-term="mock">mock</span></td><td>測試用的假替身：假的帳務系統、假資料，讓你不碰真帳、不用金鑰就能把流程跑通。</td></tr>
+        <tr><td><span class="term" data-term="env-var">環境變數</span></td><td>貼在程式執行環境上的「便利貼」：金鑰、網址這類會變動的設定放這裡，不寫死在程式碼裡。</td></tr>
+        <tr><td><span class="term" data-term="schema">schema</span></td><td>資料的格式合約：規定必須有哪些欄位、允許哪些值，不合格式直接退件。</td></tr>
+        <tr><td><span class="term" data-term="token">token</span></td><td>AI 計算文字量的單位（約一個字）。API 按 token 計費——文件越長越貴，跟影印計張數同理。</td></tr>
+        <tr><td><span class="term" data-term="session">session</span></td><td>agent 的一次「上工」：從被叫起來到做完的整段過程與記憶。</td></tr>
+        <tr><td><span class="term" data-term="hitl">人在迴路</span></td><td>AI 做、人把關：關鍵動作（送出、過帳）一定停下來等人簽核。全書安全設計的底層原則。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>一句話總結：</strong>看到不懂的詞，點虛線字或查附錄詞彙表，不用回頭重讀整章。</p>
+
+  <h2 id="s6">六、你是哪種讀者？三條建議路線</h2>
+  <p>全書 12 章不是每個人都要照順序讀完。挑一條最像你的路線：</p>
+  <div class="cards">
+    <div class="card">
+      <h4>🌱 我想搞懂這是什麼（PM／業務／法遵）</h4>
+      <p>讀第 0 → 1 章建立全貌，跳到第 9、10 章看安全與治理怎麼把關。全程開著「初學者模式」（右上角），進階段落先跳過。程式碼區塊可以整段略過，不影響理解。</p>
+    </div>
+    <div class="card">
+      <h4>🔧 我想動手跑起來（初級工程師）</h4>
+      <p>第 0 → 1 → 2 章打底，然後直接進第 3 章照著做，用假資料把第一支 agent 跑通。卡住先查附錄的疑難排解。之後再回頭補 4–8 章。</p>
+    </div>
+    <div class="card">
+      <h4>🚀 我要客製與上線（中高級工程師）</h4>
+      <p>第 1、2 章快速對齊術語後，主戰場在第 4–8 章（客製、新建、整合、部署、編排），並把第 9–12 章當上線前的必修。建議關掉初學者模式看完整內容。</p>
+    </div>
+  </div>
+
+  <h2 id="s7">七、本章重點</h2>
+  <div class="callout tip"><span class="co-title">本章重點</span>LLM 是「會讀寫推理、但只出一張嘴」的模型；agent ＝ LLM ＋ 工具 ＋ 多步驟執行，而且在關鍵處停下來等人簽核。一支金融 agent 由四塊積木組成：系統提示詞（職位說明書）、skills（SOP 手冊）、MCP（接外部系統的標準插座）、subagents（兩層分工、只有一個工人能寫檔）。同一支 agent 有兩種上工方式：外掛模式有人陪跑、CMA 無人值守跑在 Anthropic 雲端（銀行 AWS 放的是周邊系統）。看不懂的詞，點虛線字即時看解釋。</div>
+
+  <div class="quiz" data-answer="2">
+    <div class="q">Q：AI「聊天機器人」跟「agent」最關鍵的差別是什麼？</div>
+    <label>agent 用的模型比較大、比較聰明</label>
+    <label>agent 回答速度比較快</label>
+    <label>agent 能使用工具、自己拆解並執行多步驟任務，而不只是回答問題</label>
+    <label>agent 不需要人監督，可以全自動放行所有決定</label>
+    <div class="explain">關鍵差別在「會做事」：agent 能查系統、讀寫檔案、把大任務拆成小步驟一路做完。最後一個選項恰好相反——設計良好的金融 agent 刻意在關鍵決定前停下來等人簽核（人在迴路），風險越高把關越嚴。</div>
+  </div>
+
+</main>
+<script src="../assets/book.js"></script>
+</body>
+</html>

@@ -8,12 +8,23 @@
   <link rel="stylesheet" href="../assets/book.css">
 </head>
 
-<body data-chapter="ch05">
+<body data-chapter="ch05" data-level="進階">
   <main>
     <h1><span class="ch-no">Chapter 5</span>從零開發一個新 Agent</h1>
-    <p class="lead">前面幾章都是「用既有的 Agent」或「調整既有的 Agent」。這一章不一樣：從一張白紙開始，走完一個全新 具名代理(Named Agent) 的完整旅程 —— 設計、寫系統提示、寫
-      Skills、寫 <code>agent.yaml</code>、拆 leaf workers、寫 steering events、寫 README，最後跑 <code>check.py</code> 與
-      <code>deploy-managed-agent.sh</code> 部署上線。本章是全書最核心的一章，讀完你應該能對照自己銀行的一個真實審核流程，獨立做出一個能上線的 Agent。</p>
+    <p class="lead">前面幾章都是「用既有的 <span class="term" data-term="agent">Agent</span>」或「調整既有的 Agent」。這一章不一樣：從一張白紙開始，走完一個全新<span
+        class="term" data-term="named-agent">具名代理</span>（Named Agent）的完整旅程 —— 設計、寫<span class="term"
+        data-term="system-prompt">系統提示</span>、寫 <span class="term" data-term="skill">Skills</span>、寫
+      <code>agent.yaml</code>、拆 <span class="term" data-term="leaf-worker">leaf workers</span>、寫 <span class="term"
+        data-term="steering-event">steering events</span>、寫 README，最後跑 <code>check.py</code> 與
+      <code>deploy-managed-agent.sh</code> <span class="term"
+        data-term="deploy">部署</span>上線。本章是全書最核心的一章。讀完之後，你應該能對照自己銀行的一個真實審核流程，獨立做出一個能上線的 Agent。</p>
+
+    <div class="callout info prereq"><span class="co-title">🔑 開始前，你需要先懂</span>
+      <ul>
+        <li><a href="../ch02-architecture/index.html">agent.yaml 的結構與「同源雙形態」架構</a>（第 2 章）——本章每個步驟都建立在那套結構上</li>
+        <li><a href="../ch04-customizing/index.html">先客製既有 Agent、不夠再新建</a>（第 4 章）——確認你真的需要「從零開發」，而不是改一個現成的</li>
+      </ul>
+    </div>
 
     <div class="toc">
       <div class="toc-title">本章內容</div>
@@ -32,12 +43,16 @@
     </div>
 
     <h2 id="s0-overview">1. 開發旅程總覽</h2>
+    <p><strong>非工程讀者看這段就夠：</strong>開發一個新 Agent，就像銀行設立一個新的專責小組——先寫職位說明書（設計與分工），再寫作業手冊（系統提示與
+      Skills），再報請人事建檔（設定檔），最後試營運、正式啟用（驗證與部署）。本章用「授信覆核」這個銀行熟悉的流程，把八個步驟走一遍。</p>
+
     <p>本章的貫穿範例是<strong>授信覆核 Agent（<code>loan-review-agent</code>）</strong>：銀行放款作業裡「收到一份貸款申請 →
-      產出一份可以交信審主管簽核的覆核報告」的那一段流程。選它當範例是因為它跟本 repo 既有的 <code>kyc-screener</code>（<code
+      產出一份可以交信審主管簽核的覆核報告」的那一段流程。選它有一個原因：它跟本 <span class="term" data-term="repo">repo</span> 既有的
+      <code>kyc-screener</code>（<code
         style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/kyc-screener/</code>）、<code>gl-reconciler</code>（<code
-        style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/gl-reconciler/</code>）結構完全同構：都是「讀不可信文件
-      → 跑規則/查證 → 出報告」，都是三個 leaf worker、都只有一個 worker 有 Write。這不是巧合 —— 本書所有 Named Agent 都刻意收斂成同一種骨架，讓你新開發的 Agent
-      也能沿用同一套心智模型，不用每次重新發明。</p>
+        style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/gl-reconciler/</code>）結構完全同構。都是「讀不可信文件
+      → 跑規則/查證 → 出報告」，都是三個 leaf worker，都只有一個 worker 有 Write。這不是巧合——本書所有 Named Agent 都刻意收斂成同一種骨架。你新開發的 Agent
+      沿用同一套心智模型，不用每次重新發明。</p>
 
     <div class="flow" data-animate>
       <div class="step"><span class="n">0</span><strong>設計</strong><br>業務流程、安全分層、leaf 拆分</div>
@@ -59,15 +74,20 @@
     </div>
 
     <div class="callout info"><span class="co-title">同源雙形態</span>本章寫出來的每一份檔案，最終會落在兩個地方：<code
-        style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/loan-review-agent/</code>（Cowork 外掛，開發時在
+        style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/loan-review-agent/</code>（Cowork <span
+        class="term" data-term="plugin">外掛</span>，開發時在
       Claude Code 裡用）與 <code
-        style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/loan-review-agent/</code>（CMA
-      cookbook，跑在 Anthropic 雲端的
+        style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/loan-review-agent/</code>（<span
+        class="term" data-term="cma">CMA</span> <span class="term" data-term="cookbook">cookbook</span>，跑在 Anthropic 雲端的
       <code>POST /v1/agents</code>）。系統提示只有一份（<code>agents/loan-review-agent.md</code>），<code>agent.yaml</code> 用
       <code>system.file</code> 指過去引用，不重複維護。</div>
 
+    <p><strong>一句話總結：</strong>新 Agent 的開發是八個固定步驟，而且骨架與 repo 既有的 Agent 完全同構——學會一次，之後每個新 Agent 都是同一套。</p>
+
     <h2 id="s1-design">2. 第 0 步：設計 —— 業務流程、安全分層、leaf worker 拆分</h2>
-    <p>寫任何程式碼之前，先把業務流程畫出來。授信覆核在銀行內部通常長這樣：</p>
+    <p><strong>非工程讀者看這段就夠：</strong>寫任何程式碼之前，先做三個決定——這個流程有哪幾段、哪一段會碰到「客戶交來的、未經驗證的文件」、哪一段要產出正式檔案。就像銀行分櫃檯收件、後台徵審、報告撰寫三個崗位，互相不能代辦，出事才不會連坐。</p>
+
+    <p>先把業務流程畫出來。授信覆核在銀行內部通常長這樣：</p>
 
     <pre class="diagram">收件（申貸文件、財報、擔保品鑑價報告）
    │
@@ -81,8 +101,10 @@
 產出覆核報告（摘要 + 逐條規則結果 + 建議額度/條件）── 交信審主管簽核
 </pre>
 
-    <p>接著決定<strong>安全分層</strong>。跟 <code>kyc-screener</code> 一樣的理由：申貸文件（申請表、財報、鑑價報告）是<strong>客戶提供、未經驗證的內容</strong>，不能讓有
-      Write 或有 MCP 存取權的角色直接碰。所以主代理（orchestrator）定調為 <span class="badge red">🔴 後台，無
+    <p>接著決定<span class="term" data-term="security-tier">安全分層</span>。跟 <code>kyc-screener</code>
+      一樣的理由：申貸文件（申請表、財報、鑑價報告）是<strong>客戶提供、未經驗證的內容</strong>，不能讓有
+      Write 或有 <span class="term" data-term="mcp">MCP</span> 存取權的角色直接碰。所以<span class="term"
+        data-term="orchestrator">主代理</span>（orchestrator）定調為 <span class="badge red">🔴 後台，無
         Write</span>：它只負責調度、彙總、交棒，本身不開文件、不落地檔案。</p>
 
     <div class="table-wrap">
@@ -102,7 +124,7 @@
             <td><strong>是</strong></td>
             <td><code>Read</code>, <code>Grep</code> only</td>
             <td>無</td>
-            <td>把 PDF/掃描檔轉成結構化 JSON，不做任何判斷</td>
+            <td>把 PDF/掃描檔轉成結構化 <span class="term" data-term="json">JSON</span>，不做任何判斷</td>
           </tr>
           <tr>
             <td><code>credit-rules</code> / Orchestrator</td>
@@ -122,20 +144,29 @@
       </table>
     </div>
 
-    <p>這張表就是整章的骨幹：<code>doc-reader</code> 隔離「不可信輸入」，<code>credit-rules</code> 隔離「外部查證」，<code>report-writer</code>
-      隔離「輸出/落地」。三個角色互不重疊，任何一個被誘導注入也炸不到另外兩個 —— 這正是 <code
+    <p>這張表就是整章的骨幹。<code>doc-reader</code> 隔離「不可信輸入」，<code>credit-rules</code> 隔離「外部查證」，<code>report-writer</code>
+      隔離「輸出/落地」。三個角色互不重疊，任何一個被<span class="term" data-term="prompt-injection">提示注入</span>誘導，也炸不到另外兩個——這正是 <code
         style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/kyc-screener/README.md</code>
-      裡「Three-tier isolation」的同一套原則，只是換成授信情境。<code>callable_agents</code> 只支援一層委派（orchestrator → leaf），三個 leaf 之間互不呼叫。
+      裡「Three-tier isolation」的同一套原則，只是換成授信情境。<span class="term"
+        data-term="callable-agents">callable_agents</span>（可呼叫代理清單）只支援一層委派（orchestrator → leaf），三個 leaf 之間互不呼叫。
     </p>
 
+    <p><strong>一句話總結：</strong>設計階段只要交出一張表——三個 leaf 各管「不可信輸入／外部查證／輸出落地」其中一件事，且只有一個 leaf 有 Write。</p>
+
     <h2 id="s2-prompt">3. 第 1 步：寫 canonical 系統提示</h2>
+    <p><strong>非工程讀者看這段就夠：</strong>系統提示是這個 Agent 的「職位說明書」：它做什麼、怎麼做、絕對不准做什麼。全書的紀律是<span class="term"
+        data-term="canonical">canonical</span>（唯一真本）——只寫一份，其他地方都引用它，避免兩份說明書打架。</p>
+
     <p>系統提示只寫一份，放在 <code
         style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/loan-review-agent/agents/loan-review-agent.md</code>，結構完全比照
       <code
-        style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/kyc-screener/agents/kyc-screener.md</code>：YAML
+        style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/kyc-screener/agents/kyc-screener.md</code>：<span
+        class="term" data-term="yaml">YAML</span>
       frontmatter（<code>name</code>、<code>description</code>、<code>tools</code>）+「你產出什麼」+「Workflow」+「Guardrails」+「這個
       Agent 用到的 Skills」。<code>description</code> 要寫清楚「這個 Agent 該在什麼情境被叫、不該在什麼情境被叫」——這是 <code>scripts/check.py</code> 檢查
       frontmatter 必填欄位之外，實務上避免誤用最重要的一段話。</p>
+
+    <p>下面是完整的系統提示檔。它在做什麼：定義這個 Agent 的名字、工具白名單、三步驟工作流程與四條護欄。</p>
 
     <details>
       <summary>完整內容：<code
@@ -185,20 +216,34 @@ Given a loan application ID, you deliver:
 </code></pre>
     </details>
 
-    <p>三個重點跟 <code>kyc-screener.md</code> 一模一樣的寫法邏輯：<code>tools:</code> 那一行宣告的是「這個 Agent 本體（主代理）能用的工具」，不包含 leaf worker
-      專屬的 Write —— Write 完全不出現在這裡；Guardrails 段落把「不可信輸入」「唯一 Write 者」「人在迴圈中的決策點」三件事白紙黑字寫死，而不是留給模型自由心證；「Skills this agent
-      uses」只列 skill 名稱，實際內容在下一步。</p>
+    <div class="adv" data-note="逐段走讀系統提示的寫法邏輯——照抄範例也能動，但要改寫成自己的 Agent 時，跳過會漏掉關鍵細節">
+      <p>三個重點跟 <code>kyc-screener.md</code> 一模一樣的寫法邏輯：</p>
+      <ul>
+        <li><code>tools:</code> 那一行宣告的是「這個 Agent 本體（主代理）能用的工具」，不包含 leaf worker
+          專屬的 Write——Write 完全不出現在這裡。</li>
+        <li>Guardrails 段落把「不可信輸入」「唯一 Write 者」「<span class="term" data-term="hitl">人在迴圈</span>中的決策點」三件事白紙黑字寫死，而不是留給<span
+            class="term" data-term="llm">模型</span>自由心證。</li>
+        <li>「Skills this agent uses」只列 skill 名稱，實際內容在下一步才寫。</li>
+      </ul>
+    </div>
+
+    <p><strong>一句話總結：</strong>系統提示是唯一真本的職位說明書；Write 不出現在主代理的工具清單，護欄全部明文寫死。</p>
 
     <h2 id="s3-skills">4. 第 2 步：寫 Skills（放 vertical-plugins，跑 sync）</h2>
+    <p><strong>非工程讀者看這段就夠：</strong>Skill 是 Agent 的「作業手冊分冊」——例如「怎麼拆解申貸文件」「信用政策有哪些規則」。分冊有唯一的正本存放處；agent
+      包裡的只是影印本，由同步腳本統一補印。直接改影印本，下次補印就被蓋掉。</p>
+
     <p><strong>Skill 的真本永遠放在 <code>plugins/vertical-plugins/&lt;vertical&gt;/skills/</code>，不是 agent
-        包裡。</strong>授信覆核屬於新的「lending」垂直領域，所以建立 <code
+        包裡。</strong>授信覆核屬於新的「lending」<span class="term" data-term="vertical">垂直領域</span>，所以建立 <code
         style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/lending/skills/loan-doc-parse/SKILL.md</code>
       與 <code
         style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/lending/skills/credit-policy-rules/SKILL.md</code>
-      兩份。<code>xlsx-author</code> 不用重寫 —— 它已經是 <code>kyc-screener</code>、<code>gl-reconciler</code> 等多個 Agent 共用的既有
+      兩份。<code>xlsx-author</code> 不用重寫——它已經是 <code>kyc-screener</code>、<code>gl-reconciler</code> 等多個 Agent 共用的既有
       skill（見 <code
         style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/kyc-screener/skills/xlsx-author/SKILL.md</code>），直接在
-      <code>report-writer</code> 的 subagent manifest 裡引用即可，不必重複造輪子。</p>
+      <code>report-writer</code> 的 <span class="term" data-term="subagent">subagent</span> manifest 裡引用即可，不必重複造輪子。</p>
+
+    <p>第一份 skill 在做什麼：教 doc-reader 把申貸文件包拆成固定欄位的 JSON，並把文件內容一律當「資料」而非「指令」。</p>
 
     <details>
       <summary>完整內容：<code
@@ -250,6 +295,8 @@ description: Parse a loan application packet (application form, financial statem
 </code></pre>
     </details>
 
+    <p>第二份 skill 在做什麼：列出信用政策的四條規則（LTV、DSCR、最低信用評分、集中度），並規定一律以 MCP 查回的官方數據為準。</p>
+
     <details>
       <summary>完整內容：<code
           style="white-space:normal;overflow-wrap:anywhere">plugins/vertical-plugins/lending/skills/credit-policy-rules/SKILL.md</code>
@@ -283,7 +330,7 @@ description: Evaluate the bank's credit policy (LTV, DSCR, minimum credit score,
 </code></pre>
     </details>
 
-    <p>寫完之後，這兩份都是「vertical-plugins 裡的原始版本」——尚未進到 <code
+    <p>寫完之後，這兩份都還只是「vertical-plugins 裡的原始版本」，尚未進到 <code
         style="white-space:normal;overflow-wrap:anywhere">plugins/agent-plugins/loan-review-agent/skills/</code>。跑一次同步腳本，把它們（連同要重用的
       <code>xlsx-author</code>）拷貝進 agent 包：</p>
 
@@ -294,16 +341,23 @@ description: Evaluate the bank's credit policy (LTV, DSCR, minimum credit score,
       <code>plugins/agent-plugins/*/skills/*</code> 底下每個資料夾，去
       <code>plugins/vertical-plugins/*/skills/&lt;同名資料夾&gt;</code> 找來源，整包覆蓋複製。如果你直接手改 <code
         style="white-space:normal;overflow-wrap:anywhere">agent-plugins/loan-review-agent/skills/loan-doc-parse/SKILL.md</code>，下次別人跑
-      sync 就會被覆蓋掉；<code>scripts/check.py</code> 的「4b. agent-plugin bundled skills match vertical source」檢查也會直接判你 drift
+      sync 就會被覆蓋掉；<code>scripts/check.py</code> 的「4b. agent-plugin bundled skills match vertical source」檢查也會直接判你
+      <span class="term" data-term="drift">drift</span>
       並擋下 commit。永遠改 <code>vertical-plugins/</code>，永遠不改 <code>agent-plugins/</code> 裡的副本。</div>
 
+    <p><strong>一句話總結：</strong>Skill 只在 <code>vertical-plugins/</code> 寫真本，寫完跑 <code>sync-agent-skills.py</code>
+      同步進 agent 包，共用的 skill（如 <code>xlsx-author</code>）直接引用不重寫。</p>
+
     <h2 id="s4-agentyaml">5. 第 3 步：寫 <code>agent.yaml</code></h2>
-    <p>這是 CMA cookbook 的主檔，放在 <code
-        style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/loan-review-agent/agent.yaml</code>。它不是
-      <code>POST /v1/agents</code> 直接吃的格式 —— <code>scripts/deploy-managed-agent.sh</code> 會先把
+    <p><strong>非工程讀者看這段就夠：</strong>這份檔案是新 Agent 的「人事建檔表」：叫什麼名字、用哪個模型、能用哪些工具、接哪些外部系統、手下有哪三個
+      leaf。它把前面所有設計決定收攏成一份設定檔，部署腳本讀它來建立雲端上的 Agent。</p>
+
+    <p>這是 CMA cookbook 的主檔 <span class="term" data-term="agent-yaml">agent.yaml</span>，放在 <code
+        style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/loan-review-agent/agent.yaml</code>。注意：它不是
+      <code>POST /v1/agents</code> 直接吃的格式——<code>scripts/deploy-managed-agent.sh</code> 會先把
       <code>system.file</code>、<code>skills[].path</code> /
-      <code>skills[].from_plugin</code>、<code>callable_agents[].manifest</code> 這些「manifest 語法糖」解析展開，才送出真正的 API
-      payload。每一欄的用途註解如下：</p>
+      <code>skills[].from_plugin</code>、<code>callable_agents[].manifest</code> 這些「manifest 語法糖」解析展開，才送出真正的 <span
+        class="term" data-term="api">API</span> payload。每一欄的用途都寫在註解裡：</p>
 
     <details open>
       <summary>完整內容：<code
@@ -359,18 +413,34 @@ callable_agents:
 </code></pre>
     </details>
 
-    <p>跟 <code style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/gl-reconciler/agent.yaml</code>
-      對照一次會發現骨架完全相同：<code>system.file+append</code>、白名單式 <code>tools</code>、<code>mcp_servers</code>
-      用環境變數佔位、<code>skills</code> 用 <code>from_plugin</code> 整包引用、<code>callable_agents</code> 列 leaf 清單且註解標出誰有
-      Write。這不是抄捷徑，是刻意的一致性——下一個要開發新 Agent 的人（包含未來的你）不用重新理解一套新格式。</p>
+    <div class="adv" data-note="agent.yaml 逐欄解剖與 gl-reconciler 骨架對照——要自己動手改欄位的人再展開">
+      <p>跟 <code
+          style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/gl-reconciler/agent.yaml</code>
+        對照一次會發現骨架完全相同，五個部位一一對應：</p>
+      <ul>
+        <li><code>system.file + append</code>：正文引用唯一真本；<code>append</code> 補上 <span class="term"
+            data-term="headless">headless</span>（雲端無人值守）情境的那一行，是雙形態之間唯一各自客製的內容。</li>
+        <li><span class="term" data-term="allowlist">白名單</span>式 <code>tools</code>：<code>default_config: enabled:
+            false</code> 預設全關，再逐一開 read/grep/glob——不是「預設全開再關掉危險的」。</li>
+        <li><code>mcp_servers</code> 用<span class="term" data-term="env-var">環境變數</span>佔位：上線只換 URL 值，不改 server
+          名字，因為 <code>tools</code> 段是用名字解析 MCP 的。</li>
+        <li><code>skills</code> 用 <code>from_plugin</code> 整包引用：由 <code>deploy-managed-agent.sh</code> 的
+          <code>resolve_manifest</code> 函式展開成每個 skill 資料夾一筆 <code>{path: ...}</code>。</li>
+        <li><code>callable_agents</code> 列 leaf 清單，註解標出誰有 Write。</li>
+      </ul>
+      <p>這不是抄捷徑，是刻意的一致性——下一個要開發新 Agent 的人（包含未來的你）不用重新理解一套新格式。</p>
+    </div>
+
+    <p><strong>一句話總結：</strong><code>agent.yaml</code> 是給部署腳本吃的 manifest，把系統提示、工具白名單、MCP、Skills、三個 leaf
+      全部收攏成一份設定檔——骨架與 repo 其他 Agent 完全一致。</p>
 
     <h2 id="s5-subagents">6. 第 4 步：寫 3 個 <code>subagents/*.yaml</code></h2>
-    <p>三個 leaf 分別對應第 0 步表格裡的三個角色。寫法比照 <code>kyc-screener</code> 的 <code>doc-reader.yaml</code> /
+    <p><strong>非工程讀者看這段就夠：</strong>三個 leaf 各有一份小設定檔，對應第 0 步表格的三個崗位。重點只有一個：只有 <code>report-writer</code>
+      拿得到「寫檔案」的權限，讀不可信文件的 <code>doc-reader</code> 則被鎖成「只能交回固定格式的表單」，多一個欄位都不行。</p>
+
+    <p>寫法比照 <code>kyc-screener</code> 的 <code>doc-reader.yaml</code> /
       <code>rules-engine.yaml</code> / <code>escalator.yaml</code>：每個 leaf 是獨立的 manifest，<code>system.text</code> 直接內嵌（比
-      orchestrator 短很多，不需要另開檔案），工具只開該角色真正需要的最小集合。（<code>doc-reader.yaml</code> 末段的 <code>output_schema</code> 用的是 JSON
-      Schema 語法，先白話認識幾個高頻欄位：<code>type</code> 資料型別、<code>required</code> 必填欄位、<code>enum</code>
-      值只能是列舉清單之一、<code>pattern</code> 值必須符合的正則表達式、<code>additionalProperties: false</code> 禁止出現沒宣告過的欄位——整體用途就是把 reader
-      的輸出鎖成固定形狀，讓下游能安全消費。）</p>
+      orchestrator 短很多，不需要另開檔案），工具只開該角色真正需要的最小集合。三份檔案在做什麼：doc-reader 讀文件、credit-rules 查證跑規則、report-writer 寫報告。</p>
 
     <div class="tabs">
       <div class="tab-bar"><button>doc-reader</button><button>credit-rules</button><button>report-writer</button></div>
@@ -481,9 +551,22 @@ callable_agents: []
         style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/kyc-screener/subagents/escalator.yaml</code>（唯一的
       Write 持有者）、<code
         style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/gl-reconciler/subagents/resolver.yaml</code>
-      是同一個模式。<code>doc-reader.yaml</code> 的 <code>output_schema</code> 不是 API 欄位，是
-      <code>scripts/deploy-managed-agent.sh</code> 在部署前用來包一層 schema 驗證 wrapper 的依據——部署時會從最終 payload 裡被
-      <code>del(.output_schema)</code> 移除，只留在 manifest 裡供本機驗證用。</p>
+      是同一個模式。<code>doc-reader.yaml</code> 末段的<span class="term"
+        data-term="output-schema">output_schema</span>（輸出結構）則把 reader 的輸出鎖成固定形狀，讓下游能安全消費。</p>
+
+    <div class="adv" data-note="output_schema 的 JSON Schema 欄位逐一解釋，以及它在部署時「不會進 API payload」的細節">
+      <p><code>output_schema</code> 用的是 JSON <span class="term" data-term="schema">Schema</span> 語法。先認識幾個高頻欄位：</p>
+      <ul>
+        <li><code>type</code>：資料型別；<code>required</code>：必填欄位清單。</li>
+        <li><code>enum</code>：值只能是列舉清單之一（例如 <code>applicant_type</code> 只有三種合法值）。</li>
+        <li><code>pattern</code>：值必須符合的正則表達式（限制字元集，擋掉夾帶怪字元的注入內容）。</li>
+        <li><code>additionalProperties: false</code>：禁止出現沒宣告過的欄位；<code>maxLength</code> / <code>maxItems</code>
+          限制長度，避免超長輸出。</li>
+      </ul>
+      <p>另一個容易誤會的點：<code>output_schema</code> 不是 API 欄位，而是
+        <code>scripts/deploy-managed-agent.sh</code> 在部署前用來包一層 schema 驗證 wrapper 的依據——部署時會從最終 payload 裡被
+        <code>del(.output_schema)</code> 移除，只留在 manifest 裡供本機驗證用。</p>
+    </div>
 
     <figure class="book-figure">
       <img src="../assets/illustrations/ch05-output-schema.svg"
@@ -491,7 +574,13 @@ callable_agents: []
       <figcaption><code>output_schema</code> 是部署前的驗證護欄：它約束 reader 輸出，但不會原樣送進 <code>POST /v1/agents</code>。</figcaption>
     </figure>
 
+    <p><strong>一句話總結：</strong>三份 subagent manifest 各給最小工具集：只有 report-writer 有 write/edit，讀不可信文件的 doc-reader 不掛任何
+      MCP、輸出被 schema 鎖死。</p>
+
     <h2 id="s6-steering">7. 第 5 步：<code>steering-examples.json</code></h2>
+    <p><strong>非工程讀者看這段就夠：</strong>steering events 是「派工單範例」：用幾條真實會出現的一句話，示範這個 Agent
+      會被什麼事件觸發。寫的時候要涵蓋日常會遇到的幾種派工樣態，不是只寫最順利的那一種。</p>
+
     <p>格式完全比照 <code
         style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/kyc-screener/steering-examples.json</code>：一個陣列，每筆
       <code>event</code> 是要餵給 Agent 的觸發事件文字，<code>description</code> 是給人看的情境說明。寫 2–3
@@ -505,14 +594,20 @@ callable_agents: []
 ]
 </code></pre>
 
-    <p>第三條特別值得留意：它示範了「不必每次都跑全流程」——當補件只影響擔保品鑑價，steering event 可以明確縮小範圍，讓主代理只重新調度 <code>credit-rules</code>
-      對擔保品部分重算，而不必重新走一次 <code>doc-reader</code>。要注意：本章第 1 步展示的 Workflow 只寫了三個線性步驟，並沒有包含這條分支——實作時請自行在 Workflow
-      段落補一條「收到補件類 steering event 時，只重跑受影響的步驟、沿用其餘已完成結果」的規則，這種「局部重跑」的彈性是寫系統提示時就要預留的。</p>
+    <p>第三條特別值得留意：它示範了「不必每次都跑全流程」。當補件只影響擔保品鑑價，steering event 可以明確縮小範圍，讓主代理只重新調度 <code>credit-rules</code>
+      對擔保品部分重算，不必重走一次 <code>doc-reader</code>。但要注意：本章第 1 步展示的 Workflow 只寫了三個線性步驟，並沒有包含這條分支——實作時請自行在 Workflow
+      段落補一條「收到補件類 steering event 時，只重跑受影響的步驟、沿用其餘已完成結果」的規則。這種「局部重跑」的彈性，是寫系統提示時就要預留的。</p>
+
+    <p><strong>一句話總結：</strong>steering examples 要涵蓋全新案件、排程覆核、局部重跑三種樣態，而局部重跑的規則要回頭補進系統提示的 Workflow。</p>
 
     <h2 id="s7-readme">8. 第 6 步：<code>README.md</code></h2>
-    <p>README 是給「下一個維護這個 Agent 的人」看的，不是給模型看的。內容比照 <code
+    <p><strong>非工程讀者看這段就夠：</strong>README 是給「下一個維護的人」看的交接文件，不是給模型看的。最重要的一段是白紙黑字寫死「這個 Agent
+      不做什麼決策」——授信情境裡，就是核貸與否永遠是人的決定。</p>
+
+    <p>內容比照 <code
         style="white-space:normal;overflow-wrap:anywhere">managed-agent-cookbooks/kyc-screener/README.md</code>
-      的四段式：Overview、Deploy、Steering events、Security & handoffs。安全分層那張表跟第 0
+      的四段式：Overview、Deploy、Steering events、Security &amp; <span class="term"
+        data-term="handoff">handoffs</span>。安全分層那張表跟第 0
       步設計時畫的表格是同一份，直接搬過來——設計階段做的分析，到這裡變成給人看的文件，不用重寫。</p>
 
     <details>
@@ -561,14 +656,21 @@ officer / credit committee approves.
 </code></pre>
     </details>
 
-    <p>最後一行「Not guaranteed」不是免責聲明的樣板文字——它是 <code>kyc-screener</code>、<code>gl-reconciler</code> 都有的同一種紀律：README 要明確寫死「這個
+    <p>最後一行「Not guaranteed」不是免責聲明的樣板文字。它是 <code>kyc-screener</code>、<code>gl-reconciler</code> 都有的同一種紀律：README 要明確寫死「這個
       Agent 不做什麼決策」，避免上線後被當成自動核貸系統使用。授信情境裡這句話特別重要：<strong>Agent 產出的是覆核報告與規則檢核結果，核貸與否永遠是信審主管或信審會的決定。</strong></p>
 
+    <p><strong>一句話總結：</strong>README 是四段式交接文件，把設計階段的安全分層表原封搬入，並用「Not guaranteed」寫死決策權留在人手上。</p>
+
     <h2 id="s8-deploy">9. 第 7 步：驗證與部署</h2>
+    <p><strong>非工程讀者看這段就夠：</strong>上線前固定三關——先給機器做文件審查（lint），再做一次「不真的送出」的<span class="term"
+        data-term="dry-run">dry-run</span> 彩排，最後才正式部署。彩排階段接的是假資料來源（<span class="term"
+        data-term="mock">mock</span>），確定一切正確後才換成真實系統。</p>
+
     <p>檔案寫完，上線前固定跑三段：<strong>lint → dry-run → 正式部署。</strong></p>
 
     <h3>9.1 跑 <code>check.py</code></h3>
-    <p><code>scripts/check.py</code> 會做五件事：所有 <code>managed-agent-cookbooks/**/*.yaml</code> 能不能 parse、所有
+    <p>它在做什麼：對整個 repo 做一輪體檢。<code>scripts/check.py</code> 會做五件事：所有 <code>managed-agent-cookbooks/**/*.yaml</code>
+      能不能 parse、所有
       <code>plugin.json</code>/<code>steering-examples.json</code> 能不能 parse、每個 <code>agents/*.md</code> 的 frontmatter
       有沒有 <code>name</code>/<code>description</code>、每個 <code>system.file</code> / <code>skills.path</code> /
       <code>callable_agents.manifest</code> 引用的路徑存不存在、以及 <code>agent-plugins/*/skills/</code> 是否跟
@@ -584,9 +686,8 @@ OK — 148 file(s) checked, 0 issues.</code></pre>
       exit 1，commit 前一定過得了這關。</p>
 
     <h3>9.2 <code>--dry-run</code> 先看解析後的 payload</h3>
-    <p><code>scripts/deploy-managed-agent.sh</code> 支援第二個參數 <code>--dry-run</code>：它會照樣把
-      <code>system.file</code>、<code>skills</code>、<code>callable_agents</code> 全部解析展開，但不真的呼叫 API，只把「即將送給
-      <code>POST /v1/agents</code> 的完整 JSON body」印出來（leaf worker 先解析、orchestrator 最後印）。這一步用來檢查兩件事：環境變數有沒有正確替換進
+    <p>它在做什麼：把所有 manifest 語法糖解析展開，但不真的呼叫 API，只印出「即將送給 <code>POST /v1/agents</code> 的完整 JSON
+      body」。這一步用來檢查兩件事：環境變數有沒有正確替換進
       <code>mcp_servers[].url</code>、三個 leaf 的 <code>callable_agents</code> id 有沒有正確串起來。</p>
 
     <div class="code-title">終端機</div>
@@ -621,14 +722,20 @@ agent id: agent_01AbCdEfGhIjKlMn
 cookbook: AnthropicFinancialAgents/loan-review-agent
 console:  https://console.anthropic.com/agents/agent_01AbCdEfGhIjKlMn</code></pre>
 
-    <p>腳本會先遞迴建立三個 leaf worker（各自拿到一個 agent id + version），再建立 orchestrator 並把三個 id 填進 <code>callable_agents</code>，最後印出
-      console URL——這就是這個新 Agent 在 Anthropic 雲端的管理頁面。<code>cookbook</code> 這個 metadata 欄位是腳本從 git remote 自動推導的
-      <code>REPO_SLUG/角色名稱</code>，用來追蹤這個線上 Agent 是從哪個 cookbook 目錄部署出來的。</p>
+    <div class="adv" data-note="部署腳本的執行順序、dry-run 輸出的閱讀方式與 cookbook metadata 的由來">
+      <p>腳本的執行順序是「先葉後根」：先遞迴建立三個 leaf worker（各自拿到一個 agent id + version），再建立 orchestrator 並把三個 id 填進
+        <code>callable_agents</code>，最後印出 console URL——這就是這個新 Agent 在 Anthropic 雲端的管理頁面。dry-run 輸出的順序也一樣（leaf worker
+        先解析、orchestrator 最後印），id 欄位用 <code>DRYRUN_</code> 前綴佔位。<code>cookbook</code> 這個 metadata 欄位是腳本從 git remote 自動推導的
+        <code>REPO_SLUG/角色名稱</code>，用來追蹤這個線上 Agent 是從哪個 cookbook 目錄部署出來的。</p>
+    </div>
 
     <div class="callout danger"><span class="co-title">別忘記關鍵事實</span><code>POST /v1/agents</code> 部署的位置是
       <strong>Anthropic 雲端</strong>（beta header <code>managed-agents-2026-04-01</code>），不是銀行的 AWS 帳號。「部署在
       AWS」指的是<strong>周邊系統</strong>——呼叫這個 Agent 的銀行後端、<code>credit-bureau</code>/<code>collateral-valuation</code> 這兩個
       MCP servers、以及未來若要跨 Agent 協作會用到的 <code>scripts/orchestrate.py</code> 編排器，這些才是跑在銀行自己 AWS 帳號裡的東西。</div>
+
+    <p><strong>一句話總結：</strong>上線三關是 <code>check.py</code> → <code>--dry-run</code> → 正式部署；換上真實系統只改環境變數裡的
+      URL，永遠不改 MCP server 的名字。</p>
 
     <h2 id="s9-summary">10. 本章重點、出廠檢核清單與測驗</h2>
 

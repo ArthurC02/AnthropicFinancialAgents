@@ -8,12 +8,25 @@
   <link rel="stylesheet" href="../assets/book.css">
 </head>
 
-<body data-chapter="ch08">
+<body data-chapter="ch08" data-level="進階">
   <main>
     <h1><span class="ch-no">Chapter 8</span>編排與跨 Agent 協作</h1>
-    <p class="lead">一個 具名代理（Named Agent） 能委派給自己的 葉子工人（leaf worker），但它不能直接呼叫另一個 具名代理。「valuation-reviewer 發現一筆有問題的
-      portco（portfolio company，基金投資的被投資公司）後，通知 gl-reconciler」這種跨 agent 協作，靠的不是 API 呼叫，而是一份純文字宣告加上銀行自己的編排器。本章拆解這兩層委派的邊界在哪裡、`handoff_request`（交棒請求——請求把工作交接給另一個 agent）
-      怎麼被驗證與路由、以及當你要把參考腳本換成 Temporal / Airflow / Step Functions 時，哪些安全職責絕對不能丟。</p>
+    <p class="lead">一個 <span class="term" data-term="named-agent">具名代理</span>（Named Agent）可以把工作派給自己的 <span
+        class="term" data-term="leaf-worker">葉子工人</span>（leaf worker），但它不能直接呼叫另一個具名代理。所以「valuation-reviewer 發現一筆有問題的
+      portco（portfolio company，基金投資的被投資公司），要通知 gl-reconciler」這種跨 <span class="term" data-term="agent">agent</span>
+      協作，靠的不是 <span class="term" data-term="api">API</span> 呼叫。靠的是一份純文字宣告——<span class="term"
+        data-term="handoff">handoff_request</span>（交棒請求：請求把工作交接給另一個 agent）——再加上銀行自己的編排器。本章假設你的 agent 已經<span
+        class="term" data-term="deploy">部署</span>上線（第 7 章），接著拆解三件事：兩層委派的邊界在哪裡、handoff_request 怎麼被驗證與路由、以及把參考腳本
+      <span class="term" data-term="orchestrate-py">orchestrate.py</span> 換成 Temporal / Airflow / Step Functions
+      時，哪些安全職責絕對不能丟。</p>
+
+    <div class="callout info prereq"><span class="co-title">🔑 開始前，你需要先懂</span>
+      <ul>
+        <li><a href="../ch00-basics/index.html#s3">orchestrator 與 leaf worker 的分工</a>（第 0 章第 3
+          節）——主代理派工給自己的工人，工人不能再往下派。</li>
+        <li><a href="../ch07-aws-deployment/index.html">第 7 章：AWS 部署</a>——agent 都部署好、能被觸發執行了，才談得上「多個 agent 之間怎麼接力」。</li>
+      </ul>
+    </div>
 
     <div class="toc">
       <div class="toc-title">本章內容</div>
@@ -28,12 +41,18 @@
     </div>
 
     <h2 id="s1">8.1 兩層編排：agent 內委派 vs agent 間協作</h2>
-    <p>這個 repo 裡「編排」（orchestration）其實分兩層，範圍完全不同，很多人第一次看會搞混：</p>
-    <p>第一層是 <strong>agent 內部</strong>的 <code>callable_agents</code>——一個 具名代理（orchestrator，主代理）呼叫自己的 葉子工人，這一層委派完全在
-      <strong>Anthropic 雲端</strong>執行，是 `POST /v1/agents` 這個 research preview（研究預覽階段，尚未正式開放「GA，即 General Availability」的
-      API）端點原生支援的能力。第二層是 <strong>agent 之間</strong>的協作——比如 valuation-reviewer 發現一筆有問題的 portco 後，要讓 gl-reconciler 知道；或者
-      kyc-screener 篩出高風險客戶後，要讓人工覆核佇列知道。這一層 Anthropic 完全不管，靠的是銀行自己的編排器（`scripts/orchestrate.py` 或你既有的工作流引擎）把一個 agent
-      的輸出路由成另一個 agent 的新 steering event（引導事件——丟進一個執行中 session 的一則新文字指令；session 則是 agent 一次連續的執行工作階段）。</p>
+    <p>先講結論：這個 <span class="term" data-term="repo">repo</span> 裡的「編排」（orchestration）分成兩層，範圍完全不同。很多人第一次看會搞混，所以先用一個銀行的比喻把邊界畫清楚。</p>
+    <p>想像一家分行。<strong>第一層</strong>像是「部門內派工」：授信部主管把案件拆給自己組裡的三位承辦，主管盯進度、承辦各做各的，全程在同一個部門裡完成。<strong>第二層</strong>像是「部門之間的公文往返」：授信部要通知法遵部，不能自己抱著卷宗衝進別人辦公室，一律走公文交換中心，由收發室核對收件單位、格式無誤後才轉送。兩層的規則、負責人、風險都不一樣。</p>
+    <p>對回技術上的精確定義。第一層是 <strong>agent 內部</strong>的 <span class="term"
+        data-term="callable-agents">callable_agents</span>：一個具名代理（<span class="term"
+        data-term="orchestrator">orchestrator</span>，主代理）呼叫自己的葉子工人。這層委派完全在 <strong>Anthropic
+        雲端</strong>執行，是 <code>POST /v1/agents</code> 這個 research preview（研究預覽階段，尚未正式開放「GA，General Availability」）API
+      端點原生支援的能力，而且只支援一層——工人不能再往下叫工人。</p>
+    <p>第二層是 <strong>agent 之間</strong>的協作。比如 valuation-reviewer 發現一筆有問題的 portco 後，要讓 gl-reconciler 知道；或 kyc-screener
+      篩出高風險客戶後，要讓人工覆核佇列知道。這一層 Anthropic 完全不管。靠的是銀行自己的編排器（<code>scripts/orchestrate.py</code>
+      或你既有的工作流引擎），把一個 agent 的輸出路由成另一個 agent 的新 <span class="term" data-term="steering-event">steering
+        event</span>（引導事件——丟進一個執行中 <span class="term" data-term="session">session</span> 的一則新文字指令；session 是 agent
+      一次連續的執行工作階段）。</p>
 
     <figure class="book-figure">
       <img src="../assets/illustrations/ch08-two-layer-orchestration.svg"
@@ -41,16 +60,20 @@
       <figcaption>8.1 的核心邊界：agent 內委派由 Anthropic 端執行；agent 間協作則由銀行自己的編排器驗證與路由。</figcaption>
     </figure>
 
-    <p>兩層的差異可以用「誰負責檢查」來記：第一層的安全邊界是 <code>agent.yaml</code> 裡宣告好的 tools/連結器（見第 9 章的三層隔離），Anthropic
-      端執行、銀行不用插手驗證。第二層完全相反——一個 agent 的文字輸出本質上是不可信輸入的下游產物（見 8.3 節），所以路由前必須由銀行的程式碼把關，Anthropic 不會替你做這件事。</p>
+    <p>兩層的差異可以用「誰負責檢查」來記。第一層的安全邊界，是 <span class="term" data-term="agent-yaml">agent.yaml</span>
+      裡宣告好的 tools／連結器（見第 9 章的三層隔離）——Anthropic 端執行，銀行不用插手驗證。第二層完全相反：一個 agent
+      的文字輸出，本質上是不可信輸入的下游產物（見 8.3 節），所以路由前必須由銀行的程式碼把關。Anthropic 不會替你做這件事。</p>
 
     <div class="callout info"><span class="co-title">與第 9 章的關係</span>三層工具隔離（reader / orchestrator / writer）解決的是「一個 agent
       內部，未信任文件的資料不能直接觸發寫入」；本章解決的是「一個 agent 的結論，怎麼安全地變成另一個 agent 的輸入」。兩者都假設輸出可能被污染，只是污染的來源和下游動作不同。</div>
 
+    <p><strong>一句話總結：</strong>部門內派工（callable_agents）由 Anthropic 雲端原生支援、只有一層；部門間公文（handoff_request）Anthropic 不管，收發把關全是銀行編排器的責任。</p>
+
     <h2 id="s2">8.2 Steering event：一次執行怎麼被觸發</h2>
-    <p>Steering event 是銀行後端丟給一個已部署 CMA（Claude Managed Agent，Claude 託管代理）session 的一段純文字指令，對應到
-      `client.beta.agents.sessions.steer(agent_id=..., input=...)` 這支 API。每個 agent 的 <code>steering-examples.json</code>
-      定義了它預期收到的事件長什麼樣子——這不是文件，是實際會被丟進 session 的字串。幾個真實例子：</p>
+    <p>Steering event 是銀行後端丟給一個已部署 <span class="term" data-term="cma">CMA</span>（Claude Managed Agent，Claude
+      託管代理）session 的一段純文字指令，對應到 <code>client.beta.agents.sessions.steer(agent_id=..., input=...)</code> 這支
+      API。你可以把它想成「丟一張工作單進某個承辦的收件匣」。每個 agent 的 <code>steering-examples.json</code>
+      定義了它預期收到的事件長什麼樣子——注意，這不是說明文件，是實際會被丟進 session 的字串。幾個真實例子：</p>
 
     <div class="table-wrap">
       <table>
@@ -86,35 +109,65 @@
           <tr>
             <td><code>statement-auditor</code></td>
             <td><code>Tie out statement batch BATCH-2026Q1-GIII against fund Growth-III NAV pack</code></td>
-            <td>季度 LP（有限合夥人，基金出資人）對帳單全批次核對</td>
+            <td>季度 <span class="term" data-term="lp-gp">LP</span>（有限合夥人，基金出資人）對帳單全批次核對</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <p>注意每份 <code>steering-examples.json</code> 都混了「起手事件」和「追加事件」——同一個 session 可以被 steer 多次，例如 kyc-screener 收到補件後只重篩
-      UBO（實質受益人），不用整包重來；month-end-closer 收到晚到的分錄（late JEs）後只重寫 variance commentary（差異說明備註）。這對應到銀行後端一個很實際的問題：不是每次觸發都要開一個全新
-      session，追加類事件應該 steer 進既有 session。</p>
+    <p>注意每份 <code>steering-examples.json</code> 都混了「起手事件」和「追加事件」。同一個 session 可以被 steer 多次：kyc-screener 收到補件後只重篩
+      UBO（實質受益人），不用整包重來；month-end-closer 收到晚到的分錄（late JEs）後，只重寫 variance
+      commentary（差異說明備註）。這對應到銀行後端一個很實際的問題——不是每次觸發都要開全新 session，追加類事件應該 steer 進既有 session。</p>
 
-    <p>執行結果怎麼回來？CMA 的 session 是用 SSE（Server-Sent Events）串流回傳，`scripts/orchestrate.py` 訂閱的方式如下：</p>
-    <div class="code-title">scripts/orchestrate.py（節錄，SSE 事件迴圈）</div>
-    <pre><code>with client.beta.agents.sessions.stream(session_id=source_session_id) as stream:
+    <p>那執行結果怎麼回來？CMA 的 session 用 <span class="term" data-term="sse">SSE</span>（Server-Sent
+      Events）串流回傳——像逐字聽寫，agent 每產出一小段文字，就推一小段給訂閱端。銀行後端訂閱這條串流，逐段檢查文字內容。這也是為什麼「跨 agent 協作」必須另外設計：一個 agent
+      的輸出只是文字增量，銀行的程式碼要自己從中辨認出「這是不是一個要求交接給別的 agent 的信號」。</p>
+
+    <div class="adv" data-note="orchestrate.py 怎麼訂閱 SSE 串流的實作細節——想自己接事件流的工程師再展開，跳過不影響主線">
+      <p>參考腳本 <code>scripts/orchestrate.py</code> 訂閱來源 session 的方式如下：</p>
+      <div class="code-title">scripts/orchestrate.py（節錄，SSE 事件迴圈）</div>
+      <pre><code>with client.beta.agents.sessions.stream(session_id=source_session_id) as stream:
     for event in stream:
         if event.type != "message_delta" or not getattr(event, "text", None):
             continue
         handoff = extract_handoff(event.text)
         ...</code></pre>
-    <p>銀行後端訂閱這條 SSE 串流，逐個 <code>message_delta</code> 事件檢查文字內容——這也是為什麼「跨 agent 協作」必須另外設計：一個 agent
-      的輸出只是文字增量，銀行的程式碼要自己從中辨認出「這是不是一個要求交接給別的 agent 的信號」。</p>
+      <p>逐行看：<code>stream(...)</code> 用 context manager 開一條對來源 session 的 SSE 連線；迴圈裡只關心
+        <code>message_delta</code> 型別、而且帶有文字的事件（其他型別如工具呼叫進度直接 <code>continue</code>
+        略過）；每一段文字增量都丟給 <code>extract_handoff()</code>（見 8.3 節）掃一次，看看裡面有沒有交接宣告。要注意的是：因為文字是「增量」進來的，正式實作通常還要處理
+        JSON 被切在兩個 delta 之間的緩衝問題——參考腳本示範的是形狀，不是完整品。</p>
+    </div>
+
+    <p><strong>一句話總結：</strong>steering event 就是丟進 session 收件匣的一張純文字工作單，同一個 session 可以收很多張；結果經由 SSE
+      逐段流回來，要靠銀行自己的程式碼從文字裡認出交接信號。</p>
 
     <h2 id="s3">8.3 handoff_request 機制與威脅模型</h2>
-    <p>具名代理 之間永不互相呼叫。當一個 agent 判斷工作需要交給另一個 agent 時，它只能在自己的文字輸出裡「宣告」一個 <code>handoff_request</code>，格式大致是
-      <code>{"type": "handoff_request", "target_agent": "...", "payload": {...}}</code>。這段文字本身沒有任何執行力——它會不會真的觸發下一個
-      agent，完全取決於銀行編排器怎麼解讀它。<code>scripts/orchestrate.py</code> 是這個機制的參考實作：
-    </p>
+    <p>先講結論：具名代理之間<strong>永不互相呼叫</strong>。當一個 agent 判斷工作該交給另一個 agent 時，它只能在自己的文字輸出裡「宣告」一個 handoff_request，格式大致是
+      <code>{"type": "handoff_request", "target_agent": "...", "payload": {...}}</code> 這樣一段 <span class="term"
+        data-term="json">JSON</span>。</p>
+    <p>回到公文交換中心的比喻，把這件事講透。部門之間不直接搬檔案：授信部想通知法遵部，只能寫一張公文，投進交換中心。這張公文<strong>本身沒有任何執行力</strong>——它只是紙。真正決定「送不送、送給誰」的是收發室，收發室做兩件事：第一，核對<strong>收件單位是否在名單上</strong>（不在名單，公文直接作廢）；第二，核對<strong>公文格式是否合規</strong>（欄位缺漏、夾帶不明附件，一樣作廢）。handoff_request
+      就是那張公文，<code>scripts/orchestrate.py</code> 就是收發室：<span class="term"
+        data-term="allowlist">allowlist</span>（白名單——只放行清單內的目標）對應「收件單位核對」，<span class="term"
+        data-term="schema">schema</span>（資料格式規格書）驗證對應「格式核對」。兩關都過，收發室才會呼叫
+      <code>steer()</code> 把工作單真正投遞給目標 agent。</p>
 
-    <div class="code-title">scripts/orchestrate.py（節錄，extract_handoff）</div>
-    <pre><code>ALLOWED_TARGETS = {
+    <p>為什麼要這麼防？因為這裡有一個真實的攻擊面，本質上就是<span class="term" data-term="prompt-injection">提示注入</span>（prompt
+      injection）的下游版本。腳本開頭的註解把威脅模型寫得很白：</p>
+    <div class="callout warn"><span class="co-title">orchestrate.py 的威脅模型（原文摘要）</span>
+      <p><strong>攻擊面：</strong>handoff request 出現在 orchestrator 的文字輸出裡，而這個輸出是「未信任文件讀取者（untrusted-document
+        readers）」的下游產物。一個能控制被處理文件內容的攻擊者，可以在文件裡嵌入一段一模一樣格式的 <code>handoff_request</code> JSON——如果 orchestrator
+        把文件內容原文照抄進輸出，這段偽造的交接請求就會被這支腳本解析、路由出去。</p>
+      <p><strong>兩道緩解：</strong>(a) <code>target_agent</code> 對照部署好的 slug 做 <strong>hard
+          allowlist</strong>——不在名單裡一律丟棄；(b) payload 進 <code>jsonschema.validate</code> 做 <strong>schema
+          驗證</strong>，格式不對就丟棄，不會被拿去 steer 下一個 session。</p>
+      <p><strong>作者自己承認的局限：</strong>這只是參考腳本，正式環境建議改用「專屬 tool call」或「模型無法靠引用文件文字偽造的 typed SSE
+        event」來發出交接請求——換句話說，比對純文字更可靠的作法，是讓交接訊號走一條攻擊者摸不到的通道。</p>
+    </div>
+
+    <div class="adv" data-note="extract_handoff 的原始碼走讀：allowlist 常數、payload schema 的逐欄限制——要自己改編排器的工程師再展開">
+      <p>兩道驗證在程式碼裡長這樣：</p>
+      <div class="code-title">scripts/orchestrate.py（節錄，extract_handoff）</div>
+      <pre><code>ALLOWED_TARGETS = {
     "pitch-agent", "market-researcher", "earnings-reviewer", "meeting-prep-agent",
     "model-builder", "gl-reconciler", "kyc-screener",
     "valuation-reviewer", "month-end-closer", "statement-auditor",
@@ -142,16 +195,11 @@ def extract_handoff(text: str) -> dict | None:
         return None
     jsonschema.validate(instance=payload, schema=HANDOFF_PAYLOAD_SCHEMA)
     return {"target_agent": target, "payload": payload}</code></pre>
-
-    <p>腳本開頭的註解把威脅模型寫得很白，值得逐條讀：</p>
-    <div class="callout warn"><span class="co-title">orchestrate.py 的威脅模型（原文摘要）</span>
-      <p><strong>攻擊面：</strong>handoff request 出現在 orchestrator 的文字輸出裡，而這個輸出是「未信任文件讀取者（untrusted-document
-        readers）」的下游產物。一個能控制被處理文件內容的攻擊者，可以在文件裡嵌入一段一模一樣格式的 <code>handoff_request</code> JSON——如果 orchestrator
-        把文件內容原文照抄進輸出，這段偽造的交接請求就會被這支腳本解析、路由出去。</p>
-      <p><strong>兩道緩解：</strong>(a) <code>target_agent</code> 對照部署好的 slug 做 <strong>hard allowlist</strong>（白名單——只放行清單內的目標，不在名單裡一律丟棄）；(b)
-        payload 進 <code>jsonschema.validate</code> 做 <strong>schema 驗證</strong>，格式不對就丟棄，不會被拿去 steer 下一個 session。</p>
-      <p><strong>作者自己承認的局限：</strong>這只是參考腳本，正式環境建議改用「專屬 tool call」或「模型無法靠引用文件文字偽造的 typed SSE
-        event」來發出交接請求——換句話說，比對純文字更可靠的作法，是讓交接訊號走一條攻擊者摸不到的通道。</p>
+      <p>幾個值得注意的設計：<code>ALLOWED_TARGETS</code> 是寫死在腳本裡的常數集合，收錄的是「已部署的 agent
+        slug」，不是從任何輸出動態產生——這就是「hard」allowlist 的意思。schema 那邊，<code>additionalProperties: False</code>
+        擋掉任何多塞的欄位；<code>event</code> 是唯一必填、上限 2000 字元；選填的 <code>context_ref</code> 除了 256
+        字元上限，還用正規表達式把字元集鎖在英數與少數符號，讓攻擊者很難在裡面夾帶注入片段。流程上：正規表達式先撈出候選
+        JSON、解析、查 target、驗 payload——任一步不過就回 <code>None</code>，整段交接請求等於不存在。</p>
     </div>
 
     <figure class="book-figure">
@@ -160,7 +208,7 @@ def extract_handoff(text: str) -> dict | None:
       <figcaption><code>handoff_request</code> 不是 API 呼叫，只是一段文字；真正的執行力來自銀行編排器的兩道驗證。</figcaption>
     </figure>
 
-    <p>把這個機制串起來看：agent 完成工作 → 在輸出裡宣告 handoff_request → <code>orchestrate.py</code> 攔截、做 allowlist + schema 兩道驗證 → 通過就呼叫
+    <p>把整個機制串起來看：agent 完成工作 → 在輸出裡宣告 handoff_request → <code>orchestrate.py</code> 攔截、做 allowlist + schema 兩道驗證 → 通過就呼叫
       <code>client.beta.agents.sessions.steer()</code>，把 <code>payload.event</code> 當成新的 steering event 丟給目標 agent 的
       session。三個真實案例（來自各 agent README 的 Handoff 小節）：
     </p>
@@ -174,35 +222,40 @@ def extract_handoff(text: str) -> dict | None:
         <code>handoff_request</code> 給同一個 <code>model-builder</code>
       </li>
     </ul>
-    <p>三個來源交接給同一個目標，正是「target 必須做 allowlist 而不是信任來源」這件事的具體理由——<code>model-builder</code> 的 README 也直接寫明：「when invoked
+    <p>三個來源交接給同一個目標，正是「target 必須做 allowlist、而不是信任來源」這件事的具體理由。<code>model-builder</code> 的 README 也直接寫明：「when invoked
       from <code>earnings-reviewer</code> or <code>pitch-agent</code>, the calling agent's <code>handoff_request</code>
-      is routed here by <code>scripts/orchestrate.py</code>」，它不知道也不需要知道呼叫者是誰，反正 orchestrate.py 已經把關過。</p>
+      is routed here by <code>scripts/orchestrate.py</code>」——它不知道也不需要知道呼叫者是誰，反正 orchestrate.py 已經把關過。就像收發室蓋章放行的公文，收件部門不必再回頭查發文者。</p>
+
+    <p><strong>一句話總結：</strong>handoff_request 只是一張沒有執行力的公文；收發室（orchestrate.py）核對收件名單（allowlist）與公文格式（schema），兩關都過才真正投遞，這兩道關卡是防偽造交接的安全底線。</p>
 
     <h2 id="s4">8.4 換成銀行既有的編排引擎</h2>
     <p><code>orchestrate.py</code> 檔頭第一句話就是「REFERENCE ONLY — replace with your firm's workflow engine (Temporal,
-      Airflow, Guidewire event bus)」。這支腳本示範的是「迴圈的形狀」，不是要你真的拿去上線。換成銀行既有引擎時，三個安全職責必須原封不動搬過去，不能因為換了引擎就省略：</p>
+      Airflow, Guidewire event bus)」。這支腳本示範的是「迴圈的形狀」，不是要你拿去上線。換句話說：收發室的<strong>規則</strong>要照搬，收發室的<strong>建築</strong>可以換成你家的。三個常見引擎（Temporal、Airflow、Step
+      Functions + EventBridge）各自怎麼對應，細節收在下面的進階區塊；不管選哪一個，三個安全職責必須原封不動搬過去。</p>
 
-    <div class="tabs">
-      <div class="tab-bar" style="flex-wrap:nowrap;overflow-x:auto">
-        <button>Temporal</button><button>Airflow</button><button>Step Functions + EventBridge</button>
-      </div>
-      <div class="tab-panel">
-        <p>用一個長駐 Workflow 訂閱來源 session 的 SSE（可以包成一個 Activity），在 Workflow 內做 <code>extract_handoff</code> 那段解析。allowlist
-          用 Workflow 的常數表，schema 驗證可以直接搬 <code>jsonschema</code>（Python worker）或換成 Temporal 支援語言的等價套件。驗證通過後，下一步 Activity
-          呼叫 <code>steer()</code> 對目標 session 送新事件；Temporal 原生的重試（retry policy）與工作流歷史（history）天生就適合當審計軌跡——這正好省了 8.6
-          節要自己刻的重試/冪等（idempotency，同一事件重複執行、結果不變、不會重複做事）邏輯。</p>
-      </div>
-      <div class="tab-panel">
-        <p>來源 agent 完成後，由一個 sensor 或事件觸發的 DAG 去讀輸出（session 結束後的最終文字，而不是即時 SSE）。解析、allowlist、schema 驗證各自是一個 task；驗證失敗直接讓
-          DAG task 失敗並落到 Airflow 的失敗通知，不要吞掉錯誤。Airflow 的 task retry + XCom 可以留一份「這次 handoff 驗證結果」的記錄當審計軌跡，但要注意 Airflow
-          排程天生是輪詢式的，即時性不如 Temporal/SSE 訂閱式。</p>
-      </div>
-      <div class="tab-panel">
-        <p>來源 agent 的後端呼叫方在收到 session 完成後，把輸出 <code>PutEvents</code> 到 EventBridge，帶上 detail-type 如
-          <code>agent.handoff_candidate</code>。一個 Step Functions 狀態機接手：Lambda 做 allowlist + schema
-          驗證（同一段邏輯，換個執行環境），驗證通過才進入下一個狀態呼叫目標 agent 的 steer API；驗證失敗的分支直接進 SQS 死信佇列（DLQ）而不是靜默丟棄。EventBridge
-          的事件本身自帶時間戳與來源，天生適合接稽核系統。
-        </p>
+    <div class="adv" data-note="三個工作流引擎（Temporal / Airflow / Step Functions）的落地對應細節——要選型、寫設計文件時再展開">
+      <div class="tabs">
+        <div class="tab-bar" style="flex-wrap:nowrap;overflow-x:auto">
+          <button>Temporal</button><button>Airflow</button><button>Step Functions + EventBridge</button>
+        </div>
+        <div class="tab-panel">
+          <p>用一個長駐 Workflow 訂閱來源 session 的 SSE（可以包成一個 Activity），在 Workflow 內做 <code>extract_handoff</code> 那段解析。allowlist
+            用 Workflow 的常數表，schema 驗證可以直接搬 <code>jsonschema</code>（Python worker）或換成 Temporal 支援語言的等價套件。驗證通過後，下一步 Activity
+            呼叫 <code>steer()</code> 對目標 session 送新事件；Temporal 原生的重試（retry policy）與工作流歷史（history）天生就適合當審計軌跡——這正好省了 8.6
+            節要自己刻的重試/冪等（idempotency，同一事件重複執行、結果不變、不會重複做事）邏輯。</p>
+        </div>
+        <div class="tab-panel">
+          <p>來源 agent 完成後，由一個 sensor 或事件觸發的 DAG 去讀輸出（session 結束後的最終文字，而不是即時 SSE）。解析、allowlist、schema 驗證各自是一個 task；驗證失敗直接讓
+            DAG task 失敗並落到 Airflow 的失敗通知，不要吞掉錯誤。Airflow 的 task retry + XCom 可以留一份「這次 handoff 驗證結果」的記錄當審計軌跡，但要注意 Airflow
+            排程天生是輪詢式的，即時性不如 Temporal/SSE 訂閱式。</p>
+        </div>
+        <div class="tab-panel">
+          <p>來源 agent 的後端呼叫方在收到 session 完成後，把輸出 <code>PutEvents</code> 到 EventBridge，帶上 detail-type 如
+            <code>agent.handoff_candidate</code>。一個 Step Functions 狀態機接手：Lambda 做 allowlist + schema
+            驗證（同一段邏輯，換個執行環境），驗證通過才進入下一個狀態呼叫目標 agent 的 steer API；驗證失敗的分支直接進 SQS 死信佇列（DLQ）而不是靜默丟棄。EventBridge
+            的事件本身自帶時間戳與來源，天生適合接稽核系統。
+          </p>
+        </div>
       </div>
     </div>
 
@@ -217,11 +270,15 @@ def extract_handoff(text: str) -> dict | None:
       </ol>
     </div>
 
+    <p><strong>一句話總結：</strong>orchestrate.py 只是示範用的收發室模型，換成 Temporal / Airflow / Step Functions
+      都行，但 allowlist、schema 驗證、審計軌跡三件事一件都不能少。</p>
+
     <h2 id="s5">8.5 銀行情境串接範例</h2>
-    <p>下面兩個情境，第一個是 repo 目前實際文件化的交接鏈路（gl-reconciler → month-end-closer，見
-      <code>managed-agent-cookbooks/gl-reconciler/README.md</code>），第二個是把同一套機制延伸到 kyc-screener
-      的高風險升級——但升級對象是「人工覆核佇列」而不是另一個 具名代理，值得特別拆解兩者的差異。
-    </p>
+    <p>下面兩個情境。第一個是 repo 目前實際文件化的交接鏈路（gl-reconciler → month-end-closer，寫在 gl-reconciler 的 <span class="term"
+        data-term="cookbook">cookbook</span> 說明檔 <code>managed-agent-cookbooks/gl-reconciler/README.md</code>
+      裡）——gl-reconciler 是負責<span class="term" data-term="gl">總帳</span>（GL，General
+      Ledger）對帳的 agent。第二個是把同一套機制延伸到 <span class="term" data-term="kyc">KYC</span>（認識你的客戶）審查 agent
+      kyc-screener 的高風險升級——但它的升級對象是「人工覆核佇列」而不是另一個具名代理，值得特別拆解兩者的差異。</p>
 
     <h3>情境 A：gl-reconciler 驗證完 break → month-end-closer 折進月結</h3>
     <div class="flow" data-animate>
@@ -238,7 +295,7 @@ def extract_handoff(text: str) -> dict | None:
       <div class="step"><span class="n">4</span><strong>month-end-closer 收到新 steering event</strong><br>把驗證過的 break
         折進該實體當期的 variance commentary</div>
     </div>
-    <p>這是文件裡實際寫出來的鏈路，兩邊都是 具名代理，走的完全是 8.3 節那條 handoff_request 路徑。</p>
+    <p>這是文件裡實際寫出來的鏈路。兩邊都是具名代理，走的完全是 8.3 節那條 handoff_request 路徑——公文從對帳部門發出，經收發室兩道核對，投遞到月結部門的收件匣。</p>
 
     <h3>情境 B：kyc-screener 發現高風險 → 人工覆核佇列（不是 handoff_request）</h3>
     <div class="flow" data-animate>
@@ -254,18 +311,21 @@ def extract_handoff(text: str) -> dict | None:
       <div class="step"><span class="n">4</span><strong>合規官在案件系統裡做最終決定</strong><br>README 寫明：「this agent recommends a
         risk rating; the compliance officer decides」</div>
     </div>
-    <p>情境 B 刻意示範一個容易搞混的地方：<code>orchestrate.py</code> 的 <code>ALLOWED_TARGETS</code> 只收錄「已部署的 agent slug」，人工覆核佇列不是
-      agent，塞不進這個機制，也不該硬塞——升級到人工佇列該用銀行既有的案件管理系統，不必也不能透過 handoff_request 表達。</p>
+    <p>情境 B 刻意示範一個容易搞混的地方：<code>orchestrate.py</code> 的 <code>ALLOWED_TARGETS</code> 只收錄「已部署的 agent
+      slug」。人工覆核佇列不是 agent，塞不進這個機制，也不該硬塞——升級到人工佇列該用銀行既有的案件管理系統，不必也不能透過 handoff_request
+      表達。用比喻說：要通知的對象根本不是另一個部門，而是「主管親簽」，那就不是公文交換的事。</p>
 
     <p>如果銀行想讓 <code>month-end-closer</code> 完結後接著觸發 <code>statement-auditor</code>（比如某支基金的實體月結完成後，順帶核對當季 LP
       對帳單），機制上完全可行——<code>statement-auditor</code> 本來就已經在 <code>ALLOWED_TARGETS</code> 清單裡（見 8.3
-      節程式碼）。但這條鏈路目前<strong>不是</strong> repo 既有文件裡寫出來的預設交接（目前唯一文件化的下游是 gl-reconciler → month-end-closer），要接的話，銀行只需要：在
-      <code>month-end-closer</code> 的 system prompt 加上「完結時視情況 emit handoff_request 給 statement-auditor」的指示，並確認 payload 的
-      <code>event</code> 欄位塞得下要傳的 batch/fund 資訊——不需要動 <code>orchestrate.py</code> 的 allowlist 或 schema。
-    </p>
+      節程式碼）。但這條鏈路目前<strong>不是</strong> repo 既有文件裡寫出來的預設交接（目前唯一文件化的下游是 gl-reconciler → month-end-closer）。要接的話，銀行只需要兩步：在
+      <code>month-end-closer</code> 的 <span class="term" data-term="system-prompt">system prompt</span>
+      加上「完結時視情況 emit handoff_request 給 statement-auditor」的指示，並確認 payload 的 <code>event</code> 欄位塞得下要傳的 batch/fund
+      資訊——不需要動 <code>orchestrate.py</code> 的 allowlist 或 schema。</p>
+
+    <p><strong>一句話總結：</strong>agent 對 agent 才走 handoff_request；升級給「人」（合規官、覆核佇列）走銀行既有的案件系統，兩條路不要混用。</p>
 
     <h2 id="s6">8.6 失敗處理：重試、冪等、死信佇列</h2>
-    <p>跨 agent 協作一旦接上銀行的編排器，失敗處理就是銀行自己的責任，CMA 不會替你重試 steering 失敗的呼叫。幾個必須設計的點：</p>
+    <p>先講結論：跨 agent 協作一旦接上銀行的編排器，失敗處理就是銀行自己的責任。CMA 不會替你重試 steering 失敗的呼叫。幾個必須設計的點：</p>
     <ul class="checklist">
       <li><strong>重試</strong>：<code>steer()</code> 呼叫失敗（網路、rate limit〔速率限制〕、目標 session 已結束）要重試，但重試前先確認下一點</li>
       <li><strong>冪等（idempotency）</strong>：同一個 handoff_request 因為 SSE 重連或重試被解析兩次，不能對目標 agent steer 兩次——用
@@ -273,17 +333,20 @@ def extract_handoff(text: str) -> dict | None:
       </li>
       <li><strong>死信佇列（DLQ）</strong>：schema 驗證失敗、target 不在 allowlist、或重試次數用盡的 handoff，不能靜默丟掉——進 DLQ
         保留原始文字與判定結果，讓人工事後查得到「有一個交接請求被擋下來，為什麼」</li>
-      <li><strong>人為介入點</strong>：DLQ 裡的項目、以及所有「Not guaranteed」類的輸出（風險等級建議、pass/hold
+      <li><strong>人為介入點（<span class="term" data-term="hitl">HITL</span>，human-in-the-loop）</strong>：DLQ 裡的項目、以及所有「Not
+        guaranteed」類的輸出（風險等級建議、pass/hold
         建議）都要有明確的人工審核關卡，不能因為編排器暢通就把最後一道人工簽核也自動化掉</li>
     </ul>
-    <p>這幾點不是編排引擎的加分項，而是把 <code>orchestrate.py</code> 那句「REFERENCE ONLY」落地成正式系統時的必要條件——參考腳本本身完全沒有重試、去重、DLQ，只示範了 happy
-      path 的解析與路由邏輯。</p>
+    <p>這幾點不是編排引擎的加分項。它們是把 <code>orchestrate.py</code> 那句「REFERENCE ONLY」落地成正式系統時的必要條件——參考腳本本身完全沒有重試、去重、DLQ，只示範了 happy
+      path（一切順利時的路徑）的解析與路由邏輯。</p>
+
+    <p><strong>一句話總結：</strong>重試、冪等去重、死信佇列、人工簽核關卡，這四件事參考腳本一件都沒做，全部要由銀行在正式編排器裡補上。</p>
 
     <div class="callout tip"><span class="co-title">本章重點</span>
       <ul>
         <li>編排分兩層：<code>callable_agents</code> 是 agent 內部一層委派，在 Anthropic 雲端執行；<code>handoff_request</code> 是 agent
           之間協作，靠銀行編排器（<code>orchestrate.py</code> 或 Temporal/Airflow/Step Functions）路由</li>
-        <li>具名代理 之間永不互相呼叫；handoff_request 只是輸出裡的一段文字宣告，有沒有執行力完全取決於編排器</li>
+        <li>具名代理 之間永不互相呼叫；handoff_request 只是輸出裡的一段文字宣告（一張公文），有沒有執行力完全取決於編排器（收發室）</li>
         <li>orchestrate.py 的威脅模型：agent 輸出是未信任文件讀取的下游產物，攻擊者可偽造 handoff_request；緩解靠 hard allowlist + schema
           驗證兩道關卡，正式環境建議走專屬 tool call 或 typed SSE event</li>
         <li>換成銀行既有引擎時，allowlist、schema 驗證、審計軌跡三件事必須原封不動保留</li>
